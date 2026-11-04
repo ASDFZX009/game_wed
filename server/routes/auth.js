@@ -73,6 +73,7 @@ r.put("/prefs", A.need(), (req, res) => {
   Object.entries(PREFS).forEach(([k, allowed]) => { if (allowed.includes(req.body?.[k])) out[k] = req.body[k]; });
   // ธีมพิเศษต้องซื้อหรือได้จากกล่องสุ่มก่อน
   if (out.palette && !require("../shop").ownsTheme(req.user.id, out.palette)) out.palette = "violet";
+  if (out.tickSound && !require("../shop").ownsSound(req.user.id, out.tickSound)) out.tickSound = "synth"; // เสียงต้องมีในกระเป๋าก่อน
   db.prepare("UPDATE users SET prefs = ? WHERE id = ?").run(JSON.stringify(out), req.user.id);
   res.json({ ok: true, prefs: out });
 });

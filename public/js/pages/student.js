@@ -2,7 +2,7 @@
 import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo, avatar, titleTag } from "../core.js";
 import { go, refreshMe } from "../app.js";
 import * as T from "./teacher.js";
-import { getPrefs, setPrefs, playSound, playTick, getTickSound, setTickSound, TICK_MAX_BYTES, TICK_SOUNDS, SKINS, PALETTES, DEFAULTS } from "../prefs.js";
+import { getPrefs, setPrefs, playSound, playTick, ownsTick, getTickSound, setTickSound, TICK_MAX_BYTES, TICK_SOUNDS, SKINS, PALETTES, DEFAULTS } from "../prefs.js";
 
 const KIND = { game: "เล่นเกม", quiz: "ส่งแบบทดสอบ" };
 export function assignmentHref(a, classId) {
@@ -168,10 +168,11 @@ export async function settings({ main, me }) {
   main.querySelectorAll("[data-sw]").forEach((c) => c.onchange = () => { setPrefs({ [c.dataset.sw]: c.checked }); if (c.dataset.sw === "sound" && c.checked) playSound("correct"); });
   const drawTicks = () => {
     const sel = getPrefs().tickSound, hasFile = !!getTickSound();
-    main.querySelector("#tickGrid").innerHTML = TICK_SOUNDS.filter((x) => x.id !== "custom" || hasFile).map((x) => html`<button type="button" class="tick-opt" role="radio" data-tick="${x.id}" aria-checked="${sel === x.id}">
-      <span class="ic">${x.icon}</span><span class="nm">${x.name}${x.id === "synth" ? html`<small>ค่าเริ่มต้น</small>` : ""}</span><span class="pl" aria-hidden="true">${sel === x.id ? "✓" : "▶"}</span></button>`.s).join("")
+    main.querySelector("#tickGrid").innerHTML = TICK_SOUNDS.filter((x) => x.id !== "custom" || hasFile).map((x) => { const lock = !ownsTick(x.id); return html`<button type="button" class="tick-opt ${lock ? "locked" : ""}" role="radio" data-tick="${x.id}" ${lock ? raw('data-locked="1"') : ""} aria-checked="${sel === x.id && !lock}">
+      <span class="ic">${x.icon}</span><span class="nm">${x.name}${x.id === "synth" ? html`<small>ค่าเริ่มต้น</small>` : lock ? html`<small>🔒 ได้จากร้านค้า/กล่องสุ่ม · กดฟังตัวอย่าง</small>` : ""}</span><span class="pl" aria-hidden="true">${sel === x.id && !lock ? "✓" : lock ? "🔒" : "▶"}</span></button>`.s; }).join("")
       + (hasFile ? html`<button type="button" class="tick-del linkish small" id="tickDel">ลบไฟล์ของฉัน</button>`.s : "");
     main.querySelectorAll("[data-tick]").forEach((b) => b.onclick = () => {
+      if (b.dataset.locked) { playTick(0, b.dataset.tick, true); toast("ตัวอย่างเสียง 🔒 — ได้เสียงนี้จากร้านค้าหรือกล่องสุ่ม แล้วเลือกใช้ได้ที่ 🎒 กระเป๋า"); return; }
       setPrefs({ tickSound: b.dataset.tick }); drawTicks();
       if (!getPrefs().sound) toast("เลือกแล้ว — เปิดสวิตช์เสียงประกอบเพื่อให้ได้ยิน", "bad"); else playTick(0, b.dataset.tick);
       main.querySelector(`[data-tick="${b.dataset.tick}"]`)?.focus();

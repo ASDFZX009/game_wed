@@ -151,8 +151,11 @@ function tickUrlFor(id) {
   return window.__SOUND_DATA?.[id] || `/sounds/${id}.mp3`;
 }
 /** เล่นเสียง "เลขบวกขึ้น" ตามที่เลือกในตั้งค่า (id ระบุเองได้เพื่อลองฟัง) */
-export function playTick(step = 0, id = current.tickSound) {
+/** มีเสียงนี้ในกระเป๋าหรือยัง (เลเวลอัปกับไฟล์ของตัวเองใช้ได้ทุกคน) */
+export const ownsTick = (id) => id === "synth" || id === "custom" || !!state.me?.owned?.includes("snd-" + id);
+export function playTick(step = 0, id = current.tickSound, preview = false) {
   if (!current.sound) return;
+  if (!preview && !ownsTick(id)) id = "synth";
   const url = tickUrlFor(id);
   if (url) {
     try {
@@ -170,7 +173,7 @@ export function playTick(step = 0, id = current.tickSound) {
   } catch { /* ignore */ }
 }
 /** โหลดไฟล์เสียงที่เลือกไว้ล่วงหน้า (เรียกก่อนเปิดหน้าสรุปผล) */
-export function preloadTick() { const u = tickUrlFor(current.tickSound); if (u && !audioCache[u]) try { audioCache[u] = Object.assign(new Audio(u), { preload: "auto" }); } catch { /* ignore */ } }
+export function preloadTick() { const u = ownsTick(current.tickSound) && tickUrlFor(current.tickSound); if (u && !audioCache[u]) try { audioCache[u] = Object.assign(new Audio(u), { preload: "auto" }); } catch { /* ignore */ } }
 
 export function playSound(kind) {
   // สั่นเบา ๆ บนมือถือ (ถ้าเครื่องรองรับและเปิดไว้)

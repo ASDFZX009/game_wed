@@ -186,8 +186,12 @@ export function confetti() {
 export const DIFF = { easy: "ง่าย", medium: "ปานกลาง", hard: "ยาก" };
 
 /** อวาตาร์ + กรอบ จากของที่ใส่อยู่ (look = { avatar, frame, title }) */
+/** ที่อยู่รูปโปรไฟล์ (เวอร์ชันเว็บไฟล์เดียวฝังรูปไว้ใน window.__PFP_DATA) */
+export const pfpUrl = (id) => window.__PFP_DATA?.[id] || `/pfp/${encodeURIComponent(id)}.jpg`;
 export function avatar(look = {}, size = "") {
-  return html`<span class="ava ${size} ${look?.frame ? `fr-${look.frame}` : ""}" aria-hidden="true">${look?.avatar || "👤"}</span>`;
+  const fr = look?.frame ? `fr-${look.frame}` : "";
+  if (look?.pfp) return html`<span class="ava has-pfp ${size} ${fr}" aria-hidden="true"><img src="${pfpUrl(look.pfp)}" alt="" loading="lazy" decoding="async"></span>`;
+  return html`<span class="ava ${size} ${fr}" aria-hidden="true">${look?.avatar || "👤"}</span>`;
 }
 export const titleTag = (look) => (look?.title ? html` <span class="title-tag">${look.title}</span>` : "");
 export const qs = (sel, root = document) => root.querySelector(sel);

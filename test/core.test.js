@@ -44,8 +44,11 @@ test("ร้านค้า: โอกาสกล่องสุ่มรวม
   const shop = require("../server/shop");
   shop.BOXES.forEach((b) => assert.equal(Object.values(b.odds).reduce((s, v) => s + v, 0), 100, b.name));
   shop.CATALOG.filter((x) => x.rarity === "legendary").forEach((x) => assert.equal(x.boxOnly, true));
-  shop.CATALOG.filter((x) => x.rarity !== "legendary").forEach((x) => assert.ok(x.price > 0));
+  shop.CATALOG.filter((x) => x.rarity !== "legendary" && x.type !== "pfp").forEach((x) => assert.ok(x.price > 0));
+  shop.CATALOG.filter((x) => x.type === "pfp").forEach((x) => assert.equal(x.boxOnly, true)); // รูปโปรไฟล์ได้จากกล่องโปรไฟล์เท่านั้น
+  // กล่องโปรไฟล์ให้แต่รูปโปรไฟล์ กล่องอื่นไม่มีรูปโปรไฟล์
+  Object.keys(shop.RARITY).forEach((r) => { shop.boxPool(shop.BOXES.find((b) => b.id === "profile"), r).forEach((x) => assert.equal(x.type, "pfp")); shop.boxPool(shop.BOXES[0], r).forEach((x) => assert.notEqual(x.type, "pfp")); });
   assert.equal(new Set(shop.CATALOG.map((x) => x.id)).size, shop.CATALOG.length);
   // ทุกระดับที่มีโอกาส > 0 ต้องมีของให้สุ่ม
-  shop.BOXES.forEach((b) => Object.entries(b.odds).forEach(([r, w]) => { if (w) assert.ok(shop.CATALOG.some((x) => x.rarity === r)); }));
+  shop.BOXES.forEach((b) => Object.entries(b.odds).forEach(([r, w]) => { if (w) assert.ok(shop.boxPool(b, r).length > 0, `${b.name} ${r}`); }));
 });

@@ -11,7 +11,7 @@ const RARITY = {
   epic: { name: "ล้ำค่า", price: 450, refund: 120 },
   legendary: { name: "ตำนาน", price: null, refund: 300 }, // ได้จากกล่องสุ่มเท่านั้น
 };
-const SLOTS = { avatar: "อวาตาร์", frame: "กรอบรูป", title: "ฉายา", theme: "ธีมพิเศษ", effect: "เอฟเฟกต์ฉลอง", background: "พื้นหลัง" };
+const SLOTS = { avatar: "อวาตาร์", pfp: "รูปโปรไฟล์", frame: "กรอบรูป", title: "ฉายา", theme: "ธีมพิเศษ", sound: "เสียงนับคะแนน", effect: "เอฟเฟกต์ฉลอง", background: "พื้นหลัง" };
 
 const I = (id, type, name, value, rarity, extra = {}) => ({ id, type, name, value, rarity, ...extra });
 const CATALOG = [
@@ -42,8 +42,29 @@ const CATALOG = [
   // พื้นหลัง
   I("bg-dots", "background", "ลายจุดน่ารัก", "dots", "common"), I("bg-stars", "background", "ลายดาวพราว", "stars", "rare"),
   I("bg-waves", "background", "ลายคลื่นทะเล", "waves", "epic"), I("bg-space", "background", "ห้วงอวกาศ", "space", "legendary"),
+  // เสียงนับคะแนนตอนจบเกม (ไฟล์ใน public/sounds)
+  I("snd-ka-ching", "sound", "แคชเชียร์ คา-ชิง", "ka-ching", "common", { icon: "💰" }), I("snd-register-open", "sound", "เปิดลิ้นชักเงิน", "register-open", "common", { icon: "🧾" }),
+  I("snd-coins", "sound", "เหรียญหล่นบนจาน", "coins", "common", { icon: "🪙" }), I("snd-service-bell", "sound", "กริ่งเคาน์เตอร์", "service-bell", "rare", { icon: "🔔" }),
+  I("snd-register-ding", "sound", "ลิ้นชักเงิน + ติ๊ง", "register-ding", "rare", { icon: "🛎️" }), I("snd-thank-you-bits", "sound", "Thank you for the bits", "thank-you-bits", "epic", { icon: "💎" }),
+  // รูปโปรไฟล์วงกลม "ร่างเอ็มออนิว" (ไฟล์ใน public/pfp) ได้จากกล่องสุ่มโปรไฟล์เท่านั้น
+  I("pf-robux", "pfp", "ร่างrobux", "robux", "rare"),
+  I("pf-kanjing", "pfp", "ร่างคันจริง", "kanjing", "rare"),
+  I("pf-shibuden", "pfp", "ร่างชิบุเดน", "shibuden", "rare"),
+  I("pf-darkpong", "pfp", "ร่างดาร์กพี่โป่งหินเหล็กไฟ", "darkpong", "epic"),
+  I("pf-thong", "pfp", "ร่างทอง", "thong", "legendary"),
+  I("pf-maan", "pfp", "ร่างมาร", "maan", "legendary"),
+  I("pf-nosleep", "pfp", "ร่างยังไม่ได้นอน", "nosleep", "common"),
+  I("pf-pakthong", "pfp", "ร่างระดับปักธง", "pakthong", "common"),
+  I("pf-blindking", "pfp", "ร่างราชาตาบอด", "blindking", "epic"),
+  I("pf-toilet", "pfp", "ร่างห้องน้ำมรณะ", "toilet", "epic"),
+  I("pf-ompra", "pfp", "ร่างอมพระมาพูดก็ไม่เชื่อ", "ompra", "rare"),
+  I("pf-magicprince", "pfp", "ร่างเจ้าชายเวทมนต์", "magicprince", "epic"),
+  I("pf-richboss", "pfp", "ร่างเสี่ยคนรวย2067", "richboss", "epic"),
+  I("pf-blocky", "pfp", "ร่างเหลี่ยมจริงๆ", "blocky", "rare"),
+  I("pf-coconat", "pfp", "ร่างโคโค่นัด", "coconat", "common"),
+  I("pf-ij", "pfp", "ร่างไอเจแม่กู", "ij", "common"),
 ];
-CATALOG.forEach((it) => { it.price = RARITY[it.rarity].price; it.boxOnly = it.price == null; });
+CATALOG.forEach((it) => { it.price = it.type === "pfp" ? null : RARITY[it.rarity].price; it.boxOnly = it.price == null; });
 const BY_ID = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
 
 // กล่องสุ่ม: โอกาสได้ของแต่ละระดับ (เปิดเผยให้ผู้ใช้เห็น)
@@ -51,6 +72,9 @@ const BOXES = [
   { id: "basic", name: "กล่องสุ่มธรรมดา", icon: "🎁", price: 120, odds: { common: 60, rare: 28, epic: 10, legendary: 2 }, desc: "ลุ้นของทุกระดับ เปิดฟรีได้วันละ 1 ครั้ง" },
   { id: "gold", name: "กล่องสุ่มทองคำ", icon: "🏆", price: 350, odds: { common: 0, rare: 55, epic: 35, legendary: 10 }, desc: "ไม่มีของธรรมดา ลุ้นของตำนานได้มากขึ้น" },
 ];
+BOXES.push({ id: "profile", name: "กล่องสุ่มโปรไฟล์", icon: "🎭", price: 200, pool: "pfp", odds: { common: 40, rare: 35, epic: 20, legendary: 5 }, desc: "ลุ้นรูปโปรไฟล์วงกลม “ร่างเอ็มออนิว” 16 ร่าง ใส่เป็นรูปโปรไฟล์ได้เลย" });
+/** ของที่สุ่มได้จากกล่องนี้ ในระดับที่สุ่มได้ */
+const boxPool = (box, rarity) => CATALOG.filter((x) => x.rarity === rarity && (box.pool ? x.type === box.pool : x.type !== "pfp"));
 const BASE_PALETTES = ["violet", "ocean", "forest", "sunset", "sakura", "emerald"];
 const PREMIUM_PALETTES = CATALOG.filter((x) => x.type === "theme").map((x) => x.value);
 
@@ -86,6 +110,8 @@ function addCoins(userId, amount, reason, detail = "") {
   db.prepare("INSERT INTO coin_tx (user_id, amount, reason, detail, created_at) VALUES (?,?,?,?,?)").run(userId, amount, reason, detail, now());
 }
 const owned = (userId) => new Set(db.prepare("SELECT item_id FROM user_items WHERE user_id=?").all(userId).map((r) => r.item_id));
+const ownsSound = (userId, id) => id === "synth" || id === "custom" || owned(userId).has("snd-" + id);
+const ownedIds = (userId) => [...owned(userId)];
 const ownsTheme = (userId, palette) => BASE_PALETTES.includes(palette) || (PREMIUM_PALETTES.includes(palette) && owned(userId).has(CATALOG.find((x) => x.value === palette && x.type === "theme").id));
 
 /** ของที่ใส่อยู่ → ค่าที่ใช้แสดงผล */
@@ -126,7 +152,7 @@ r.get("/", (req, res) => {
 r.post("/buy", need(), (req, res) => {
   const it = BY_ID[req.body.itemId];
   if (!it) return res.status(404).json({ error: "ไม่พบสินค้านี้" });
-  if (it.boxOnly) return res.status(400).json({ error: "ของระดับตำนานได้จากกล่องสุ่มเท่านั้น" });
+  if (it.boxOnly) return res.status(400).json({ error: "ของชิ้นนี้ได้จากกล่องสุ่มเท่านั้น" });
   if (owned(req.user.id).has(it.id)) return res.status(400).json({ error: "คุณมีของชิ้นนี้แล้ว" });
   const buy = db.transaction(() => {
     const u = db.prepare("SELECT coins FROM users WHERE id=?").get(req.user.id);
@@ -140,7 +166,7 @@ r.post("/buy", need(), (req, res) => {
 
 r.post("/equip", need(), (req, res) => {
   const slot = req.body.slot;
-  if (!SLOTS[slot] || slot === "theme") return res.status(400).json({ error: "ช่องนี้ใช้ไม่ได้" });
+  if (!SLOTS[slot] || slot === "theme" || slot === "sound") return res.status(400).json({ error: "ช่องนี้ใช้ไม่ได้" });
   const eq = J(db.prepare("SELECT equipped FROM users WHERE id=?").get(req.user.id).equipped, {});
   if (req.body.itemId) {
     const it = BY_ID[req.body.itemId];
@@ -164,7 +190,7 @@ r.post("/box", need(), (req, res) => {
     if (free) db.prepare("INSERT INTO coin_tx (user_id, amount, reason, detail, created_at) VALUES (?,?,?,?,?)").run(req.user.id, 0, "free_box", box.name, now());
     else addCoins(req.user.id, -box.price, "box", box.name);
     const rarity = pickWeighted(box.odds);
-    const pool = CATALOG.filter((x) => x.rarity === rarity);
+    const pool = boxPool(box, rarity);
     const it = pool[crypto.randomInt(pool.length)];
     const dup = owned(req.user.id).has(it.id);
     if (dup) addCoins(req.user.id, RARITY[rarity].refund, "duplicate", it.name);
@@ -175,4 +201,4 @@ r.post("/box", need(), (req, res) => {
   res.json({ ...result, coins: db.prepare("SELECT coins FROM users WHERE id=?").get(req.user.id).coins, freeBox: dailyFreeAvailable(req.user.id) });
 });
 
-module.exports = { router: r, addCoins, equippedView, ownsTheme, CATALOG, BOXES, RARITY, BASE_PALETTES, PREMIUM_PALETTES };
+module.exports = { router: r, addCoins, equippedView, ownsTheme, ownsSound, ownedIds, boxPool, CATALOG, BOXES, RARITY, SLOTS, BASE_PALETTES, PREMIUM_PALETTES };

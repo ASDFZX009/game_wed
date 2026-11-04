@@ -1,13 +1,15 @@
 // ร้านค้าของตกแต่ง + กล่องสุ่ม
 import { api, html, raw, state, toast, confetti, confirmBox, fmtDate, avatar, titleTag } from "../core.js";
 import { go, refreshMe } from "../app.js";
-import { playSound, setPrefs, getPrefs } from "../prefs.js";
+import { playSound, setPrefs, getPrefs, playTick } from "../prefs.js";
 
-const TYPE_IC = { avatar: "🐱", frame: "🖼️", title: "🏷️", theme: "🎨", effect: "🎉", background: "🌌" };
+const TYPE_IC = { avatar: "🐱", pfp: "🎭", frame: "🖼️", title: "🏷️", theme: "🎨", sound: "🎵", effect: "🎉", background: "🌌" };
 const REASON = { game: "เล่นเกม", quiz: "ส่งแบบทดสอบ", buy: "ซื้อ", box: "เปิดกล่อง", duplicate: "ได้ของซ้ำ คืนเหรียญ", free_box: "เปิดกล่องฟรี" };
 
-function itemVisual(it, big = false) {
+export function itemVisual(it, big = false) {
   switch (it.type) {
+    case "pfp": return avatar({ pfp: it.value, frame: state.me?.equipped?.frame }, big ? "xl" : "lg");
+    case "sound": return html`<button type="button" class="snd-prev ${big ? "big" : ""}" data-play="${it.value}" aria-label="ฟังเสียง ${it.name}"><span>${it.icon || "🎵"}</span><b>▶</b></button>`;
     case "avatar": return html`<span style="font-size:${big ? "4.4rem" : "2.8rem"}">${it.value}</span>`;
     case "frame": return avatar({ avatar: state.me?.equipped?.avatar || "🙂", frame: it.value }, big ? "xl" : "lg");
     case "title": return html`<span class="title-tag" style="font-size:${big ? "1.1rem" : ".9rem"}">${it.value}</span>`;
@@ -32,26 +34,27 @@ export async function shop({ main, query }) {
         ${me ? html`<div class="wallet">${avatar(look, "lg")}<div><div class="small muted">${me.displayName}${titleTag(look)}</div><div class="amt" id="coinAmt">🪙 ${d.coins.toLocaleString("th-TH")}</div></div></div>` : ""}</div>
       ${!me ? html`<div class="note">👋 ดูของในร้านได้เลย — <a href="/login?next=/shop">เข้าสู่ระบบ</a> แล้วเล่นเกมเพื่อสะสมเหรียญมาแลกของ</div>` : ""}
       <details class="info small" style="margin-top:14px"><summary><b>ได้เหรียญ 🪙 จากไหน?</b></summary>
-        <ul style="margin:6px 0 0"><li>เล่นเกมจบ 1 ครั้ง ได้สูงสุด 50 เหรียญ (ตามสัดส่วนคะแนน)</li><li>ส่งแบบทดสอบ ได้สูงสุด 20 เหรียญ</li><li>เปิดกล่องสุ่มธรรมดาฟรีวันละ 1 ครั้ง</li><li>ได้ของซ้ำจากกล่องสุ่ม ระบบคืนเหรียญให้ (ธรรมดา 20 · หายาก 50 · ล้ำค่า 120 · ตำนาน 300)</li></ul>
+        <ul style="margin:6px 0 0"><li>เล่นเกมจบ 1 ครั้ง ได้สูงสุด 50 เหรียญ (ตามสัดส่วนคะแนน)</li><li>ส่งแบบทดสอบ ได้สูงสุด 20 เหรียญ</li><li>เปิดกล่องสุ่มธรรมดาฟรีวันละ 1 ครั้ง</li><li>ของที่ได้ทั้งหมดอยู่ใน <a href="/bag">🎒 กระเป๋า</a> เลือกใส่/ใช้ได้ที่นั่น</li><li>ได้ของซ้ำจากกล่องสุ่ม ระบบคืนเหรียญให้ (ธรรมดา 20 · หายาก 50 · ล้ำค่า 120 · ตำนาน 300)</li></ul>
         <p style="margin:6px 0 0">เหรียญแยกจาก XP — ใช้เหรียญซื้อของแล้วระดับ (Level) ไม่ลดลง · ไม่มีการซื้อเหรียญด้วยเงินจริง</p></details>
 
       <h2>🎁 กล่องสุ่ม</h2>
-      <div class="boxes">${d.boxes.map((b) => html`<div class="lootbox ${b.id === "gold" ? "gold" : ""}">
+      <div class="boxes">${d.boxes.map((b) => html`<div class="lootbox ${b.id === "gold" ? "gold" : b.id === "profile" ? "profile" : ""}">
         <span class="big" aria-hidden="true">${b.icon}</span><h3>${b.name}</h3><p>${b.desc}</p>
         <div class="row">${b.id === "basic" && me && d.freeBox ? html`<button class="btn free" data-box="${b.id}" data-free="1">🎉 เปิดฟรีวันนี้!</button>` : ""}
           <button class="btn" data-box="${b.id}" ${!me ? raw("disabled") : ""}>เปิด 🪙 ${b.price}</button></div>
-        <details><summary>ดูโอกาสที่จะได้ของแต่ละระดับ</summary><div class="odds">${Object.entries(b.odds).map(([k, v]) => html`<span>${d.rarity[k].name}</span><span style="opacity:.8">${d.items.filter((x) => x.rarity === k).length} ชิ้น</span><b>${v}%</b>`)}</div></details></div>`)}</div>
+        <details><summary>ดูโอกาสที่จะได้ของแต่ละระดับ</summary><div class="odds">${Object.entries(b.odds).map(([k, v]) => html`<span>${d.rarity[k].name}</span><span style="opacity:.8">${d.items.filter((x) => x.rarity === k && (b.pool ? x.type === b.pool : x.type !== "pfp")).length} ชิ้น</span><b>${v}%</b>`)}</div></details></div>`)}</div>
 
       <div class="tabs" role="tablist">${[["all", "ทั้งหมด"], ...Object.entries(d.slots), ...(me ? [["mine", `ของฉัน (${ownedCount}/${d.items.length})`]] : [])].map(([k, v]) => html`<button class="chip" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${TYPE_IC[k] || (k === "mine" ? "🎒" : "✨")} ${v}</button>`)}</div>
       ${list.length ? html`<div class="items">${list.map((it) => {
         let action;
         if (!me) action = it.boxOnly ? html`<span class="small muted">ได้จากกล่องสุ่ม</span>` : html`<span class="small"><b>🪙 ${it.price}</b></span>`;
         else if (it.owned) {
-          if (it.type === "theme") action = getPrefs().palette === it.value ? html`<button class="btn btn-sm btn-ghost" disabled>✓ ใช้อยู่</button>` : html`<button class="btn btn-sm" data-theme="${it.value}">ใช้ธีมนี้</button>`;
+          if (it.type === "sound") action = getPrefs().tickSound === it.value ? html`<button class="btn btn-sm btn-ghost" disabled>✓ ใช้อยู่</button>` : html`<button class="btn btn-sm" data-usesound="${it.value}">ใช้เสียงนี้</button>`;
+          else if (it.type === "theme") action = getPrefs().palette === it.value ? html`<button class="btn btn-sm btn-ghost" disabled>✓ ใช้อยู่</button>` : html`<button class="btn btn-sm" data-theme="${it.value}">ใช้ธีมนี้</button>`;
           else action = it.equipped ? html`<button class="btn btn-sm btn-ghost" data-unequip="${it.type}">✓ ใส่อยู่ (ถอด)</button>` : html`<button class="btn btn-sm" data-equip="${it.id}" data-slot="${it.type}">ใส่</button>`;
         } else if (it.boxOnly) action = html`<span class="small muted">🎁 ได้จากกล่องสุ่มเท่านั้น</span>`;
         else action = html`<button class="btn btn-sm ${d.coins < it.price ? "btn-ghost" : ""}" data-buy="${it.id}">ซื้อ 🪙 ${it.price}</button>`;
-        return html`<div class="item r-${it.rarity} ${it.equipped || (it.type === "theme" && it.owned && getPrefs().palette === it.value) ? "equipped" : ""}">
+        return html`<div class="item r-${it.rarity} ${it.equipped || (it.owned && ((it.type === "theme" && getPrefs().palette === it.value) || (it.type === "sound" && getPrefs().tickSound === it.value))) ? "equipped" : ""}">
           <span class="rar">${d.rarity[it.rarity].name}</span><div class="vis">${itemVisual(it)}</div>
           <div class="nm">${it.name}</div><div class="small muted">${d.slots[it.type]}${it.owned ? " · มีแล้ว ✓" : ""}</div>${action}</div>`;
       })}</div>` : html`<div class="empty">${tab === "mine" ? "ยังไม่มีของ ลองเปิดกล่องสุ่มฟรีดูสิ!" : "ไม่มีสินค้าในหมวดนี้"}</div>`}
@@ -75,6 +78,8 @@ export async function shop({ main, query }) {
     main.querySelectorAll("[data-unequip]").forEach((b) => b.onclick = async () => { await api("/api/shop/equip", { body: { slot: b.dataset.unequip, itemId: null } }); toast("ถอดแล้ว"); await reload(); });
     main.querySelectorAll("[data-theme]").forEach((b) => b.onclick = () => { setPrefs({ palette: b.dataset.theme }); toast("เปลี่ยนธีมแล้ว 🎨"); render(); });
     main.querySelectorAll("[data-box]").forEach((b) => b.onclick = () => openBox(b.dataset.box, !!b.dataset.free));
+    main.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => playTick(0, b.dataset.play, true));
+    main.querySelectorAll("[data-usesound]").forEach((b) => b.onclick = () => { setPrefs({ tickSound: b.dataset.usesound }); playTick(0, b.dataset.usesound); toast("เปลี่ยนเสียงนับคะแนนแล้ว 🎵"); render(); });
   }
 
   async function openBox(boxId, free) {
@@ -97,12 +102,14 @@ export async function shop({ main, query }) {
       <h2 style="margin:.3em 0 .1em">${it.name}</h2><p class="muted" style="margin:0">${d.slots[it.type]}</p>
       ${r.duplicate ? html`<p class="note small" style="text-align:left">มีของชิ้นนี้แล้ว — ได้คืน 🪙 ${r.refund}</p>` : html`<p class="small">เพิ่มเข้า “ของฉัน” แล้ว ✨</p>`}
       <div class="row" style="justify-content:center;margin-top:12px">
-        ${!r.duplicate && it.type !== "theme" ? html`<button class="btn" id="eqNow">ใส่เลย</button>` : ""}${!r.duplicate && it.type === "theme" ? html`<button class="btn" id="thNow">ใช้ธีมนี้</button>` : ""}
+        ${!r.duplicate && !["theme", "sound"].includes(it.type) ? html`<button class="btn" id="eqNow">ใส่เลย</button>` : ""}${!r.duplicate && it.type === "theme" ? html`<button class="btn" id="thNow">ใช้ธีมนี้</button>` : ""}${!r.duplicate && it.type === "sound" ? html`<button class="btn" id="sndNow">ใช้เสียงนี้</button>` : ""}
         <button class="btn btn-ghost" id="ok">ปิด</button></div></div></div>`.s;
     playSound(r.rarity === "legendary" || r.rarity === "epic" ? "win" : "correct");
     if (["epic", "legendary"].includes(r.rarity)) confetti();
     dlg.querySelector("#ok").onclick = () => dlg.close();
     dlg.querySelector("#eqNow")?.addEventListener("click", async () => { await api("/api/shop/equip", { body: { slot: it.type, itemId: it.id } }); dlg.close(); toast("ใส่แล้ว ✨"); await reload(); });
+    dlg.querySelector("#sndNow")?.addEventListener("click", async () => { setPrefs({ tickSound: it.value }); dlg.close(); await reload(); });
+    dlg.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => playTick(0, b.dataset.play, true));
     dlg.querySelector("#thNow")?.addEventListener("click", async () => { setPrefs({ palette: it.value }); dlg.close(); await reload(); });
     dlg.addEventListener("close", () => reload(), { once: true });
   }

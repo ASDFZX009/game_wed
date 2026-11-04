@@ -15,7 +15,7 @@ const shop = require("../server/shop");
 const data = {
   categories: CATEGORIES.map(([slug, name, nameEn, icon]) => ({ slug, name, nameEn, icon })),
   games: GAMES, quizzes: QUIZZES, badges: BADGES,
-  shop: { catalog: shop.CATALOG, boxes: shop.BOXES, rarity: shop.RARITY, slots: { avatar: "อวาตาร์", frame: "กรอบรูป", title: "ฉายา", theme: "ธีมพิเศษ", effect: "เอฟเฟกต์ฉลอง", background: "พื้นหลัง" } },
+  shop: { catalog: shop.CATALOG, boxes: shop.BOXES, rarity: shop.RARITY, slots: shop.SLOTS },
 };
 fs.writeFileSync(path.join(__dirname, "data.json"), JSON.stringify(data));
 
@@ -33,6 +33,9 @@ const redirectApp = {
   const sdir = path.join(root, "public/sounds");
   const sounds = JSON.stringify(Object.fromEntries(fs.readdirSync(sdir).filter((f) => f.endsWith(".mp3"))
     .map((f) => [f.replace(/\.mp3$/, ""), "data:audio/mpeg;base64," + fs.readFileSync(path.join(sdir, f)).toString("base64")])));
+  const pdir = path.join(root, "public/pfp");
+  const pfps = JSON.stringify(Object.fromEntries(fs.readdirSync(pdir).filter((f) => f.endsWith(".jpg"))
+    .map((f) => [f.replace(/\.jpg$/, ""), "data:image/jpeg;base64," + fs.readFileSync(path.join(pdir, f)).toString("base64")])));
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8") + fs.readFileSync(path.join(root, "public/css/skins.css"), "utf8");
 
   // 3) ประกอบเป็น HTML ไฟล์เดียว
@@ -62,7 +65,7 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
 <main id="app" class="wrap" tabindex="-1"><div class="loading">กำลังโหลด…</div></main>
 <nav class="bottom-nav" id="bnav" aria-label="เมนูลัด"></nav>
 <footer class="foot wrap"><a href="/privacy">ความเป็นส่วนตัว</a><span>EduPlay Universe · เวอร์ชันเล่นบนเว็บ</span><a href="https://github.com/ASDFZX009/game_wed">GitHub</a></footer>
-<script>window.__SOUND_DATA=${sounds}</script>
+<script>window.__SOUND_DATA=${sounds};window.__PFP_DATA=${pfps}</script>
 <script>${js}</script>
 </body>
 </html>

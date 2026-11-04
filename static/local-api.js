@@ -116,7 +116,7 @@ export async function connectRemote(onLoaded) {
 
 // ---------- ช่วยเหลือ ----------
 const equippedView = () => Object.fromEntries(Object.entries(S.equipped).filter(([s, id]) => ITEM[id]?.type === s).map(([s, id]) => [s, ITEM[id].value]));
-const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), local: true,
+const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), owned: Object.keys(S.items), local: true,
   level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL });
 function addXP(xp, kind, title) { S.xp += xp; S.activity.unshift({ kind, title, xp, created_at: now() }); S.activity = S.activity.slice(0, 200); }
 function addCoins(amount, reason, detail) { if (!amount && reason !== "free_box") return; S.coins += amount; S.coinTx.unshift({ amount, reason, detail, at: now() }); S.coinTx = S.coinTx.slice(0, 200); }
@@ -197,7 +197,7 @@ const on = (method, pattern, fn) => routes.push({ method, re: new RegExp("^" + p
 on("GET", "/api/auth/me", () => ({ user: me() }));
 on("GET", "/api/config", () => ({ tz: TZ, baseUrl: location.origin, ai: { enabled: false }, local: true }));
 on("GET", "/api/categories", () => ({ categories: CATS }));
-on("PUT", "/api/auth/prefs", (_p, b) => { S.prefs = b || {}; const prem = CATALOG.find((x) => x.type === "theme" && x.value === S.prefs.palette); if (prem && !S.items[prem.id]) S.prefs.palette = "violet"; save(); return { ok: true, prefs: S.prefs }; });
+on("PUT", "/api/auth/prefs", (_p, b) => { S.prefs = b || {}; const prem = CATALOG.find((x) => x.type === "theme" && x.value === S.prefs.palette); if (prem && !S.items[prem.id]) S.prefs.palette = "violet"; const ts = S.prefs.tickSound; if (ts && ts !== "synth" && ts !== "custom" && !S.items["snd-" + ts]) S.prefs.tickSound = "synth"; save(); return { ok: true, prefs: S.prefs }; });
 on("PATCH", "/api/auth/account", (_p, b) => { const n = String(b.displayName || "").trim().slice(0, 40); if (!n) throw err(400, "กรุณาใส่ชื่อที่แสดง"); S.name = n; S.grade = String(b.grade || "").slice(0, 20); save(); return { ok: true }; });
 on("GET", "/api/classes", () => ({ classes: [] }));
 
@@ -315,14 +315,14 @@ on("GET", "/api/shop", () => ({
 on("POST", "/api/shop/buy", (_p, b) => {
   const it = ITEM[b.itemId];
   if (!it) throw err(404, "ไม่พบสินค้านี้");
-  if (it.boxOnly) throw err(400, "ของระดับตำนานได้จากกล่องสุ่มเท่านั้น");
+  if (it.boxOnly) throw err(400, "ของชิ้นนี้ได้จากกล่องสุ่มเท่านั้น");
   if (S.items[it.id]) throw err(400, "คุณมีของชิ้นนี้แล้ว");
   if (S.coins < it.price) throw err(400, `เหรียญไม่พอ (ต้องการ ${it.price} มี ${S.coins})`);
   addCoins(-it.price, "buy", it.name); S.items[it.id] = { source: "buy", at: now() }; save();
   return { ok: true, coins: S.coins };
 });
 on("POST", "/api/shop/equip", (_p, b) => {
-  if (!SLOTS[b.slot] || b.slot === "theme") throw err(400, "ช่องนี้ใช้ไม่ได้");
+  if (!SLOTS[b.slot] || b.slot === "theme" || b.slot === "sound") throw err(400, "ช่องนี้ใช้ไม่ได้");
   if (b.itemId) { const it = ITEM[b.itemId]; if (!it || it.type !== b.slot || !S.items[it.id]) throw err(400, "ใส่ของชิ้นนี้ไม่ได้"); S.equipped[b.slot] = it.id; }
   else delete S.equipped[b.slot];
   save(); return { ok: true, equipped: equippedView() };
@@ -335,7 +335,7 @@ on("POST", "/api/shop/box", (_p, b) => {
   if (!free && S.coins < box.price) throw err(400, `เหรียญไม่พอ (ต้องการ ${box.price} มี ${S.coins})`);
   if (free) { S.lastFree = dayKey(new Date()); addCoins(0, "free_box", box.name); } else addCoins(-box.price, "box", box.name);
   const rarity = pickWeighted(box.odds);
-  const pool = CATALOG.filter((x) => x.rarity === rarity);
+  const pool = CATALOG.filter((x) => x.rarity === rarity && (box.pool ? x.type === box.pool : x.type !== "pfp"));
   const it = pool[G.randInt(pool.length)];
   const dup = !!S.items[it.id];
   if (dup) addCoins(RARITY[rarity].refund, "duplicate", it.name); else S.items[it.id] = { source: "box", at: now() };
