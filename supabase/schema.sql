@@ -12,6 +12,10 @@ create table if not exists public.progress (
 alter table public.progress drop constraint if exists progress_state_size;
 alter table public.progress add constraint progress_state_size check (pg_column_size(state) < 512000);
 
+-- สิทธิ์ผ่าน Data API: ให้ชัดเจนเอง (ใช้ได้แม้ปิด "Automatically expose new tables")
+revoke all on public.progress from anon;
+grant select, insert, update, delete on public.progress to authenticated;
+
 -- Row Level Security: แต่ละคนอ่าน/เขียนได้เฉพาะแถวของตัวเอง
 alter table public.progress enable row level security;
 drop policy if exists "progress: read own"   on public.progress;
