@@ -54,30 +54,40 @@ async function pushCloud() {
   catch (e) { syncInfo.error = e.message; }
   finally { cBusy = false; }
 }
-/** เข้าสู่ระบบแล้ว: ใช้ความคืบหน้าในบัญชี (หรืออัปโหลดของในเครื่องถ้าบัญชียังว่าง) */
+const GUEST_KEY = "eduplay-web:guest"; // ความคืบหน้าตอนไม่ได้ล็อกอิน แยกไว้ ไม่ปนกับบัญชีใด
+/** เข้าสู่ระบบแล้ว: ใช้ความคืบหน้าของบัญชีนั้น (บัญชีใหม่เริ่มจากศูนย์) */
 export async function useCloud(store, user, displayName) {
+  if (!S.owner) { try { localStorage.setItem(GUEST_KEY, JSON.stringify(S)); } catch { /* ignore */ } } // เก็บของผู้เล่นไม่ล็อกอินไว้ก่อน
   const theirs = await store.load();
-  let claimed = false;
+  const prefs = S.prefs;
+  let isNew = false;
   if (theirs && theirs.v === 1) {
-    const mineIsNewer = S.owner === user.id && (S.updatedAt || "") > (theirs.updatedAt || "");
-    if (!mineIsNewer) { const prefs = S.prefs; S = { ...fresh(), ...theirs }; if (!S.prefs || !Object.keys(S.prefs).length) S.prefs = prefs; }
-  } else {
-    if (S.owner && S.owner !== user.id) { const prefs = S.prefs; S = fresh(); S.prefs = prefs; }
-    if (displayName && (!S.name || S.name === fresh().name)) S.name = displayName.slice(0, 40);
-    claimed = true;
+    const mineIsNewer = S.owner === user.id && (S.updatedAt || "") > (theirs.updatedAt || ""); // เล่นออฟไลน์ไว้แล้วยังไม่ได้ส่ง
+    if (!mineIsNewer) { S = { ...fresh(), ...theirs }; if (!S.prefs || !Object.keys(S.prefs).length) S.prefs = prefs; }
+  } else if (S.owner !== user.id) {
+    S = fresh(); S.prefs = prefs; // บัญชีใหม่: เริ่มต้นใหม่ คงไว้แค่หน้าตาเว็บที่ตั้งไว้ในเครื่องนี้
+    if (displayName) S.name = displayName.slice(0, 40);
+    isNew = true;
   }
   S.owner = user.id;
   cloud = store; cloudUser = user;
   localSave();
   await pushCloud();
-  return { claimed };
+  return { isNew };
 }
-/** ออกจากระบบ: ล้างความคืบหน้าในเครื่องนี้ (ของจริงอยู่ในบัญชีแล้ว) แต่เก็บการตั้งค่าหน้าตาไว้ */
+/** ออกจากระบบ: เอาความคืบหน้าของบัญชีออกจากเครื่องนี้ แล้วกลับไปใช้ของผู้เล่นไม่ล็อกอิน */
 export async function dropCloud() {
   if (cloudTimer || cAgain) await pushCloud().catch(() => {});
   cloud = null; cloudUser = null;
-  const prefs = S.prefs; S = fresh(); S.prefs = prefs; localSave();
+  const prefs = S.prefs;
+  let guest = null;
+  try { guest = JSON.parse(localStorage.getItem(GUEST_KEY) || "null"); } catch { /* ignore */ }
+  S = guest && guest.v === 1 ? { ...fresh(), ...guest } : fresh();
+  delete S.owner;
+  S.prefs = prefs;
+  localSave();
 }
+export const ownedByAccount = () => !!S.owner;
 export const flushCloud = () => (cloudTimer ? pushCloud() : Promise.resolve());
 addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushCloud(); });
 export function resetProgress() { const { prefs, owner } = S; S = fresh(); S.prefs = prefs; if (owner) S.owner = owner; save(); }

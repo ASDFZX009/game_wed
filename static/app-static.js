@@ -1,6 +1,6 @@
 // EduPlay เวอร์ชันเล่นบนเว็บ: ใช้หน้าเว็บชุดเดียวกับเวอร์ชันเต็ม แต่ทำงานในเบราว์เซอร์ล้วน
 // เส้นทางใช้ #ชื่อ (เช่น #games, #game-5) เพื่อให้เปิดได้ทั้งบน GitHub Pages และ artifact
-import { localApi, connectRemote, resetProgress, exportProgress, importProgress, useCloud, dropCloud, syncInfo, flushCloud } from "./local-api.js";
+import { localApi, connectRemote, resetProgress, exportProgress, importProgress, useCloud, dropCloud, syncInfo, flushCloud, ownedByAccount } from "./local-api.js";
 import * as C from "./cloud.js";
 import { state, api, html, raw, toast, avatar, confirmBox, formData, busy, fmtDate } from "../public/js/core.js";
 import { loadPrefs, setPrefs, isDark } from "../public/js/prefs.js";
@@ -118,9 +118,9 @@ function needCloud(main) {
 }
 async function afterLogin(main) {
   const u = C.currentUser();
-  const { claimed } = await useCloud(store, u, C.displayNameOf(u));
+  const { isNew } = await useCloud(store, u, C.displayNameOf(u));
   await refreshMe();
-  toast(claimed ? "เข้าสู่ระบบแล้ว — ย้ายความคืบหน้าในเครื่องนี้เข้าบัญชีให้แล้ว ☁️" : `ยินดีต้อนรับกลับ ${state.me.displayName} 👋`);
+  toast(isNew ? `สร้างบัญชีแล้ว ยินดีต้อนรับ ${state.me.displayName}! รับ 150 🪙 ต้อนรับ ☁️` : `ยินดีต้อนรับกลับ ${state.me.displayName} 👋`);
   go("/dashboard");
 }
 function emailSent(main, email, kind) {
@@ -142,7 +142,7 @@ function loginPage({ main, query }) {
       <p class="err" id="msg" role="alert" hidden></p>
       <button class="btn btn-block btn-lg" style="margin-top:12px">เข้าสู่ระบบ</button></form>
     <div class="row between small" style="margin-top:12px"><a href="/forgot">ลืมรหัสผ่าน?</a><a href="/register">ยังไม่มีบัญชี? <b>สมัครสมาชิก</b></a></div>`,
-    html`<p class="small muted center" style="margin-top:12px">ถ้าบัญชียังไม่มีความคืบหน้า ระบบจะย้ายสิ่งที่เล่นไว้ในเครื่องนี้เข้าบัญชีให้</p>`);
+    html`<p class="small muted center" style="margin-top:12px">ความคืบหน้าแต่ละบัญชีแยกกัน ออกจากระบบแล้วกลับไปเล่นแบบไม่ล็อกอินต่อได้</p>`);
   const f = main.querySelector("#f"), msg = main.querySelector("#msg");
   f.onsubmit = (e) => {
     e.preventDefault();
@@ -174,7 +174,7 @@ function registerPage({ main }) {
       <p class="err" id="msg" role="alert" hidden></p>
       <button class="btn btn-block btn-lg" style="margin-top:12px">สร้างบัญชี</button></form>
     <p class="small" style="margin-top:12px">มีบัญชีแล้ว? <a href="/login"><b>เข้าสู่ระบบ</b></a></p>`,
-    html`<p class="small muted center" style="margin-top:12px">ความคืบหน้าที่เล่นไว้ในเครื่องนี้จะย้ายเข้าบัญชีใหม่ให้อัตโนมัติ · <a href="/privacy">ความเป็นส่วนตัว</a></p>`);
+    html`<p class="small muted center" style="margin-top:12px">บัญชีใหม่เริ่มต้นใหม่ พร้อม 150 🪙 ต้อนรับ (ของที่เล่นแบบไม่ล็อกอินยังอยู่ในเครื่องนี้) · <a href="/privacy">ความเป็นส่วนตัว</a></p>`);
   const f = main.querySelector("#f"), msg = main.querySelector("#msg");
   const fail = (t) => { msg.textContent = t; msg.hidden = false; };
   f.onsubmit = (e) => {
@@ -235,7 +235,7 @@ function bindCloudBox(main) {
   const u = C.currentUser();
   if (!state.me?.cloud || !u) {
     box.innerHTML = html`<div class="cloud-card"><div class="ic">☁️</div><div><b>เก็บความคืบหน้าไว้ในบัญชี</b>
-      <p class="small muted" style="margin:2px 0 8px">สมัครฟรี แล้วเล่นต่อได้ทุกเครื่อง ไม่กลัวข้อมูลหายตอนล้างเบราว์เซอร์ — ของที่เล่นไว้ตอนนี้ย้ายเข้าบัญชีให้ด้วย</p>
+      <p class="small muted" style="margin:2px 0 8px">สมัครฟรี ความคืบหน้าเก็บในบัญชี เล่นต่อได้ทุกเครื่อง ไม่หายตอนล้างเบราว์เซอร์ (บัญชีใหม่เริ่มต้นใหม่ ของที่เล่นแบบไม่ล็อกอินยังอยู่ในเครื่องนี้)</p>
       <div class="row"><a class="btn btn-sm" href="/register">สมัครสมาชิก</a><a class="btn btn-ghost btn-sm" href="/login">เข้าสู่ระบบ</a></div></div></div>`.s;
     return;
   }
@@ -308,6 +308,7 @@ window.addEventListener("hashchange", () => {
     try { await useCloud(store, C.currentUser(), C.displayNameOf(C.currentUser())); }
     catch (e) { if (!e.expired) toast("โหลดความคืบหน้าจากบัญชีไม่ได้: " + e.message, "bad"); }
   }
+  else if (ownedByAccount()) await dropCloud(); // เซสชันหายไปแล้ว: ไม่แสดงความคืบหน้าของบัญชีค้างไว้
   state.me = (await api("/api/auth/me")).user;
   loadPrefs();
   if (ci.link?.error) { toast(ci.link.error, "bad"); location.hash = "login"; }
