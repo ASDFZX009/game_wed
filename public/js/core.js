@@ -184,6 +184,7 @@ export function confetti() {
 }
 
 export const DIFF = { easy: "ง่าย", medium: "ปานกลาง", hard: "ยาก" };
+export const DIFF_ALL = "5 ระดับ ง่ายมาก–ยากมาก";
 
 /** อวาตาร์ + กรอบ จากของที่ใส่อยู่ (look = { avatar, frame, title }) */
 /** ที่อยู่รูปโปรไฟล์ (เวอร์ชันเว็บไฟล์เดียวฝังรูปไว้ใน window.__PFP_DATA) */

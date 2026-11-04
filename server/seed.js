@@ -4,6 +4,7 @@ const { db, now, DB_FILE } = require("./db");
 const { hash } = require("./auth");
 const U = require("./util");
 const { CATEGORIES, GAMES, QUIZZES } = require("./content");
+const { LESSONS } = require("./lessons");
 
 const demoMode = () => (process.env.SEED_DEMO ? process.env.SEED_DEMO === "1" : process.env.NODE_ENV !== "production");
 
@@ -11,6 +12,14 @@ function user(email, name, role, pw) {
   const ex = db.prepare("SELECT id FROM users WHERE email=?").get(email);
   if (ex) return ex.id;
   return db.prepare("INSERT INTO users (email,password_hash,display_name,role,created_at) VALUES (?,?,?,?,?)").run(email, hash(pw), name, role, now()).lastInsertRowid;
+}
+
+function insertGame(owner, g, catId, t) {
+  const qs = g.template === "lesson" ? JSON.stringify({ lesson: g.lesson }) : JSON.stringify(g.questions);
+  const id = db.prepare(`INSERT INTO games (owner_id,title,description,template,category_id,age_min,age_max,difficulty,visibility,status,time_limit_sec,points_per_q,pass_pct,questions,created_at,updated_at)
+    VALUES (?,?,?,?,?,?,?,?,'public','published',?,100,60,?,?,?)`).run(owner, g.title, g.description, g.template, catId(g.category), g.age[0], g.age[1], g.difficulty, g.timeLimitSec || null, qs, t, t).lastInsertRowid;
+  db.prepare("INSERT INTO game_versions (game_id,version,note,created_at) VALUES (?,?,?,?)").run(id, 1, g.template === "lesson" ? "สร้างบทเรียน (5 ระดับ หลายรูปแบบ) และเผยแพร่" : `สร้างเกม (${g.questions.length} ข้อ) และเผยแพร่`, t);
+  return id;
 }
 
 function ensure() {
@@ -21,7 +30,16 @@ function ensure() {
   // ผู้ดูแลระบบจากตัวแปรแวดล้อม (สำหรับใช้งานจริง)
   if (process.env.ADMIN_EMAIL && process.env.ADMIN_PASSWORD) user(process.env.ADMIN_EMAIL, "ผู้ดูแลระบบ", "admin", process.env.ADMIN_PASSWORD);
 
-  if (db.prepare("SELECT COUNT(*) n FROM games").get().n) return;
+  // ฐานข้อมูลเดิม (ก่อนมีบทเรียน): เพิ่มบทเรียนทั้งหมดเข้าไปในคลังเกม
+  if (db.prepare("SELECT COUNT(*) n FROM games").get().n) {
+    if (!db.prepare("SELECT COUNT(*) n FROM games WHERE template='lesson'").get().n) {
+      const owner = db.prepare("SELECT id FROM users WHERE role IN ('teacher','admin') ORDER BY id LIMIT 1").get()?.id ?? user("content@eduplay.local", "ทีม EduPlay", "teacher", U.token(18));
+      const catId = (slug) => db.prepare("SELECT id FROM categories WHERE slug=?").get(slug)?.id ?? null;
+      GAMES.forEach((g) => insertGame(owner, g, catId, now()));
+      console.log(`เพิ่มบทเรียน ${GAMES.length} บทเข้าคลังเกมแล้ว`);
+    }
+    return;
+  }
   const demo = demoMode();
   const owner = demo
     ? user("teacher@eduplay.local", "ครูตัวอย่าง", "teacher", "teacher1234")
@@ -29,13 +47,9 @@ function ensure() {
   const catId = (slug) => db.prepare("SELECT id FROM categories WHERE slug=?").get(slug)?.id ?? null;
   const t0 = Date.now() - 20 * 86400000;
   const gameIds = {}, quizIds = {};
-  GAMES.forEach((g, i) => {
-    const t = new Date(t0 + i * 3600000).toISOString();
-    const id = db.prepare(`INSERT INTO games (owner_id,title,description,template,category_id,age_min,age_max,difficulty,visibility,status,time_limit_sec,points_per_q,pass_pct,questions,created_at,updated_at)
-      VALUES (?,?,?,?,?,?,?,?,'public','published',?,100,60,?,?,?)`).run(owner, g.title, g.description, g.template, catId(g.category), g.age[0], g.age[1], g.difficulty, g.timeLimitSec || null, JSON.stringify(g.questions), t, t).lastInsertRowid;
-    db.prepare("INSERT INTO game_versions (game_id,version,note,created_at) VALUES (?,?,?,?)").run(id, 1, `สร้างเกม (${g.questions.length} ข้อ) และเผยแพร่`, t);
-    gameIds[g.title] = id;
-  });
+  GAMES.forEach((g, i) => { gameIds[g.title] = insertGame(owner, g, catId, new Date(t0 + i * 3600000).toISOString()); });
+  // ข้อมูลสาธิตเดิมอ้างชื่อเกมชุดเก่า → ใช้บทเรียนที่รวมเนื้อหาของเกมนั้นแทน
+  for (const l of LESSONS) for (const t of l.legacy || []) gameIds[t] ??= gameIds[l.title];
   QUIZZES.forEach((q, i) => {
     const t = new Date(t0 + i * 3600000).toISOString();
     quizIds[q.title] = db.prepare(`INSERT INTO quizzes (owner_id,title,description,grade,category_id,difficulty,visibility,status,show_answers,questions,created_at,updated_at)

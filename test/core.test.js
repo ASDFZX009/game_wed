@@ -31,7 +31,7 @@ test("Word Scramble ไม่แสดงตัวอักษรเรียง
 });
 
 test("เนื้อหาตัวอย่างผ่านการตรวจของตัวสร้างทั้งหมด", () => {
-  GAMES.forEach((g) => assert.doesNotThrow(() => cleanQuestions(g.template, g.questions), g.title));
+  GAMES.filter((g) => g.template !== "lesson").forEach((g) => assert.doesNotThrow(() => cleanQuestions(g.template, g.questions), g.title));
   QUIZZES.forEach((q) => assert.doesNotThrow(() => cleanQuiz(q.questions), q.title));
 });
 
@@ -51,4 +51,16 @@ test("ร้านค้า: โอกาสกล่องสุ่มรวม
   assert.equal(new Set(shop.CATALOG.map((x) => x.id)).size, shop.CATALOG.length);
   // ทุกระดับที่มีโอกาส > 0 ต้องมีของให้สุ่ม
   shop.BOXES.forEach((b) => Object.entries(b.odds).forEach(([r, w]) => { if (w) assert.ok(shop.boxPool(b, r).length > 0, `${b.name} ${r}`); }));
+});
+
+test("บทเรียน: ทุกหมวดมีอย่างน้อย 4 บท ทุกรูปแบบ/ระดับ/จำนวนข้อสร้างชุดคำถามได้ และสร้างซ้ำจาก key ได้ผลเดิม", () => {
+  const Ls = require("../server/lessons");
+  const by = {}; Ls.LESSONS.forEach((l) => (by[l.cat] = (by[l.cat] || 0) + 1));
+  ["math", "science", "thai", "english", "social", "health", "early", "brain", "general"].forEach((c) => assert.ok(by[c] >= 4, c));
+  for (const L of Ls.LESSONS) for (const m of Ls.setupOf(L).modes) for (let level = 1; level <= 5; level++) for (const count of [6, 10, 15]) for (const set of [1, 4]) {
+    const b = Ls.build(L, { level, mode: m.id, count, set }); const again = Ls.build(L, Ls.parseKey(L, b.key));
+    assert.ok(b.questions.length > 0, `${L.id} ${b.key}`);
+    assert.deepEqual(again.questions, b.questions, `${L.id} ${b.key}`);
+    if (b.template === "mcq") b.questions.forEach((q) => { assert.ok(q.answer >= 0 && new Set(q.options).size === q.options.length, `${L.id} ${q.prompt}`); assert.ok(U.gradeGameQuestion("mcq", q, q.answer)); });
+  }
 });

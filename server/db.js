@@ -49,11 +49,11 @@ CREATE TABLE IF NOT EXISTS games (
   owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   title TEXT NOT NULL,
   description TEXT NOT NULL DEFAULT '',
-  template TEXT NOT NULL CHECK (template IN ('truefalse','match','order','scramble','mcq')),
+  template TEXT NOT NULL CHECK (template IN ('truefalse','match','order','scramble','mcq','lesson')),
   category_id INTEGER REFERENCES categories(id) ON DELETE SET NULL,
   age_min INTEGER NOT NULL DEFAULT 4,
   age_max INTEGER NOT NULL DEFAULT 18,
-  difficulty TEXT NOT NULL DEFAULT 'easy' CHECK (difficulty IN ('easy','medium','hard')),
+  difficulty TEXT NOT NULL DEFAULT 'easy' CHECK (difficulty IN ('easy','medium','hard','all')),
   visibility TEXT NOT NULL DEFAULT 'private' CHECK (visibility IN ('public','private')),
   status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','published')),
   time_limit_sec INTEGER,
@@ -184,6 +184,15 @@ CREATE INDEX IF NOT EXISTS idx_activity_user ON activity(user_id, created_at);
 // ย้ายข้อมูล: เพิ่มคอลัมน์ที่มาทีหลัง (ฐานข้อมูลเดิมยังใช้ได้)
 const cols = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
 if (!cols.includes("prefs")) db.exec("ALTER TABLE users ADD COLUMN prefs TEXT NOT NULL DEFAULT '{}'");
+
+// ย้ายข้อมูล: ตาราง games รุ่นเก่ายังไม่รองรับ template 'lesson' / difficulty 'all' → สร้างตารางใหม่แล้วคัดลอก (ตามวิธีที่ SQLite แนะนำ)
+{ const sql = db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='games'").get()?.sql || "";
+  if (sql && !sql.includes("'lesson'")) {
+    const fresh = sql.replace(/CREATE TABLE (IF NOT EXISTS )?"?games"?/, "CREATE TABLE games_new").replace("'mcq')", "'mcq','lesson')").replace("'hard')", "'hard','all')");
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN"); try { db.exec(fresh); db.exec("INSERT INTO games_new SELECT * FROM games; DROP TABLE games; ALTER TABLE games_new RENAME TO games;"); db.exec("COMMIT"); } catch (e) { db.exec("ROLLBACK"); throw e; }
+    db.exec("PRAGMA foreign_keys = ON");
+  } }
 
 const now = () => new Date().toISOString();
 const J = (s, d) => { try { return JSON.parse(s); } catch { return d; } };

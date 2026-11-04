@@ -3,6 +3,7 @@ const express = require("express");
 const { db, now, J } = require("../db");
 const { need } = require("../auth");
 const U = require("../util");
+const Lessons = require("../lessons");
 
 const r = express.Router();
 const TEMPLATES = ["truefalse", "match", "order", "scramble", "mcq"];
@@ -16,8 +17,18 @@ const HOWTO = {
 };
 const PAGE = 12;
 
+const lessonOf = (g) => (g && g.template === "lesson" ? Lessons.lessonById(J(g.questions, {}).lesson) : null);
+// ชุดคำถามของบทเรียน: สร้างซ้ำจาก key ได้ผลเดิมเสมอ จึงตรวจคำตอบได้โดยไม่ต้องเก็บสถานะ
+function lessonSet(g, key) { const L = lessonOf(g); return L ? Lessons.build(L, Lessons.parseKey(L, key)) : null; }
 function gameRow(g) {
   const cat = g.category_id ? db.prepare("SELECT slug, name_th, icon FROM categories WHERE id = ?").get(g.category_id) : null;
+  const L = lessonOf(g);
+  if (L) { const su = Lessons.setupOf(L);
+    return { id: g.id, title: g.title, description: g.description, template: "lesson", templateName: "บทเรียน", icon: L.icon,
+      category: cat ? { slug: cat.slug, name: cat.name_th, icon: cat.icon } : null, ageMin: g.age_min, ageMax: g.age_max, difficulty: "all", visibility: g.visibility, status: g.status,
+      timeLimitSec: null, pointsPerQ: g.points_per_q, passPct: g.pass_pct, plays: g.plays, questionCount: su.size, generated: su.generated, modeCount: su.modes.length,
+      modeNames: su.modes.map((m) => m.icon + " " + m.name), sets: su.sets, version: g.version, updatedAt: g.updated_at, createdAt: g.created_at, ownerId: g.owner_id,
+      howTo: "เลือกระดับ รูปแบบการเล่น จำนวนข้อ และชุดคำถามได้ก่อนเริ่ม" }; }
   const qs = J(g.questions, []);
   return {
     id: g.id, title: g.title, description: g.description, template: g.template, templateName: TEMPLATE_TH[g.template],
@@ -39,7 +50,7 @@ function canPlay(g, user) {
   if (user && (user.role === "admin" || user.id === g.owner_id)) return true;
   return !!(user && g.status === "published" && assignedTo(user.id, "game", g.id));
 }
-const canEdit = (g, user) => g && user && (user.role === "admin" || user.id === g.owner_id);
+const canEdit = (g, user) => g && user && g.template !== "lesson" && (user.role === "admin" || user.id === g.owner_id); // บทเรียนสร้างจากคลังคำถาม แก้ไขในหน้าครูไม่ได้
 
 // ---------- คลังเกม ----------
 r.get("/", (req, res) => {
@@ -49,7 +60,7 @@ r.get("/", (req, res) => {
   const args = [];
   if (q) { where.push("(g.title LIKE ? OR g.description LIKE ?)"); args.push(`%${q}%`, `%${q}%`); }
   if (category) { where.push("c.slug = ?"); args.push(category); }
-  if (["easy", "medium", "hard"].includes(difficulty)) { where.push("g.difficulty = ?"); args.push(difficulty); }
+  if (["easy", "medium", "hard"].includes(difficulty)) { where.push("(g.difficulty = ? OR g.difficulty = 'all')"); args.push(difficulty); }
   if (age && !isNaN(+age)) { where.push("g.age_min <= ? AND g.age_max >= ?"); args.push(+age, +age); }
   const order = sort === "popular" ? "g.plays DESC, g.id DESC" : sort === "title" ? "g.title COLLATE NOCASE" : "g.created_at DESC, g.id DESC";
   const base = `FROM games g LEFT JOIN categories c ON c.id = g.category_id WHERE ${where.join(" AND ")}`;
@@ -65,9 +76,9 @@ r.get("/featured", (_req, res) => {
 });
 
 // ---------- เล่นเกม ----------
-function playable(g) {
-  const qs = J(g.questions, []);
-  switch (g.template) {
+function playable(g) { return playableQs(g.template, J(g.questions, [])); }
+function playableQs(template, qs) {
+  switch (template) {
     case "truefalse": return qs.map((q) => ({ prompt: q.prompt, image: q.image || null }));
     case "mcq": return qs.map((q) => ({ prompt: q.prompt, options: q.options, hint: q.hint || null, image: q.image || null }));
     case "order": return qs.map((q) => ({ prompt: q.prompt, items: U.shuffleDifferent(q.items), hint: q.hint || null }));
@@ -84,21 +95,28 @@ function playable(g) {
 r.get("/:id/play", (req, res) => {
   const g = db.prepare("SELECT * FROM games WHERE id = ?").get(req.params.id);
   if (!canPlay(g, req.user)) return res.status(404).json({ error: "ไม่พบเกมนี้" });
+  const L = lessonOf(g);
+  if (L) { const q = req.query, b = Lessons.build(L, { level: q.level, mode: q.mode, count: q.count, set: q.set ?? 1, seed: q.seed });
+    return res.json({ game: { ...gameRow(g), template: b.template, templateName: b.templateName, howTo: b.howTo, timeLimitSec: b.timeLimitSec, questionCount: b.questions.length },
+      questions: playableQs(b.template, b.questions), preview: g.status !== "published", key: b.key,
+      setup: { ...Lessons.setupOf(L), current: { level: b.level, mode: b.mode, count: b.count, set: b.set } } }); }
   res.json({ game: gameRow(g), questions: playable(g), preview: g.status !== "published" });
 });
 
 r.post("/:id/check", (req, res) => {
   const g = db.prepare("SELECT * FROM games WHERE id = ?").get(req.params.id);
-  if (!canPlay(g, req.user) || g.template === "match") return res.status(404).json({ error: "ไม่พบเกมนี้" });
-  const q = J(g.questions, [])[+req.body.index];
+  const set = lessonSet(g, req.body.key), tpl = set ? set.template : g?.template;
+  if (!canPlay(g, req.user) || tpl === "match") return res.status(404).json({ error: "ไม่พบเกมนี้" });
+  const q = (set ? set.questions : J(g.questions, []))[+req.body.index];
   if (!q) return res.status(400).json({ error: "ไม่พบข้อนี้" });
-  res.json({ correct: U.gradeGameQuestion(g.template, q, req.body.answer), answer: U.gameAnswerText(g.template, q), explain: q.explain || null });
+  res.json({ correct: U.gradeGameQuestion(tpl, q, req.body.answer), answer: U.gameAnswerText(tpl, q), explain: q.explain || null });
 });
 
 r.post("/:id/finish", (req, res) => {
-  const g = db.prepare("SELECT * FROM games WHERE id = ?").get(req.params.id);
-  if (!canPlay(g, req.user)) return res.status(404).json({ error: "ไม่พบเกมนี้" });
-  const qs = J(g.questions, []);
+  const g0 = db.prepare("SELECT * FROM games WHERE id = ?").get(req.params.id);
+  if (!canPlay(g0, req.user)) return res.status(404).json({ error: "ไม่พบเกมนี้" });
+  const set = lessonSet(g0, req.body.key), g = set ? { ...g0, template: set.template } : g0;
+  const qs = set ? set.questions : J(g.questions, []);
   const ppq = g.points_per_q;
   let correct = 0, score = 0, max = 0, total = qs.length;
   let review = [];
@@ -268,6 +286,7 @@ r.post("/:id/status", need("teacher"), (req, res) => {
 r.post("/:id/duplicate", need("teacher"), (req, res) => {
   const g = db.prepare("SELECT * FROM games WHERE id = ?").get(req.params.id);
   if (!g || !(canEdit(g, req.user) || (g.status === "published" && g.visibility === "public"))) return res.status(404).json({ error: "ไม่พบเกมนี้" });
+  if (g.template === "lesson") return res.status(400).json({ error: "บทเรียนจากคลังคำถามทำสำเนาไม่ได้ — สร้างเกมใหม่ด้วยตัวสร้างเกมแทน" });
   const t = now();
   const info = db.prepare(`INSERT INTO games (owner_id,title,description,template,category_id,age_min,age_max,difficulty,visibility,status,time_limit_sec,points_per_q,pass_pct,questions,created_at,updated_at)
     VALUES (?,?,?,?,?,?,?,?,'private','draft',?,?,?,?,?,?)`).run(req.user.id, g.title + " (สำเนา)", g.description, g.template, g.category_id, g.age_min, g.age_max, g.difficulty, g.time_limit_sec, g.points_per_q, g.pass_pct, g.questions, t, t);

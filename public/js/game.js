@@ -10,6 +10,7 @@ export function startGame(root, data, opts = {}) {
   let idx = 0, done = false, timerId = null, endsAt = null, locked = false;
 
   const finishPayload = { answers, assignmentId: opts.assignmentId || null };
+  const key = data.key || null; // บทเรียน: ใช้ key สร้างชุดคำถามเดิมเพื่อตรวจคำตอบ
 
   function header() {
     const total = game.template === "match" ? questions[0].pairs : questions.length;
@@ -34,7 +35,7 @@ export function startGame(root, data, opts = {}) {
   const stop = () => { clearInterval(timerId); timerId = null; clearTimeout(autoTimer); };
 
   async function check(answer) {
-    return api(`/api/games/${game.id}/check`, { body: { index: idx, answer } });
+    return api(`/api/games/${game.id}/check`, { body: { index: idx, answer, key } });
   }
   function feedbackHtml(r) {
     return html`<div class="feedback ${r.correct ? "ok" : "no"}" role="status">${r.correct ? "✅ ถูกต้อง!" : html`❌ ยังไม่ถูก — เฉลย: ${r.answer}`}
@@ -186,7 +187,7 @@ export function startGame(root, data, opts = {}) {
   let t0 = 0;
   async function finish(extra) {
     if (done) return; done = true; stop();
-    const body = { answers, assignmentId: finishPayload.assignmentId };
+    const body = { answers, assignmentId: finishPayload.assignmentId, key };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
@@ -231,8 +232,20 @@ export function startGame(root, data, opts = {}) {
     if (r.perfect) setTimeout(() => confetti(), 1500);
   }
 
+  // แผงเลือกบทเรียน: ระดับ · รูปแบบ · จำนวนข้อ · ชุดคำถาม
+  function setupPanel() {
+    const su = data.setup; if (!su) return "";
+    const cur = su.current, isMatch = cur.mode === "match";
+    const chip = (k, v, label, on, extra = "") => html`<button type="button" class="su-chip ${on ? "on" : ""}" data-k="${k}" data-v="${v}" aria-pressed="${on ? "true" : "false"}" ${raw(extra)}>${label}</button>`;
+    return html`<div class="setup card" role="group" aria-label="ตั้งค่าก่อนเล่น">
+      <div class="su-row"><b>ระดับ</b><div class="su-chips">${su.levels.map((n, i) => chip("level", i + 1, html`<span class="lv lv${i + 1}">${"★".repeat(i + 1)}</span> ${n}`, cur.level === i + 1))}</div></div>
+      <div class="su-row"><b>รูปแบบการเล่น</b><div class="su-chips">${su.modes.map((m) => chip("mode", m.id, `${m.icon} ${m.name}`, cur.mode === m.id, `title="${esc(m.howTo)}"`))}</div></div>
+      <div class="su-row"><b>จำนวน${isMatch ? "คู่" : "ข้อ"}</b><div class="su-chips">${su.counts.map((c) => chip("count", c, `${c} ${isMatch ? "คู่" : "ข้อ"}`, cur.count === c))}</div></div>
+      <div class="su-row"><b>ชุดคำถาม</b><div class="su-chips">${Array.from({ length: su.sets }, (_, i) => chip("set", i + 1, `ชุดที่ ${i + 1}`, cur.set === i + 1))}${chip("set", 0, "🎲 สุ่มชุดใหม่", cur.set === 0)}</div></div>
+      <p class="small muted" style="margin:6px 0 0">${su.generated ? "บทเรียนนี้สร้างโจทย์ใหม่ตามระดับ ชุดที่ 1–4 จะได้โจทย์เดิมทุกครั้ง เหมาะกับการฝึกซ้ำ" : `คลังคำถาม ${su.size} ข้อ ชุดที่ 1–4 เป็นชุดตายตัว ถ้าระดับนั้นมีคำถามไม่พอจะเติมจากระดับใกล้เคียง`}</p></div>`;
+  }
   // หน้าเริ่ม
-  root.innerHTML = html`<div class="play">${introHead()}
+  root.innerHTML = html`<div class="play">${introHead()}${setupPanel()}
     <div class="card"><div class="row" style="gap:16px">
       <span class="badge badge-brand">${game.templateName}</span>
       <span class="muted small">${game.template === "match" ? `${questions[0].pairs} คู่` : `${questions.length} ข้อ`}</span>
@@ -241,6 +254,7 @@ export function startGame(root, data, opts = {}) {
       ${!state.me ? html`<p class="small muted">เล่นได้เลยโดยไม่ต้องสมัคร (ผลจะไม่ถูกบันทึก)</p>` : ""}
       <button class="btn btn-lg btn-block" id="g-start" style="margin-top:12px">▶ เริ่มเล่น</button></div></div>`.s;
   root.querySelector("#g-start").onclick = () => { t0 = Date.now(); startTimer(); game.template === "match" ? renderMemory() : renderQ(); };
-  root.querySelector("#g-start").focus();
+  root.querySelectorAll(".su-chip").forEach((b) => b.onclick = () => { if (b.classList.contains("on") && b.dataset.v !== "0") return; const k = b.dataset.k, v = b.dataset.k === "mode" ? b.dataset.v : +b.dataset.v; root.querySelectorAll(".su-chip").forEach((x) => x.disabled = true); opts.reconfigure?.({ [k]: v }); });
+  (data.setup ? root.querySelector(".su-chip.on") || root.querySelector("#g-start") : root.querySelector("#g-start")).focus({ preventScroll: true });
   return () => stop();
 }

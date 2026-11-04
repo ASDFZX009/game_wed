@@ -9,6 +9,12 @@ import { reducedMotion } from "../prefs.js";
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
 
 export function gameCard(g) {
+  if (g.template === "lesson") return html`<a class="game-card lesson" href="/games/${g.id}">
+    <span class="ic" aria-hidden="true">${g.icon || g.category?.icon}</span>
+    <span class="meta">${g.category ? g.category.name + " · " : ""}บทเรียน · 5 ระดับ</span>
+    <h3>${g.title}</h3><p>${g.description}</p>
+    <span class="lesson-modes">${(g.modeNames || []).map((m) => html`<i>${m}</i>`)}</span>
+    <span class="meta">อายุ ${g.ageMin}–${g.ageMax} ปี · ${g.generated ? "สร้างโจทย์ใหม่ไม่จำกัด" : `คลัง ${g.questionCount} ข้อ`} · ${g.sets} ชุดคำถาม · เล่นแล้ว ${g.plays} ครั้ง</span></a>`;
   return html`<a class="game-card" href="/games/${g.id}">
     <span class="ic" aria-hidden="true">${g.category?.icon || TPL_IC[g.template]}</span>
     <span class="meta">${g.category ? g.category.name + " · " : ""}${g.templateName} · ${DIFF[g.difficulty]}</span>
@@ -57,11 +63,17 @@ export async function library({ main, query }) {
 }
 
 export async function playGame({ main, params, query }) {
-  const load = async () => {
-    const data = await api(`/api/games/${params.id}/play`);
+  // ตัวเลือกของบทเรียน (ระดับ/รูปแบบ/จำนวนข้อ/ชุด) จำไว้ต่อบทเรียน
+  const SKEY = `eduplay:setup:${params.id}`;
+  let setup = (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch { return {}; } })();
+  for (const k of ["level", "mode", "count", "set"]) if (query.get(k)) setup[k] = query.get(k);
+  const load = async (change) => {
+    if (change) { setup = { ...setup, ...change }; if (change.set === 0 || change.set === "0") setup.seed = Math.floor(Math.random() * 1e9); else delete setup.seed; try { localStorage.setItem(SKEY, JSON.stringify({ ...setup, seed: undefined })); } catch { /* ignore */ } }
+    const qs = new URLSearchParams(Object.entries(setup).filter(([, v]) => v !== undefined && v !== null && v !== ""));
+    const data = await api(`/api/games/${params.id}/play${qs.toString() ? "?" + qs : ""}`);
     const aid = query.get("assignment");
     const stop = startGame(main, data, {
-      assignmentId: aid, restart: load,
+      assignmentId: aid, restart: () => load(setup.set === 0 || setup.set === "0" ? { set: 0 } : null), reconfigure: (c) => load(c),
       backHref: aid ? `/classes/${query.get("class") || ""}` : data.preview ? "/teacher/games" : "/games",
       backText: aid ? "กลับห้องเรียน" : data.preview ? "กลับเกมของฉัน" : "กลับคลังเกม",
     });

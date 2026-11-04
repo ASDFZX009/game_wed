@@ -3,6 +3,7 @@
 // ความคืบหน้าเก็บในเบราว์เซอร์ของผู้เล่น (และในบัญชี Claude ถ้าเปิดผ่าน artifact)
 import DATA from "./data.json";
 import G from "../server/grading.js";
+import Lessons from "../server/lessons/index.js";
 
 const TZ = "Asia/Bangkok";
 const KEY = "eduplay-web:v1";
@@ -140,6 +141,11 @@ function checkBadges(perfect) {
 }
 function gameRow(g) {
   const c = catBy[g.category];
+  if (g.template === "lesson") { const L = Lessons.lessonById(g.lesson), su = Lessons.setupOf(L);
+    return { id: g.id, title: g.title, description: g.description, template: "lesson", templateName: "บทเรียน", icon: L.icon,
+      category: c ? { slug: c.slug, name: c.name, icon: c.icon } : null, ageMin: g.age[0], ageMax: g.age[1], difficulty: "all",
+      visibility: "public", status: "published", timeLimitSec: null, pointsPerQ: 100, passPct: 60, plays: S.gamePlays[g.id] || 0,
+      questionCount: su.size, generated: su.generated, modeCount: su.modes.length, modeNames: su.modes.map((m) => m.icon + " " + m.name), sets: su.sets, version: 1, createdAt: g.createdAt, howTo: "เลือกระดับ รูปแบบการเล่น จำนวนข้อ และชุดคำถามได้ก่อนเริ่ม" }; }
   return { id: g.id, title: g.title, description: g.description, template: g.template, templateName: TEMPLATE_TH[g.template],
     category: c ? { slug: c.slug, name: c.name, icon: c.icon } : null, ageMin: g.age[0], ageMax: g.age[1], difficulty: g.difficulty,
     visibility: "public", status: "published", timeLimitSec: g.timeLimitSec || null, pointsPerQ: 100, passPct: 60, plays: S.gamePlays[g.id] || 0,
@@ -152,9 +158,11 @@ function quizRow(q) {
 const gameById = (id) => { const g = GAMES.find((x) => x.id === +id); if (!g) throw err(404, "ไม่พบเกมนี้"); return g; };
 const quizById = (id) => { const q = QUIZZES.find((x) => x.id === +id); if (!q) throw err(404, "ไม่พบแบบทดสอบนี้"); return q; };
 
-function playable(g) {
-  const qs = g.questions;
-  switch (g.template) {
+// สร้างชุดคำถามของบทเรียนจาก key (ระดับ.รูปแบบ.จำนวน.ชุด.seed) — สร้างซ้ำได้เหมือนเดิมทุกครั้ง จึงตรวจคำตอบได้โดยไม่ต้องเก็บสถานะ
+function lessonSet(g, key) { const L = Lessons.lessonById(g.lesson); return Lessons.build(L, Lessons.parseKey(L, key)); }
+function playable(g) { return playableQs(g.template, g.questions); }
+function playableQs(template, qs) {
+  switch (template) {
     case "truefalse": return qs.map((q) => ({ prompt: q.prompt, image: q.image || null }));
     case "mcq": return qs.map((q) => ({ prompt: q.prompt, options: q.options, hint: q.hint || null, image: q.image || null }));
     case "order": return qs.map((q) => ({ prompt: q.prompt, items: G.shuffleDifferent(q.items), hint: q.hint || null }));
@@ -207,7 +215,7 @@ on("GET", "/api/games", (_p, _b, q) => {
     const t = (q.get("q") || "").toLowerCase();
     if (t && !(g.title.toLowerCase().includes(t) || g.description.toLowerCase().includes(t))) return false;
     if (q.get("category") && g.category !== q.get("category")) return false;
-    if (q.get("difficulty") && g.difficulty !== q.get("difficulty")) return false;
+    if (q.get("difficulty") && g.difficulty !== "all" && g.difficulty !== q.get("difficulty")) return false;
     const age = +q.get("age"); if (age && !(g.age[0] <= age && g.age[1] >= age)) return false;
     return true;
   });
@@ -216,14 +224,25 @@ on("GET", "/api/games", (_p, _b, q) => {
   const page = Math.max(1, +q.get("page") || 1), per = 12;
   return { games: list.slice((page - 1) * per, page * per).map(gameRow), total: list.length, page, pages: Math.max(1, Math.ceil(list.length / per)) };
 });
-on("GET", "/api/games/:id/play", ({ id }) => { const g = gameById(id); return { game: gameRow(g), questions: playable(g), preview: false }; });
+on("GET", "/api/games/:id/play", ({ id }, _b, q) => {
+  const g = gameById(id);
+  if (g.template === "lesson") {
+    const L = Lessons.lessonById(g.lesson), built = Lessons.build(L, { level: q.get("level"), mode: q.get("mode"), count: q.get("count"), set: q.get("set") ?? 1, seed: q.get("seed") });
+    return { game: { ...gameRow(g), template: built.template, templateName: built.templateName, howTo: built.howTo, timeLimitSec: built.timeLimitSec, questionCount: built.questions.length },
+      questions: playableQs(built.template, built.questions), preview: false, key: built.key,
+      setup: { ...Lessons.setupOf(L), current: { level: built.level, mode: built.mode, count: built.count, set: built.set } } };
+  }
+  return { game: gameRow(g), questions: playable(g), preview: false };
+});
 on("POST", "/api/games/:id/check", ({ id }, b) => {
-  const g = gameById(id); const q = g.questions[+b.index];
+  const g = gameById(id); const set = g.template === "lesson" ? lessonSet(g, b.key) : null, tpl = set ? set.template : g.template;
+  const q = (set ? set.questions : g.questions)[+b.index];
   if (!q) throw err(400, "ไม่พบข้อนี้");
-  return { correct: G.gradeGameQuestion(g.template, q, b.answer), answer: G.gameAnswerText(g.template, q), explain: q.explain || null };
+  return { correct: G.gradeGameQuestion(tpl, q, b.answer), answer: G.gameAnswerText(tpl, q), explain: q.explain || null };
 });
 on("POST", "/api/games/:id/finish", ({ id }, b) => {
-  const g = gameById(id); const qs = g.questions, ppq = 100;
+  const g0 = gameById(id), set = g0.template === "lesson" ? lessonSet(g0, b.key) : null;
+  const g = set ? { ...g0, template: set.template, questions: set.questions } : g0; const qs = g.questions, ppq = 100;
   let correct = 0, score = 0, max = 0, review = []; const total = qs.length;
   if (g.template === "match") {
     const moves = Math.max(qs.length, +b.moves || 0), done = !!b.completed;

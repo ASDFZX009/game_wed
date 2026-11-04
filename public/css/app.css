@@ -64,7 +64,7 @@ main.wrap { padding-top: 24px; padding-bottom: 40px; min-height: 60vh; outline: 
 .subnav .muted { white-space: nowrap; }
 .subnav-admin { background: var(--warn-soft); }
 
-@media (max-width: 1180px) {
+@media (max-width: 1360px) {
   .hamburger { display: flex; }
   .menu { display: none; position: absolute; left: 0; right: 0; top: 60px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); flex-direction: column; align-items: stretch; padding: 10px 20px 16px; gap: 6px; }
   body.menu-open .menu { display: flex; }
@@ -711,7 +711,7 @@ html.vs-open { overflow: hidden; }
 .auth-wrap { padding-top: 10px; }
 .auth-wrap .card { padding: 26px 26px 22px; }
 .nav-login { white-space: nowrap; }
-@media (max-width: 1180px) { .nav-right .nav-login { order: -1; } }
+@media (max-width: 1360px) { .nav-right .nav-login { order: -1; } }
 
 /* รูปโปรไฟล์วงกลม + ตัวอย่างเสียงในร้านค้า */
 .ava.has-pfp { background: #111; overflow: visible; }
@@ -833,11 +833,16 @@ body.immersive main.wrap { max-width: none; padding: 0; }
 .world-canvas:focus-visible { box-shadow: inset 0 0 0 3px #ffcf3a; }
 .world-ui { position: absolute; inset: 0; pointer-events: none; }
 /* แนว HD-2D: เบลอขอบบน/ล่างแบบ tilt-shift + แสงอุ่น + ขอบมืด (ป้ายวาดบน .world-labels จึงยังคม) */
-.world-canvas { filter: saturate(1.1) contrast(1.04); }
 .w-fx { position: absolute; left: 0; right: 0; pointer-events: none; }
-.w-tilt.top { top: 0; height: 30%; -webkit-backdrop-filter: blur(2.2px); backdrop-filter: blur(2.2px); -webkit-mask-image: linear-gradient(#000 0%, rgba(0,0,0,.6) 45%, transparent 100%); mask-image: linear-gradient(#000 0%, rgba(0,0,0,.6) 45%, transparent 100%); }
-.w-tilt.bot { bottom: 0; height: 26%; -webkit-backdrop-filter: blur(2.2px); backdrop-filter: blur(2.2px); -webkit-mask-image: linear-gradient(transparent 0%, rgba(0,0,0,.6) 55%, #000 100%); mask-image: linear-gradient(transparent 0%, rgba(0,0,0,.6) 55%, #000 100%); }
-.w-warm { inset: 0; mix-blend-mode: soft-light; background: linear-gradient(155deg, rgba(255,214,140,.55) 0%, rgba(255,236,190,.18) 40%, rgba(70,90,160,.28) 100%); }
+.w-tilt.top { top: 0; height: 30%; -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); -webkit-mask-image: linear-gradient(#000 0%, rgba(0,0,0,.6) 45%, transparent 100%); mask-image: linear-gradient(#000 0%, rgba(0,0,0,.6) 45%, transparent 100%); }
+.w-tilt.bot { bottom: 0; height: 24%; -webkit-backdrop-filter: blur(3.2px); backdrop-filter: blur(3.2px); -webkit-mask-image: linear-gradient(transparent 0%, rgba(0,0,0,.6) 55%, #000 100%); mask-image: linear-gradient(transparent 0%, rgba(0,0,0,.6) 55%, #000 100%); }
+.w-warm { inset: 0; mix-blend-mode: soft-light; background: linear-gradient(155deg, rgba(255,200,120,.7) 0%, rgba(255,226,170,.25) 45%, rgba(60,80,150,.32) 100%); }
+/* ลำแสงแดดเย็นส่องเฉียง + หมอกอุ่นด้านบน (แนว HD-2D) */
+.w-rays { inset: -20% -10%; mix-blend-mode: screen; opacity: .55; background: repeating-linear-gradient(118deg, transparent 0 140px, rgba(255,226,160,.16) 180px, rgba(255,236,190,.22) 220px, transparent 270px 420px);
+  -webkit-mask-image: linear-gradient(160deg, #000 10%, transparent 70%); mask-image: linear-gradient(160deg, #000 10%, transparent 70%); animation: w-rays 26s linear infinite; }
+@keyframes w-rays { to { transform: translateX(420px); } }
+.w-haze { left: 0; right: 0; top: 0; height: 45%; mix-blend-mode: screen; background: linear-gradient(rgba(255,226,180,.32), rgba(255,226,180,0)); }
+@media (prefers-reduced-motion: reduce) { .w-rays { animation: none; } }
 .w-vignette { inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 58%, rgba(18,12,4,.42) 100%); }
 .world-labels { position: absolute; left: 0; top: 0; pointer-events: none; }
 .world-full .world { border-radius: 0; box-shadow: none; }
@@ -921,3 +926,19 @@ body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4p
   body.shop-world .items { padding: 10px; gap: 10px; } body.shop-world .item { margin: 4px; }
   body.shop-world .lootbox .big.chest { width: 80px; }
 }
+
+/* 📚 บทเรียน: แผงเลือกระดับ/รูปแบบ/จำนวนข้อ/ชุดคำถาม */
+.setup { display: grid; gap: 12px; margin: 14px 0; }
+.su-row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: start; }
+.su-row > b { padding-top: 6px; }
+.su-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.su-chip { font: inherit; font-size: .92rem; font-weight: 600; cursor: pointer; padding: 6px 12px; border-radius: 999px; border: 2px solid var(--line); background: var(--card); color: var(--ink); transition: transform .1s, background .15s; }
+.su-chip:hover { border-color: var(--brand); transform: translateY(-1px); }
+.su-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.su-chip:disabled { opacity: .6; cursor: progress; }
+.su-chip .lv { font-size: .72em; letter-spacing: -.05em; }
+.su-chip .lv1 { color: #22c55e; } .su-chip .lv2 { color: #84cc16; } .su-chip .lv3 { color: #eab308; } .su-chip .lv4 { color: #f97316; } .su-chip .lv5 { color: #ef4444; }
+.su-chip.on .lv { color: #fff; }
+.lesson-modes { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; }
+.lesson-modes i { font-style: normal; font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--mute); }
+@media (max-width: 640px) { .su-row { grid-template-columns: 1fr; gap: 6px; } .su-row > b { padding-top: 0; } .su-chip { font-size: .85rem; padding: 5px 10px; } }
