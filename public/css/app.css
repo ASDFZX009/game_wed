@@ -840,6 +840,8 @@ body.immersive main.wrap { max-width: none; padding: 0; }
 .w-warm { inset: 0; mix-blend-mode: soft-light; background: linear-gradient(155deg, rgba(255,214,140,.55) 0%, rgba(255,236,190,.18) 40%, rgba(70,90,160,.28) 100%); }
 .w-vignette { inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 58%, rgba(18,12,4,.42) 100%); }
 .world-labels { position: absolute; left: 0; top: 0; pointer-events: none; }
+.world-full .world { border-radius: 0; box-shadow: none; }
+body.home-world { overflow: hidden; }
 .w-lite .w-tilt { display: none; }
 @media (max-width: 640px) { .w-tilt.top, .w-tilt.bot { -webkit-backdrop-filter: blur(1.4px); backdrop-filter: blur(1.4px); height: 20%; } }
 .world-hint { position: absolute; left: 10px; top: 10px; font-size: .8rem; font-weight: 700; color: #fff; background: rgba(20,16,28,.72); padding: 4px 10px; border-radius: 6px; }

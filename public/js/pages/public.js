@@ -17,29 +17,21 @@ export function gameCard(g) {
 }
 
 export async function home({ main }) {
-  const [{ games, count }, { categories }] = await Promise.all([api("/api/games/featured"), api("/api/categories")]);
+  const { categories } = await api("/api/categories");
   const local = state.config?.local;
+  // หน้าแรก = หมู่บ้านเต็มจอ (ลิงก์ลัดซ่อนไว้ให้โปรแกรมอ่านหน้าจอ/คีย์บอร์ด)
+  document.body.classList.add("immersive", "home-world");
   main.innerHTML = html`
-    <section class="world-wrap" aria-labelledby="w-title">
-      <div class="world-head"><div><h1 id="w-title">🏡 หมู่บ้านแห่งการเรียนรู้</h1>
-        <p class="muted">เดินไปเข้าบ้านวิชาที่อยากเล่น · มีเกม ${count} เกม ครอบคลุมทุกวิชา${local ? " · เดินไปท่าเรือเพื่อเล่นเกมตอบคำถาม" : ""}</p></div>
-        <a class="btn btn-ghost btn-sm" href="/games">🎮 ดูคลังเกมทั้งหมด</a></div>
+    <section class="world-full" aria-labelledby="w-title">
+      <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
       <div class="world" id="world"></div>
-      <nav class="world-quick" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a class="chip" href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
-        ${local ? html`<a class="chip" href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a class="chip" href="/shop">🛒 ร้านค้า</a></nav>
-    </section>
-    <h2>เกมยอดนิยม</h2><div class="grid">${games.map(gameCard)}</div>
-    <p class="center" style="margin-top:20px"><a class="btn btn-ghost" href="/games">ดูเกมทั้งหมด →</a></p>
-    <div class="features">
-      <div class="feature"><div class="ic">🎯</div><b>เกม 5 แบบ</b><div class="small muted">ถูก/ผิด ปรนัย เรียงลำดับ เรียงคำ และพลิกการ์ดจับคู่</div></div>
-      <div class="feature"><div class="ic">📝</div><b>คำถาม 10 ชนิด</b><div class="small muted">รวมเลือกหลายข้อ ตอบเป็นตัวเลข และเติมคำจากคลังคำ</div></div>
-      <div class="feature"><div class="ic">🎁</div><b>ร้านค้า &amp; กล่องสุ่ม</b><div class="small muted">ใช้เหรียญจากการเล่นแลกอวาตาร์ ธีม และของตกแต่ง</div></div>
-      <div class="feature"><div class="ic">🏅</div><b>สะสม XP และเหรียญ</b><div class="small muted">เล่นต่อเนื่อง ได้คะแนนเต็ม ปลดล็อกเหรียญรางวัล</div></div>
-    </div>`.s;
+      <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
+        ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
+    </section>`.s;
   const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#5b3df5";
-  const w = mountWorld(main.querySelector("#world"), { go, playerName: state.me?.displayName || "นักผจญภัย", shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion() });
+  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: state.me?.displayName || "นักผจญภัย", shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion() });
   window.__world = w; // ให้สคริปต์ทดสอบตรวจได้
-  onLeave(() => { w.destroy(); if (window.__world === w) delete window.__world; });
+  onLeave(() => { w.destroy(); if (window.__world === w) delete window.__world; document.body.classList.remove("immersive", "home-world"); });
 }
 
 export async function library({ main, query }) {

@@ -440,7 +440,7 @@ function wrapText(ctx, text, maxW) {
 }
 
 // ---------- ติดตั้งบนหน้า ----------
-export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", reduced = false }) {
+export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", reduced = false, fill = false }) {
   const M = buildMap();
   const ground = bakeGround(M);
   const cache = new Map(), spr = (key, make) => cache.get(key) || (cache.set(key, make()), cache.get(key));
@@ -493,12 +493,17 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
 
   function resize() {
     const w = host.clientWidth; dpr = Math.min(2, window.devicePixelRatio || 1);
-    const h = w < 640 ? Math.min(Math.round(window.innerHeight * 0.62), 560) : Math.min(640, Math.max(420, Math.round(w * 0.56)));
-    S = w >= 1500 ? 3 : 2; vw = Math.ceil(w / S); vh = Math.ceil(h / S);
+    let h = w < 640 ? Math.min(Math.round(window.innerHeight * 0.62), 560) : Math.min(640, Math.max(420, Math.round(w * 0.56)));
+    if (fill) { // เต็มพื้นที่ใต้แถบเมนู (เว้นแถบล่างบนมือถือ)
+      const top = host.getBoundingClientRect().top + window.scrollY, pad = parseFloat(getComputedStyle(document.body).paddingBottom) || 0;
+      h = Math.max(320, Math.round(window.innerHeight - top - pad)); host.style.height = h + "px"; }
+    S = fill ? (w >= 1500 || h >= 900 ? 3 : 2) : w >= 1500 ? 3 : 2; vw = Math.ceil(w / S); vh = Math.ceil(h / S);
     buf.width = vw; buf.height = vh; bx.imageSmoothingEnabled = false;
     for (const c of [view, labels]) { c.style.width = w + "px"; c.style.height = h + "px"; c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
   }
-  const ro = new ResizeObserver(resize); ro.observe(host); resize();
+  let lastW = 0, lastH = 0;
+  const onResize = () => { if (host.clientWidth === lastW && window.innerHeight === lastH) return; lastW = host.clientWidth; lastH = window.innerHeight; resize(); };
+  const ro = new ResizeObserver(onResize); ro.observe(host); window.addEventListener("resize", onResize); resize();
 
   const tileAt = (px, py) => [Math.floor(px / T), Math.floor(py / T)];
   const blocked = (px, py) => { const [tx, ty] = tileAt(px, py); return !M.inb(tx, ty) || M.block[M.at(tx, ty)]; };
@@ -635,7 +640,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   raf = requestAnimationFrame(loop);
   return {
     places: PLACES,
-    destroy() { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); view.remove(); ui.remove(); },
+    destroy() { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
     // สำหรับทดสอบ: ตรวจว่าทุกบ้านเดินไปถึงได้
     reachable() { const [sx, sy] = tileAt(hero.x, hero.y - 1); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) || (sx === p.ex && sy === p.ey) })); },
     _hero: hero,
