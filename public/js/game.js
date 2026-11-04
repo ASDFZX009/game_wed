@@ -2,6 +2,7 @@
 import { api, html, raw, esc, toast, confetti, state } from "./core.js";
 import { playSound, getPrefs } from "./prefs.js";
 import { refreshMe } from "./app.js";
+import { showResultSplash } from "./result-splash.js";
 
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
@@ -182,6 +183,7 @@ export function startGame(root, data, opts = {}) {
       ${data.preview ? html`<div class="info small">👀 โหมดทดลองเล่น (ฉบับร่าง) — ไม่บันทึกผล</div>` : ""}`;
   }
 
+  let t0 = 0;
   async function finish(extra) {
     if (done) return; done = true; stop();
     const body = { answers, assignmentId: finishPayload.assignmentId };
@@ -190,7 +192,7 @@ export function startGame(root, data, opts = {}) {
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
     catch (e) { root.innerHTML = html`<div class="card center"><p>${e.message}</p></div>`.s; return; }
     if (r.saved) refreshMe().catch(() => {});
-    if (r.perfect) confetti();
+    const seconds = t0 ? (Date.now() - t0) / 1000 : null;
     playSound(r.passed ? "win" : "wrong");
     root.innerHTML = html`<div class="play">${introHead()}<div class="card">
       <p class="result-big">${r.perfect ? "🎉" : r.passed ? "👏" : "💪"} ${r.score} / ${r.max} คะแนน</p>
@@ -202,6 +204,9 @@ export function startGame(root, data, opts = {}) {
       <div class="row" style="margin-top:14px"><button class="btn" id="g-again">🔁 เล่นอีกครั้ง</button><a class="btn btn-ghost" href="${opts.backHref || "/games"}">${opts.backText || "กลับคลังเกม"}</a></div>
       </div></div>`.s;
     root.querySelector("#g-again").onclick = () => opts.restart?.();
+    showResultSplash(root, { r, game, moves: body.moves, seconds, onAgain: () => opts.restart?.(),
+      onClose: () => { root.querySelector(".play .card:last-child")?.scrollIntoView({ block: "start", behavior: "smooth" }); } });
+    if (r.perfect) setTimeout(() => confetti(), 1500);
   }
 
   // หน้าเริ่ม
@@ -213,7 +218,7 @@ export function startGame(root, data, opts = {}) {
       <span class="muted small">ผ่านเมื่อได้ ${game.passPct}%</span></div>
       ${!state.me ? html`<p class="small muted">เล่นได้เลยโดยไม่ต้องสมัคร (ผลจะไม่ถูกบันทึก)</p>` : ""}
       <button class="btn btn-lg btn-block" id="g-start" style="margin-top:12px">▶ เริ่มเล่น</button></div></div>`.s;
-  root.querySelector("#g-start").onclick = () => { startTimer(); game.template === "match" ? renderMemory() : renderQ(); };
+  root.querySelector("#g-start").onclick = () => { t0 = Date.now(); startTimer(); game.template === "match" ? renderMemory() : renderQ(); };
   root.querySelector("#g-start").focus();
   return () => stop();
 }

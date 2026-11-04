@@ -94,7 +94,7 @@ function tone(freq, start, dur, type = "sine", vol = 0.12) {
 export function playSound(kind) {
   // สั่นเบา ๆ บนมือถือ (ถ้าเครื่องรองรับและเปิดไว้)
   if (current.haptics && navigator.vibrate) {
-    const pat = { correct: 25, wrong: [70, 50, 70], win: [30, 40, 30, 40, 80], flip: 8 }[kind];
+    const pat = { correct: 25, wrong: [70, 50, 70], win: [30, 40, 30, 40, 80], flip: 8, stamp: 40 }[kind];
     if (pat) try { navigator.vibrate(pat); } catch { /* ignore */ }
   }
   if (!current.sound) return;
@@ -103,6 +103,7 @@ export function playSound(kind) {
     if (ctx.state === "suspended") ctx.resume();
     if (kind === "correct") { tone(660, 0, 0.12); tone(880, 0.1, 0.18); }
     else if (kind === "wrong") { tone(220, 0, 0.22, "triangle"); tone(180, 0.12, 0.25, "triangle"); }
+    else if (kind === "stamp") { tone(110, 0, 0.18, "square", 0.09); tone(70, 0.02, 0.25, "sine", 0.18); }
     else if (kind === "win") { [523, 659, 784, 1047].forEach((f, i) => tone(f, i * 0.11, 0.22)); }
     else if (kind === "flip") tone(520, 0, 0.06, "square", 0.04);
     else if (kind === "tick") tone(1000, 0, 0.05, "square", 0.03);
