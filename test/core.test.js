@@ -39,3 +39,13 @@ test("แปลงเวลาไทยเป็น UTC และจัดกล
   assert.equal(zonedToUtc("2026-11-04T17:00"), "2026-11-04T10:00:00.000Z");
   assert.equal(U.dayKey("2026-11-04T18:30:00Z"), "2026-11-05"); // 01:30 น. ของวันถัดไปในไทย
 });
+
+test("ร้านค้า: โอกาสกล่องสุ่มรวมได้ 100% และของตำนานได้จากกล่องเท่านั้น", () => {
+  const shop = require("../server/shop");
+  shop.BOXES.forEach((b) => assert.equal(Object.values(b.odds).reduce((s, v) => s + v, 0), 100, b.name));
+  shop.CATALOG.filter((x) => x.rarity === "legendary").forEach((x) => assert.equal(x.boxOnly, true));
+  shop.CATALOG.filter((x) => x.rarity !== "legendary").forEach((x) => assert.ok(x.price > 0));
+  assert.equal(new Set(shop.CATALOG.map((x) => x.id)).size, shop.CATALOG.length);
+  // ทุกระดับที่มีโอกาส > 0 ต้องมีของให้สุ่ม
+  shop.BOXES.forEach((b) => Object.entries(b.odds).forEach(([r, w]) => { if (w) assert.ok(shop.CATALOG.some((x) => x.rarity === r)); }));
+});

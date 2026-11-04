@@ -1,17 +1,18 @@
 // ตัวควบคุมหลัก: เส้นทาง (router), แถบเมนู, ธีม
-import { state, api, html, raw, esc, toast } from "./core.js";
+import { state, api, html, raw, esc, toast, avatar } from "./core.js";
 import * as P from "./pages/public.js";
 import * as S from "./pages/student.js";
 import * as T from "./pages/teacher.js";
 import * as L from "./pages/live.js";
 import * as A from "./pages/admin.js";
+import * as SH from "./pages/shop.js";
 import { loadPrefs, setPrefs, isDark } from "./prefs.js";
 
 const routes = [
   ["/", P.home], ["/games", P.library], ["/games/:id", P.playGame], ["/quizzes", P.quizList], ["/quizzes/:id", P.quizPage],
   ["/attempts/:id", P.attemptPage], ["/join", L.joinPage], ["/play/:pin", L.playerPage],
   ["/login", P.login], ["/register", P.register], ["/forgot", P.forgot], ["/privacy", P.privacy],
-  ["/dashboard", S.dashboard, "any"], ["/profile", S.profile, "any"], ["/settings", S.settings],
+  ["/dashboard", S.dashboard, "any"], ["/profile", S.profile, "any"], ["/settings", S.settings], ["/shop", SH.shop],
   ["/classes", S.classes, "any"], ["/classes/:id", S.classPage, "any"],
   ["/teacher", T.dashboard, "teacher"], ["/assignments/:id", T.assignmentReport, "teacher"],
   ["/teacher/quizzes", T.myQuizzes, "teacher"], ["/teacher/quizzes/new", T.quizBuilder, "teacher"], ["/teacher/quizzes/:id/edit", T.quizBuilder, "teacher"],
@@ -79,7 +80,7 @@ function link(href, text, cur) {
 function renderNav(cur = location.pathname) {
   const u = state.me;
   const nav = document.getElementById("nav");
-  const main = [link("/games", "คลังเกม", cur), link("/quizzes", "แบบทดสอบ", cur), link("/join", "เข้าร่วมเกม", cur)];
+  const main = [link("/games", "คลังเกม", cur), link("/quizzes", "แบบทดสอบ", cur), link("/join", "เข้าร่วมเกม", cur), link("/shop", "🛒 ร้านค้า", cur)];
   if (u) {
     main.push(link(u.role === "student" ? "/dashboard" : "/teacher", "แดชบอร์ด", cur));
     main.push(link("/classes", "ห้องเรียน", cur));
@@ -89,7 +90,7 @@ function renderNav(cur = location.pathname) {
   const admin = u && u.role === "admin" ? html`<div class="subnav subnav-admin" aria-label="ผู้ดูแลระบบ"><div class="wrap"><span class="muted">🛡️ ผู้ดูแลระบบ:</span>
       ${link("/admin", "ภาพรวม", cur)} ${link("/admin/users", "ผู้ใช้", cur)} ${link("/admin/content", "ตรวจสอบเนื้อหา", cur)} ${link("/admin/categories", "หมวดหมู่", cur)}</div></div>` : "";
   const right = u
-    ? html`<a href="/profile" class="me" title="${u.displayName}">👤 <span class="ellipsis">${u.displayName}</span></a><a href="/settings">ตั้งค่า</a><button class="linkish" id="logout">ออกจากระบบ</button>`
+    ? html`<a href="/shop" class="coins" title="เหรียญของฉัน" aria-label="เหรียญ ${u.coins} เหรียญ">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a><a href="/profile" class="me" title="${u.displayName}">${avatar(u.equipped)} <span class="ellipsis">${u.displayName}</span></a><a href="/settings">ตั้งค่า</a><button class="linkish" id="logout">ออกจากระบบ</button>`
     : html`<a href="/settings" title="ตั้งค่าการแสดงผล" aria-label="ตั้งค่าการแสดงผล">⚙️ ตั้งค่า</a><a href="/login${cur && !["/login", "/register", "/"].includes(cur) ? `?next=${encodeURIComponent(cur)}` : ""}">เข้าสู่ระบบ</a><a href="/register" class="btn btn-sm">สมัคร</a>`;
   nav.innerHTML = html`<div class="wrap topbar">
       <a href="/" class="logo" aria-label="EduPlay หน้าแรก"><span aria-hidden="true">🚀</span> EduPlay</a>

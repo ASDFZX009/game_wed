@@ -160,6 +160,15 @@ export function confetti() {
   if (r.confetti === "off" || r.motion === "reduce" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const c = document.createElement("div");
   c.className = "confetti";
+  const emo = state.me?.equipped?.effect ? [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(state.me.equipped.effect)].map((x) => x.segment) : null;
+  if (emo) { // เอฟเฟกต์ฉลองที่ซื้อจากร้านค้า
+    for (let i = 0; i < 40; i++) {
+      const e = document.createElement("span");
+      e.className = "emo"; e.textContent = emo[i % emo.length];
+      e.style.left = Math.random() * 100 + "vw"; e.style.animationDelay = Math.random() * 0.8 + "s";
+      c.appendChild(e);
+    }
+  }
   const colors = ["#6d4aff", "#ff7ab6", "#ffd166", "#06d6a0", "#4cc9f0"];
   for (let i = 0; i < 80; i++) {
     const p = document.createElement("i");
@@ -174,6 +183,12 @@ export function confetti() {
 }
 
 export const DIFF = { easy: "ง่าย", medium: "ปานกลาง", hard: "ยาก" };
+
+/** อวาตาร์ + กรอบ จากของที่ใส่อยู่ (look = { avatar, frame, title }) */
+export function avatar(look = {}, size = "") {
+  return html`<span class="ava ${size} ${look?.frame ? `fr-${look.frame}` : ""}" aria-hidden="true">${look?.avatar || "👤"}</span>`;
+}
+export const titleTag = (look) => (look?.title ? html` <span class="title-tag">${look.title}</span>` : "");
 export const qs = (sel, root = document) => root.querySelector(sel);
 export const qsa = (sel, root = document) => [...root.querySelectorAll(sel)];
 export function formData(form) {

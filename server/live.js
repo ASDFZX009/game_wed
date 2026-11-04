@@ -34,7 +34,7 @@ function newPin() {
 }
 
 function leaderboard(room) {
-  const list = [...room.players.values()].filter((p) => !p.kicked).map((p) => ({ id: p.id, name: p.name, score: p.score, team: p.team }))
+  const list = [...room.players.values()].filter((p) => !p.kicked).map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, score: p.score, team: p.team }))
     .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
   let rank = 0, prev = null;
   list.forEach((p, i) => { if (p.score !== prev) { rank = i + 1; prev = p.score; } p.rank = rank; });
@@ -55,7 +55,7 @@ function questionPublic(room) {
   return base;
 }
 function playerList(room) {
-  return [...room.players.values()].filter((p) => !p.kicked).map((p) => ({ id: p.id, name: p.name, team: p.team, connected: p.connected }));
+  return [...room.players.values()].filter((p) => !p.kicked).map((p) => ({ id: p.id, name: p.name, avatar: p.avatar, team: p.team, connected: p.connected }));
 }
 function persist(room) {
   db.prepare("UPDATE live_rooms SET status=?, player_count=?, results=? WHERE id=?")
@@ -279,7 +279,8 @@ function setup(app, io) {
       const id = U.token(8);
       const team = room.teamMode ? room.nextTeam : null;
       if (room.teamMode) room.nextTeam = room.nextTeam === "red" ? "blue" : "red";
-      const p = { id, token: U.token(16), name, team, score: 0, socketId: socket.id, connected: true, userId: user?.id || null };
+      const look = user ? require("./shop").equippedView(user.equipped) : {};
+      const p = { id, token: U.token(16), name, team, score: 0, socketId: socket.id, connected: true, userId: user?.id || null, avatar: look.avatar || null };
       room.players.set(id, p);
       socket.join(room.pin);
       socket.data.player = { pin: room.pin, id };

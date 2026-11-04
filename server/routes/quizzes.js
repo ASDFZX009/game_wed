@@ -126,9 +126,10 @@ r.post("/:id/submit", need(), (req, res) => {
     .run(q.id, req.user.id, assignmentId, JSON.stringify(answers), JSON.stringify(results), score, max, pending ? "pending_review" : "graded", started, t);
   const xp = Math.round((score / Math.max(1, max)) * 20);
   U.addXP(req.user.id, xp, "quiz", q.title);
+  require("../shop").addCoins(req.user.id, xp, "quiz", q.title);
   const newBadges = U.checkBadges(req.user.id, { perfect: !pending && max > 0 && score >= max });
   const a = db.prepare("SELECT * FROM quiz_attempts WHERE id = ?").get(info.lastInsertRowid);
-  res.json({ attempt: attemptView(a, q, false), xp, newBadges, pending });
+  res.json({ attempt: attemptView(a, q, false), xp, coins: xp, newBadges, pending });
 });
 
 r.get("/attempt/:aid", need(), (req, res) => {

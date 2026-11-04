@@ -17,6 +17,7 @@ if (fs.existsSync(envFile)) {
 const { db } = require("./db");
 const { attachUser } = require("./auth");
 const U = require("./util");
+const shop = require("./shop");
 const seed = require("./seed");
 
 seed.ensure();
@@ -50,6 +51,7 @@ app.use("/api/classes", classes.router);
 app.use("/api/dashboard", classes.dashboard);
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/ai", ai);
+app.use("/api/shop", shop.router);
 
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: false } });

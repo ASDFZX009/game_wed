@@ -1,5 +1,5 @@
 // หน้าของนักเรียน: แดชบอร์ด โปรไฟล์ ห้องเรียน ตั้งค่า
-import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo } from "../core.js";
+import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo, avatar, titleTag } from "../core.js";
 import { go, refreshMe } from "../app.js";
 import * as T from "./teacher.js";
 import { getPrefs, setPrefs, playSound, PALETTES, DEFAULTS } from "../prefs.js";
@@ -14,8 +14,9 @@ export async function dashboard({ main, me }) {
   const d = await api("/api/dashboard/student");
   const lv = levelInfo(d.xp, d.xpPerLevel);
   main.innerHTML = html`
-    <section class="card"><div class="hello"><div><h1 style="margin:0">สวัสดี ${me.displayName} 👋</h1>
-      <div class="muted">ระดับ ${lv.level} · ${d.xp} XP${d.streak ? html` · 🔥 เล่นต่อเนื่อง ${d.streak} วัน` : ""}</div></div></div>
+    <section class="card"><div class="hello"><div class="row" style="gap:14px;flex-wrap:nowrap"><a href="/shop" title="แต่งตัวที่ร้านค้า">${avatar(me.equipped, "lg")}</a><div><h1 style="margin:0">สวัสดี ${me.displayName} 👋</h1>
+      <div class="muted">${titleTag(me.equipped)} ระดับ ${lv.level} · ${d.xp} XP${d.streak ? html` · 🔥 เล่นต่อเนื่อง ${d.streak} วัน` : ""}</div></div></div>
+      <a class="coins" href="/shop" style="font-size:1.1rem;padding:8px 14px">🪙 ${(me.coins || 0).toLocaleString("th-TH")} · ไปร้านค้า</a></div>
       <div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="${lv.per}" aria-valuenow="${lv.into}" aria-label="ความคืบหน้าสู่ระดับถัดไป"><i style="width:${(lv.into / lv.per) * 100}%"></i></div>
       <div class="small muted">อีก ${lv.need} XP ถึงระดับ ${lv.level + 1}</div></section>
     <h2>งานที่ต้องทำ</h2>
@@ -37,9 +38,9 @@ export async function dashboard({ main, me }) {
 export async function profile({ main, me }) {
   const d = await api("/api/dashboard/profile");
   const lv = levelInfo(me.xp);
-  main.innerHTML = html`<div class="narrow"><div class="card"><h1 style="margin:0">${me.displayName}</h1>
+  main.innerHTML = html`<div class="narrow"><div class="card"><div class="row" style="gap:16px;flex-wrap:nowrap">${avatar(me.equipped, "xl")}<div><h1 style="margin:0">${me.displayName}</h1>${titleTag(me.equipped)}</div></div>
       <div class="muted">${me.email} · ${{ student: "นักเรียน", teacher: "ครู", admin: "ผู้ดูแลระบบ" }[me.role]}${me.grade ? ` · ${me.grade}` : ""}</div>
-      <p style="margin-bottom:0">ระดับ ${lv.level} · ${me.xp} XP · เหรียญ ${d.badges.length} เหรียญ</p></div>
+      <p style="margin-bottom:0">ระดับ ${lv.level} · ${me.xp} XP · 🪙 ${me.coins || 0} · เหรียญรางวัล ${d.badges.length} อัน · <a href="/shop?tab=mine">ของสะสมของฉัน</a></p></div>
     <h2>ประวัติการเล่นเกม</h2>${d.plays.length ? html`<ul class="list">${d.plays.map((p) => html`<li><a class="grow ellipsis" href="/games/${p.id}">${p.title}</a><b>${p.score}</b><span class="small muted">${fmtDate(p.created_at)}</span></li>`)}</ul>` : html`<div class="empty">ยังไม่มีประวัติ</div>`}
     <h2>ประวัติแบบทดสอบ</h2>${d.quizzes.length ? html`<ul class="list">${d.quizzes.map((q) => html`<li><a class="grow ellipsis" href="/attempts/${q.id}">${q.title}</a><b>${q.score}/${q.max_score}${q.status === "pending_review" ? " ⏳" : ""}</b><span class="small muted">${fmtDate(q.submitted_at)}</span></li>`)}</ul>` : html`<div class="empty">ยังไม่มีประวัติ</div>`}</div>`.s;
 }
@@ -72,7 +73,7 @@ export async function classPage(ctx) {
       <div class="row">${st[a.mine.status]}${a.mine.pct != null ? html`<b>${Math.round(a.mine.pct)}%</b>` : ""}
       <a class="btn btn-sm ${a.mine.status === "todo" ? "" : "btn-ghost"}" href="${assignmentHref(a, c.id)}">${a.mine.status === "todo" ? "ทำเลย" : "ทำอีกครั้ง"}</a></div></li>`)}</ul>` : html`<div class="empty">ยังไม่มีงานที่มอบหมาย</div>`}
     ${c.leaderboard ? html`<h2>อันดับในห้อง</h2><p class="small muted">คะแนนรวม = ผลรวมร้อยละของงานทุกชิ้น</p><div class="table-wrap"><table><thead><tr><th>อันดับ</th><th>ชื่อ</th><th class="num">คะแนนรวม</th></tr></thead><tbody>
-      ${c.leaderboard.map((b) => html`<tr ${b.me ? raw('style="font-weight:700;background:var(--brand-soft)"') : ""}><td>${b.rank}</td><td>${b.name}${b.me ? " (คุณ)" : ""}</td><td class="num">${b.total}</td></tr>`)}</tbody></table></div>` : ""}
+      ${c.leaderboard.map((b) => html`<tr ${b.me ? raw('style="font-weight:700;background:var(--brand-soft)"') : ""}><td>${b.rank}</td><td>${avatar(b.look)} ${b.name}${b.me ? " (คุณ)" : ""}${titleTag(b.look)}</td><td class="num">${b.total}</td></tr>`)}</tbody></table></div>` : ""}
     <p style="margin-top:24px"><button class="link-danger" id="leave">ออกจากห้องเรียน</button></p></div>`.s;
   main.querySelector("#leave").onclick = async () => {
     if (!(await confirmBox("ต้องการออกจากห้องเรียนนี้หรือไม่? ผลงานเดิมยังอยู่ แต่จะไม่เห็นงานของห้องนี้อีก", "ออกจากห้อง", true))) return;
@@ -83,6 +84,9 @@ export async function classPage(ctx) {
 
 export async function settings({ main, me }) {
   const P = getPrefs();
+  const shop = me ? await api("/api/shop").catch(() => null) : null;
+  const ownedIds = new Set((shop?.items || []).filter((i) => i.owned).map((i) => i.id));
+  const locked = (x) => x.premium && !ownedIds.has(x.premium);
   const seg = (key, opts) => html`<div class="seg" role="group" data-seg="${key}">${opts.map(([v, t]) => html`<button type="button" data-v="${v}" aria-pressed="${P[key] === v}">${t}</button>`)}</div>`;
   const sw = (key, title, desc) => html`<div class="set-row"><div class="t"><b id="l-${key}">${title}</b><span class="small muted">${desc}</span></div>
     <label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label></div>`;
@@ -95,8 +99,9 @@ export async function settings({ main, me }) {
         <div class="pb"><div class="row"><span class="btn btn-sm">ปุ่มหลัก</span><span class="btn btn-sm btn-ghost">ปุ่มรอง</span><span class="badge badge-brand">ป้าย</span><span class="badge badge-ok">ถูกต้อง</span></div>
         <div class="progress" style="margin:0"><i style="width:65%"></i></div><div class="card" style="padding:10px 14px;box-shadow:none">การ์ดเนื้อหา · <a href="#s-look">ลิงก์</a> · <span class="muted">ข้อความรอง</span></div></div></div>
       <h3 style="margin-top:18px">ธีมสี</h3>
-      <div class="palettes" role="radiogroup" aria-label="ธีมสี">${PALETTES.map((x) => html`<button type="button" class="pal" role="radio" data-pal="${x.id}" aria-checked="${P.palette === x.id}">
-        <div class="sw" style="background:linear-gradient(135deg, ${x.c[0]}, ${x.c[1]})">${x.icon}</div><span class="ok">${P.palette === x.id ? "✓" : ""}</span><span class="nm">${x.name}</span></button>`)}</div>
+      <div class="palettes" role="radiogroup" aria-label="ธีมสี">${PALETTES.map((x) => html`<button type="button" class="pal" role="radio" data-pal="${x.id}" ${locked(x) ? raw('data-locked="1"') : ""} aria-checked="${P.palette === x.id}" ${locked(x) ? raw(`aria-label="${x.name} (ล็อกอยู่ ปลดล็อกได้ที่ร้านค้า)"`) : ""}>
+        <div class="sw" style="background:linear-gradient(135deg, ${x.c[0]}, ${x.c[1]})${locked(x) ? ";filter:grayscale(.7);opacity:.6" : ""}">${locked(x) ? "🔒" : x.icon}</div><span class="ok">${P.palette === x.id ? "✓" : ""}</span><span class="nm">${x.name}${x.premium ? html` <span class="badge badge-warn">พิเศษ</span>` : ""}</span></button>`)}</div>
+      <p class="small muted">ธีมพิเศษ 🔒 ปลดล็อกได้ที่ <a href="/shop">🛒 ร้านค้า</a> ด้วยเหรียญจากการเล่นเกม</p>
       <div class="set-row" style="margin-top:12px"><div class="t"><b>โหมดสี</b><span class="small muted">“ตามอุปกรณ์” จะเปลี่ยนตามการตั้งค่ามืด/สว่างของเครื่อง</span></div>${seg("mode", [["light", "☀️ สว่าง"], ["dark", "🌙 มืด"], ["auto", "🖥️ ตามอุปกรณ์"]])}</div>
       <div class="set-row"><div class="t"><b>ขนาดตัวอักษร</b><span class="small muted">ขยายทั้งหน้าเว็บ รวมเกมและแบบทดสอบ</span></div>${seg("fontSize", [["sm", "เล็ก"], ["md", "ปกติ"], ["lg", "ใหญ่"], ["xl", "ใหญ่มาก"]])}</div></section>
 
@@ -136,7 +141,7 @@ export async function settings({ main, me }) {
     main.querySelectorAll("[data-sw]").forEach((c) => { c.checked = !!p[c.dataset.sw]; });
   };
   main.querySelectorAll("[data-seg] button").forEach((b) => b.onclick = () => { setPrefs({ [b.closest("[data-seg]").dataset.seg]: b.dataset.v }); refresh(); });
-  main.querySelectorAll("[data-pal]").forEach((b) => b.onclick = () => { setPrefs({ palette: b.dataset.pal }); refresh(); toast(`เปลี่ยนธีมเป็น “${PALETTES.find((x) => x.id === b.dataset.pal).name}”`); });
+  main.querySelectorAll("[data-pal]").forEach((b) => b.onclick = () => { if (b.dataset.locked) { toast(me ? "ธีมนี้ยังล็อกอยู่ ไปปลดล็อกที่ร้านค้าได้เลย" : "เข้าสู่ระบบแล้วสะสมเหรียญเพื่อปลดล็อกธีมพิเศษ", "bad"); return; } setPrefs({ palette: b.dataset.pal }); refresh(); toast(`เปลี่ยนธีมเป็น “${PALETTES.find((x) => x.id === b.dataset.pal).name}”`); });
   main.querySelectorAll("[data-sw]").forEach((c) => c.onchange = () => { setPrefs({ [c.dataset.sw]: c.checked }); if (c.dataset.sw === "sound" && c.checked) playSound("correct"); });
   main.querySelector("#testSound").onclick = () => { if (!getPrefs().sound) return toast("เปิดสวิตช์เสียงก่อน", "bad"); playSound("correct"); setTimeout(() => playSound("wrong"), 450); setTimeout(() => playSound("win"), 1000); };
   main.querySelector("#resetPrefs").onclick = async () => { if (!(await confirmBox("คืนค่าการแสดงผลทั้งหมดเป็นค่าเริ่มต้น?", "คืนค่า"))) return; setPrefs({ ...DEFAULTS }); refresh(); toast("คืนค่าเริ่มต้นแล้ว"); };

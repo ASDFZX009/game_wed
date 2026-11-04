@@ -11,6 +11,11 @@ export const PALETTES = [
   { id: "sunset", name: "พระอาทิตย์ตก", icon: "🌅", c: ["#c2410c", "#f59e0b"] },
   { id: "sakura", name: "ซากุระ", icon: "🌸", c: ["#be185d", "#f472b6"] },
   { id: "emerald", name: "มรกตใต้ทะเล", icon: "🐢", c: ["#0f766e", "#2dd4bf"] },
+  // ธีมพิเศษ: ปลดล็อกจากร้านค้า
+  { id: "candy", name: "ลูกกวาด", icon: "🍭", c: ["#a21caf", "#fb923c"], premium: "th-candy" },
+  { id: "galaxy", name: "กาแล็กซี", icon: "🌌", c: ["#6d28d9", "#22d3ee"], premium: "th-galaxy" },
+  { id: "gold", name: "ทองคำ", icon: "👑", c: ["#a16207", "#fbbf24"], premium: "th-gold" },
+  { id: "aurora", name: "แสงเหนือ", icon: "🌠", c: ["#0e7490", "#a3e635"], premium: "th-aurora" },
 ];
 
 const KEY = "eduplay:prefs";
@@ -49,6 +54,10 @@ export function applyPrefs(p = current) {
   r.dataset.contrast = p.contrast ? "high" : "";
   r.dataset.dyslexic = p.dyslexic ? "1" : "";
   r.dataset.confetti = p.confetti ? "" : "off";
+  r.dataset.bg = state.me?.equipped?.background || ""; // พื้นหลังจากร้านค้า (เฉพาะสมาชิก)
+  // ผู้เยี่ยมชมหรือยังไม่มีธีมพิเศษ: ใช้ธีมพื้นฐาน
+  const pal = PALETTES.find((x) => x.id === p.palette);
+  if (pal?.premium && !state.me) r.dataset.palette = "violet";
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = (PALETTES.find((x) => x.id === p.palette) || PALETTES[0]).c[0];
 }

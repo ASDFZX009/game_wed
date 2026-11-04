@@ -63,7 +63,8 @@ function publicUser(u) {
   if (!u) return null;
   let prefs = {};
   try { prefs = JSON.parse(u.prefs || "{}"); } catch { /* ignore */ }
-  return { id: u.id, email: u.email, displayName: u.display_name, role: u.role, grade: u.grade, xp: u.xp, prefs };
+  const { equippedView } = require("./shop"); // โหลดตอนใช้ (เลี่ยงการอ้างอิงวน)
+  return { id: u.id, email: u.email, displayName: u.display_name, role: u.role, grade: u.grade, xp: u.xp, coins: u.coins ?? 0, prefs, equipped: equippedView(u.equipped) };
 }
 
 module.exports = { attachUser, startSession, endSession, need, hash, check, tooMany, noteFail, publicUser, userFromToken, parseCookies, COOKIE };

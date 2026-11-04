@@ -115,7 +115,8 @@ export async function quizPage({ main, params, query }) {
       busy(btn, true, "กำลังส่ง…");
       try {
         const r = await api(`/api/quizzes/${params.id}/submit`, { body: { answers, assignmentId: aid, startedAt: started } });
-        sessionStorage.setItem("lastQuizResult", JSON.stringify({ xp: r.xp, newBadges: r.newBadges }));
+        sessionStorage.setItem("lastQuizResult", JSON.stringify({ xp: r.xp, coins: r.coins, newBadges: r.newBadges }));
+        refreshMe().catch(() => {});
         go(`/attempts/${r.attempt.id}${aid ? `?class=${query.get("class") || ""}` : ""}`, true);
       } catch (e) { toast(e.message, "bad"); busy(btn, false); }
     };
@@ -141,7 +142,7 @@ export async function attemptPage({ main, params, query }) {
     <div class="card center"><h1 style="font-size:1.2rem">${a.quizTitle}</h1>${a.student && state.me?.role !== "student" ? html`<p class="muted">${a.student}</p>` : ""}
       <p class="result-big">${a.score} / ${a.max}</p>
       <p class="muted">${pending ? "⏳ มีข้ออัตนัยที่รอครูตรวจ คะแนนอาจเพิ่มขึ้น" : "ตรวจครบทุกข้อแล้ว"} · ส่งเมื่อ ${fmtDate(a.submittedAt)}</p>
-      ${extra ? html`<p class="small">+${extra.xp} XP</p>${extra.newBadges.map((b) => html`<div class="new-badge" style="justify-content:center"><span class="ic">${b.icon}</span><b>ได้รับเหรียญใหม่: ${b.name}</b></div>`)}` : ""}</div>
+      ${extra ? html`<p class="small">+${extra.xp} XP · +${extra.coins ?? extra.xp} 🪙</p>${extra.newBadges.map((b) => html`<div class="new-badge" style="justify-content:center"><span class="ic">${b.icon}</span><b>ได้รับเหรียญใหม่: ${b.name}</b></div>`)}` : ""}</div>
     ${a.items.map((it, i) => html`<div class="qcard res-item ${cls(it.result)}" style="margin-top:12px">
       <div class="qh"><b>ข้อ ${i + 1}. ${it.prompt}</b><span>${!it.result || it.result.correct === null ? "⏳" : it.result.correct ? "✅" : "❌"} ${it.result?.points ?? 0}/${it.points}</span></div>
       <div class="small" style="margin-top:6px">คำตอบ: ${it.given}</div>

@@ -24,7 +24,8 @@ const myClass = (id, user) => {
   return c && (c.teacher_id === user.id || user.role === "admin") ? c : null;
 };
 const isMember = (classId, userId) => !!db.prepare("SELECT 1 FROM class_members WHERE class_id=? AND user_id=?").get(classId, userId);
-const members = (classId) => db.prepare(`SELECT u.id, u.display_name, u.email FROM class_members m JOIN users u ON u.id=m.user_id WHERE m.class_id=? ORDER BY u.display_name COLLATE NOCASE`).all(classId);
+const members = (classId) => db.prepare(`SELECT u.id, u.display_name, u.email, u.equipped FROM class_members m JOIN users u ON u.id=m.user_id WHERE m.class_id=? ORDER BY u.display_name COLLATE NOCASE`).all(classId);
+const look = (m) => require("../shop").equippedView(m.equipped);
 
 /** ผลของนักเรียน 1 คนในงาน 1 ชิ้น (ใช้ครั้งล่าสุด) → { status, pct, at, attempts } */
 function resultFor(a, userId) {
@@ -95,7 +96,7 @@ r.get("/:id", need(), (req, res) => {
   const asg = db.prepare("SELECT * FROM assignments WHERE class_id=? ORDER BY COALESCE(due_at, '9999') , id").all(c.id);
   const mem = members(c.id);
   // อันดับ: รวมร้อยละของงานทุกชิ้น
-  const board = mem.map((m) => ({ id: m.id, name: m.display_name, total: Math.round(asg.reduce((s, a) => s + (resultFor(a, m.id).pct || 0), 0)) }))
+  const board = mem.map((m) => ({ id: m.id, name: m.display_name, look: look(m), total: Math.round(asg.reduce((s, a) => s + (resultFor(a, m.id).pct || 0), 0)) }))
     .sort((a, b) => b.total - a.total);
   let rank = 0, prev = null;
   board.forEach((b, i) => { if (b.total !== prev) { rank = i + 1; prev = b.total; } b.rank = rank; });
@@ -111,7 +112,7 @@ r.get("/:id", need(), (req, res) => {
     const visible = asg.filter((a) => a.open_at <= now());
     Object.assign(out, {
       assignments: visible.map((a) => ({ ...assignmentInfo(a), mine: resultFor(a, req.user.id) })),
-      leaderboard: c.show_leaderboard ? board.map((b) => ({ rank: b.rank, name: b.name, total: b.total, me: b.id === req.user.id })) : null,
+      leaderboard: c.show_leaderboard ? board.map((b) => ({ rank: b.rank, name: b.name, look: b.look, total: b.total, me: b.id === req.user.id })) : null,
     });
   }
   res.json(out);

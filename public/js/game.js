@@ -1,6 +1,7 @@
 // เครื่องเล่นเกม 5 แบบ: ถูก/ผิด, ปรนัย, เรียงลำดับ, เรียงคำ, จับคู่ (พลิกการ์ด)
 import { api, html, raw, esc, toast, confetti, state } from "./core.js";
 import { playSound, getPrefs } from "./prefs.js";
+import { refreshMe } from "./app.js";
 
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
@@ -188,6 +189,7 @@ export function startGame(root, data, opts = {}) {
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
     catch (e) { root.innerHTML = html`<div class="card center"><p>${e.message}</p></div>`.s; return; }
+    if (r.saved) refreshMe().catch(() => {});
     if (r.perfect) confetti();
     playSound(r.passed ? "win" : "wrong");
     root.innerHTML = html`<div class="play">${introHead()}<div class="card">
@@ -195,7 +197,7 @@ export function startGame(root, data, opts = {}) {
       <p>${r.passed ? html`<span class="badge badge-ok">✅ ผ่านเกณฑ์ (${r.passPct}%)</span>` : html`<span class="badge badge-bad">ยังไม่ผ่านเกณฑ์ (${r.passPct}%)</span>`}
         ${game.template === "match" ? html` · พลิก ${body.moves || 0} ครั้ง` : html` · ตอบถูก ${r.correct} จาก ${r.total}`}</p>
       ${r.newBadges.map((b) => html`<div class="new-badge"><span class="ic">${b.icon}</span><div><b>ได้รับเหรียญใหม่: ${b.name}</b><div class="small muted">${b.desc}</div></div></div>`)}
-      <p class="small muted">${r.preview ? "โหมดทดลองเล่น — ไม่บันทึกผล" : r.saved ? `บันทึกผลแล้ว (+${r.xp} XP)` : html`คุณเล่นในฐานะผู้เยี่ยมชม ผลนี้จะไม่ถูกบันทึก — <a href="/login?next=${encodeURIComponent(location.pathname)}">เข้าสู่ระบบ</a> เพื่อสะสม XP`}</p>
+      <p class="small muted">${r.preview ? "โหมดทดลองเล่น — ไม่บันทึกผล" : r.saved ? `บันทึกผลแล้ว (+${r.xp} XP · +${r.coins} 🪙)` : html`คุณเล่นในฐานะผู้เยี่ยมชม ผลนี้จะไม่ถูกบันทึก — <a href="/login?next=${encodeURIComponent(location.pathname)}">เข้าสู่ระบบ</a> เพื่อสะสม XP`}</p>
       ${game.template !== "match" ? html`<details ${r.total <= 12 ? raw("open") : ""}><summary>ดูเฉลยทุกข้อ</summary><ul class="review">${r.review.map((x) => html`<li><span>${x.correct ? "✅" : "❌"}</span><span>${x.prompt} → <span class="muted">เฉลย: ${x.answer}</span></span></li>`)}</ul></details>` : ""}
       <div class="row" style="margin-top:14px"><button class="btn" id="g-again">🔁 เล่นอีกครั้ง</button><a class="btn btn-ghost" href="${opts.backHref || "/games"}">${opts.backText || "กลับคลังเกม"}</a></div>
       </div></div>`.s;

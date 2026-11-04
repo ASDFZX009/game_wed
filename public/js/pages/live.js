@@ -1,5 +1,5 @@
 // แข่งสด: สร้างห้อง (ครู), หน้าควบคุมของโฮสต์, เข้าร่วมด้วย PIN และหน้าผู้เล่น
-import { api, html, raw, state, toast, confetti, confirmBox, busy } from "../core.js";
+import { api, html, raw, state, toast, confetti, confirmBox, busy, avatar } from "../core.js";
 import { go, onLeave } from "../app.js";
 import { playSound } from "../prefs.js";
 
@@ -29,7 +29,7 @@ export async function createRoom({ main }) {
 
 function leaderboardHtml(lb, meId) {
   if (!lb || !lb.length) return html`<p class="muted">ยังไม่มีคะแนน</p>`;
-  return html`<ol class="list" style="padding:0">${lb.map((p) => html`<li ${p.id === meId ? raw('style="background:var(--brand-soft);font-weight:700"') : ""}><span class="grow">${p.rank}. ${p.name}${p.team ? html` <span class="badge" style="background:${p.team === "red" ? "#c62f45" : "#1d5fd6"};color:#fff">${p.team === "red" ? "แดง" : "น้ำเงิน"}</span>` : ""}</span><b>${p.score.toLocaleString("th-TH")}</b></li>`)}</ol>`;
+  return html`<ol class="list" style="padding:0">${lb.map((p) => html`<li ${p.id === meId ? raw('style="background:var(--brand-soft);font-weight:700"') : ""}><span class="grow">${p.rank}. ${p.avatar ? html`${avatar({ avatar: p.avatar })} ` : ""}${p.name}${p.team ? html` <span class="badge" style="background:${p.team === "red" ? "#c62f45" : "#1d5fd6"};color:#fff">${p.team === "red" ? "แดง" : "น้ำเงิน"}</span>` : ""}</span><b>${p.score.toLocaleString("th-TH")}</b></li>`)}</ol>`;
 }
 function teamsHtml(t) {
   if (!t) return "";
@@ -62,7 +62,7 @@ export async function hostPage({ main, params }) {
           ${info.lanUrls.length ? html`<br>ให้ครูเปิดหน้านี้ผ่าน ${info.lanUrls.map((u) => html`<a href="${u}${location.pathname}">${u}</a> `)} แทน (ต้องอยู่ Wi-Fi เดียวกัน)` : ""} หรือตั้งค่า <code>PUBLIC_BASE_URL</code></div>` : ""}
         ${info.skipped ? html`<p class="small muted">ข้าม ${info.skipped} ข้อที่เป็นชนิดที่แข่งสดไม่รองรับ</p>` : ""}</div>
       <div class="card"><div class="row"><button class="btn" id="start" ${players.length ? "" : raw("disabled")}>▶ เริ่มเกม</button><button class="btn btn-ghost" id="lock">${locked ? "🔓 เปิดรับผู้เล่น" : "🔒 ปิดรับผู้เล่น"}</button><button class="btn btn-ghost" id="close">ปิดห้อง</button></div>
-        ${players.length ? html`<div class="players" style="margin-top:14px">${players.map((p) => html`<span class="player-chip ${p.team || ""} ${p.connected ? "" : "off"}">${p.name}<button data-kick="${p.id}" aria-label="เชิญ ${p.name} ออก" title="เชิญออก">✕</button></span>`)}</div>` : html`<p class="muted">รอผู้เล่นเข้าร่วม… ให้นักเรียนสแกน QR หรือเปิด ${info.joinBase}/join แล้วใส่ PIN</p>`}</div></div>`.s;
+        ${players.length ? html`<div class="players" style="margin-top:14px">${players.map((p) => html`<span class="player-chip ${p.team || ""} ${p.connected ? "" : "off"}">${p.avatar || ""} ${p.name}<button data-kick="${p.id}" aria-label="เชิญ ${p.name} ออก" title="เชิญออก">✕</button></span>`)}</div>` : html`<p class="muted">รอผู้เล่นเข้าร่วม… ให้นักเรียนสแกน QR หรือเปิด ${info.joinBase}/join แล้วใส่ PIN</p>`}</div></div>`.s;
     stage.querySelector("#start").onclick = () => emit("host:start");
     stage.querySelector("#lock").onclick = () => emit("host:lock");
     stage.querySelector("#close").onclick = async () => { if (await confirmBox("ปิดห้องนี้? ผู้เล่นทุกคนจะออกจากห้อง", "ปิดห้อง", true)) { await emit("host:close"); go("/teacher/live"); } };

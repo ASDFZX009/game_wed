@@ -61,7 +61,7 @@ r.patch("/account", A.need(), (req, res) => {
 // การตั้งค่าการแสดงผล (เก็บกับบัญชี เพื่อให้ตามไปทุกเครื่อง)
 const PREFS = {
   mode: ["auto", "light", "dark"],
-  palette: ["violet", "ocean", "forest", "sunset", "sakura", "emerald"],
+  palette: ["violet", "ocean", "forest", "sunset", "sakura", "emerald", "candy", "galaxy", "gold", "aurora"],
   fontSize: ["sm", "md", "lg", "xl"],
   motion: ["auto", "reduce"],
   sound: [true, false], confetti: [true, false], autoNext: [true, false], contrast: [true, false], dyslexic: [true, false],
@@ -69,6 +69,8 @@ const PREFS = {
 r.put("/prefs", A.need(), (req, res) => {
   const out = {};
   Object.entries(PREFS).forEach(([k, allowed]) => { if (allowed.includes(req.body?.[k])) out[k] = req.body[k]; });
+  // ธีมพิเศษต้องซื้อหรือได้จากกล่องสุ่มก่อน
+  if (out.palette && !require("../shop").ownsTheme(req.user.id, out.palette)) out.palette = "violet";
   db.prepare("UPDATE users SET prefs = ? WHERE id = ?").run(JSON.stringify(out), req.user.id);
   res.json({ ok: true, prefs: out });
 });

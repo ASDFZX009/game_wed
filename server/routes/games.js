@@ -138,8 +138,9 @@ r.post("/:id/finish", (req, res) => {
     db.prepare("INSERT INTO game_plays (game_id,user_id,assignment_id,score,max_score,correct,total,xp,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
       .run(g.id, req.user.id, assignmentId, score, max, correct, total, xp, now());
     U.addXP(req.user.id, xp, "game", g.title);
+    require("../shop").addCoins(req.user.id, xp, "game", g.title); // ได้เหรียญเท่ากับ XP
     out.newBadges = U.checkBadges(req.user.id, { perfect });
-    out.saved = true; out.xp = xp;
+    out.saved = true; out.xp = xp; out.coins = xp;
   }
   if (!isPreview) db.prepare("UPDATE games SET plays = plays + 1 WHERE id = ?").run(g.id);
   out.preview = isPreview;

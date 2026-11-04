@@ -85,6 +85,7 @@ function ensure() {
     db.prepare("INSERT INTO activity (user_id,kind,title,xp,created_at) VALUES (?,?,?,?,?)").run(me, "game", g.title, xp, t);
   });
   U.checkBadges(me);
+  db.exec("UPDATE users SET coins = xp WHERE coins = 0"); // เหรียญตั้งต้นของบัญชีสาธิต
   console.log("สร้างข้อมูลสาธิตแล้ว — ครู: teacher@eduplay.local / teacher1234, นักเรียน: student@eduplay.local / student1234, ผู้ดูแล: admin@eduplay.local / admin1234");
 }
 
