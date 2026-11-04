@@ -260,7 +260,7 @@ function pickQuestion(star){
 }
 function startQuiz(fish){
   const rule=D.STAR_RULES[fish.star]; let n=rule.n; if(fish.star>=3) n=Math.max(Math.ceil(rule.n/2), rule.n-st.upg.book);
-  st.quiz={fish, n, got:0, gauge:1, drain:(1/rule.sec)*(1-0.12*st.upg.rod), pen:rule.pen*(1-0.15*st.upg.line), locked:false, q:null, done:false};
+  st.quiz={fish, n, got:0, gauge:1, drain:0, rodK:(1-0.12*st.upg.rod), pen:D.QUIZ_BAL.pen[fish.star]*(1-0.15*st.upg.line), locked:false, q:null, done:false};
   $('qTitle').textContent='ปลาติดเบ็ด!'; $('qStars').textContent=stars(fish.star); $('qStars').style.color=I.STAR_COL[fish.star];
   drawQuizFish(fish,true); openModal('quiz'); nextQuestion();
 }
@@ -270,6 +270,7 @@ function drawQuizFish(fish,sil){ const c=$('qFish').getContext('2d'); c.imageSmo
   if(sil){ c.fillStyle='#ffe070'; c.font='bold 20px "Pixelify Sans"'; c.textAlign='center'; c.fillText('?',48,40); } }
 function nextQuestion(){
   const Q=st.quiz; Q.q=pickQuestion(Q.fish.star); Q.locked=false; const q=Q.q;
+  Q.drain = Q.rodK / (Q.n * D.questionTime(q, Q.fish.star)); // คำถามยาว/ยาก ได้เวลามากขึ้น
   const sj=(window.SUBJECTS||{})[q.s]; $('qTitle').textContent = sj ? `${sj.ic} ${sj.name} · ${(window.LEVELS||[])[q.lv]||''}` : 'ปลาติดเบ็ด!';
   $('qText').textContent=q.q; $('qExp').innerHTML=''; $('qProg').textContent='ตอบถูก '+'●'.repeat(Q.got)+'○'.repeat(Q.n-Q.got);
   const box=$('qAns'); box.innerHTML='';
@@ -281,7 +282,7 @@ function escapeHtml(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'
 function answer(i){ const Q=st.quiz; if(!Q||Q.locked||Q.done) return; Q.locked=true; const o=Q.opts[i];
   Q.opts.forEach(x=>{ if(x.ok) x.el.classList.add('right'); else if(x!==o) x.el.classList.add('dim'); });
   let delay;
-  if(o.ok){ Q.got++; st.stats.correct++; Q.gauge=Math.min(1,Q.gauge+0.12); A.sfx('correct'); $('qExp').innerHTML=`<b>ถูกต้อง!</b> ${escapeHtml(Q.q.e||'')}`; delay=1400; }
+  if(o.ok){ Q.got++; st.stats.correct++; Q.gauge=Math.min(1,Q.gauge+D.QUIZ_BAL.gain); A.sfx('correct'); $('qExp').innerHTML=`<b>ถูกต้อง!</b> ${escapeHtml(Q.q.e||'')}`; delay=1400; }
   else { o.el.classList.add('wrong'); st.stats.wrong++; Q.gauge-=Q.pen; A.sfx('wrong'); vib(120); $('quiz').querySelector('.qbox').classList.remove('shake'); void $('quiz').offsetWidth; $('quiz').querySelector('.qbox').classList.add('shake');
     $('qExp').innerHTML=`<b class="no">ผิด!</b> ${escapeHtml(Q.q.e||'')}`; delay=2600; }
   $('qProg').textContent='ตอบถูก '+'●'.repeat(Q.got)+'○'.repeat(Q.n-Q.got);
@@ -329,7 +330,7 @@ function updateSea(dt,t){
     if(e.id==='shark' && e.left<1.2 && !e.warned){ e.warned=true; A.sfx('alarm'); }
     if(e.left<=0) endEvent(false); }
   else if(!st.quiz){ st.nextEvent-=dt; if(st.nextEvent<=0) startEvent(); }
-  if(st.quiz) drain*=0.5;
+  if(st.quiz) drain*=D.QUIZ_BAL.seaDrainDuringQuiz; // ระหว่างอ่านคำถาม เสียเลือดน้อยลง
   st.hp-=drain*dt;
   // lightning
   const stormy = st.theme==='storm' || (st.event&&st.event.id==='storm');

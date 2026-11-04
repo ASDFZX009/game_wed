@@ -59,6 +59,13 @@ D.FISH_BY_ID = {};
 D.FISH.forEach(f => D.FISH_BY_ID[f.id] = f);
 
 /* ---------- Quiz rules per star ---------- */
+/* ---------- สมดุลคำถาม (EduPlay) ----------
+   เวลาต่อข้อ = (ฐาน + ความยาวคำถามและตัวเลือก × perChar) × tm[ดาว] แล้วจำกัดไว้ min..max วินาที
+   ตอบผิดเกจลด pen[ดาว] · ตอบถูกเกจคืน gain · ค่าจากการจำลองผู้เล่นระดับ ม.2 ให้อัตราจับได้ไล่ตามดาว */
+D.QUIZ_BAL = { baseTF:5, baseMC:7, perChar:0.09, min:8, max:30, gain:0.07, seaDrainDuringQuiz:0.35,
+  tm:{1:1.6, 2:1.5, 3:1.4, 4:1.25, 5:1.12}, pen:{1:0.35, 2:0.30, 3:0.28, 4:0.30, 5:0.32} };
+D.questionTime = function(q, star){ const B=D.QUIZ_BAL; const len=q.q.length+(q.c?q.c.join('').length:6);
+  const t=((q.tf!==undefined?B.baseTF:B.baseMC)+len*B.perChar)*B.tm[star]; return Math.max(B.min, Math.min(B.max, t)); };
 D.STAR_RULES = {
   1:{ n:1, sec:16, pen:0.22, type:'tf' },
   2:{ n:1, sec:15, pen:0.28, type:'mix' },
