@@ -21,9 +21,11 @@
 /* ใช้ธีมที่บันทึกไว้ทันที (กันหน้าจอกะพริบก่อนโหลดสคริปต์หลัก) */
 try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = document.documentElement;
   r.dataset.theme = p.mode && p.mode !== "auto" ? p.mode : ""; r.dataset.palette = p.palette || "violet"; r.dataset.font = p.fontSize || "md";
-  r.dataset.motion = p.motion || "auto"; if (p.contrast) r.dataset.contrast = "high"; if (p.dyslexic) r.dataset.dyslexic = "1"; } catch (e) {}
+  r.dataset.motion = p.motion || "auto"; if (p.contrast) r.dataset.contrast = "high"; if (p.dyslexic) r.dataset.dyslexic = "1";
+  r.dataset.skin = p.skin || "classic"; var F = {comic:"Kanit:wght@400;600;700;800",pixel:"Chakra+Petch:wght@400;600;700&family=Pixelify+Sans:wght@500;700",neon:"Chakra+Petch:wght@400;600;700",sketch:"Itim",glass:"Prompt:wght@400;500;600;700",clay:"Mitr:wght@400;500;600"}; if (F[p.skin]) { var l = document.createElement("link"); l.rel = "stylesheet"; l.id = "skin-font-" + p.skin; l.href = "https://fonts.googleapis.com/css2?family=" + F[p.skin] + "&display=swap"; document.head.appendChild(l); } } catch (e) {}
 </script>
 <link rel="stylesheet" href="/css/app.css">
+<link rel="stylesheet" href="/css/skins.css">
 </head>
 <body>
 <a class="skip" href="#app">ข้ามไปยังเนื้อหา</a>

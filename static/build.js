@@ -33,7 +33,7 @@ const redirectApp = {
   const sdir = path.join(root, "public/sounds");
   const sounds = JSON.stringify(Object.fromEntries(fs.readdirSync(sdir).filter((f) => f.endsWith(".mp3"))
     .map((f) => [f.replace(/\.mp3$/, ""), "data:audio/mpeg;base64," + fs.readFileSync(path.join(sdir, f)).toString("base64")])));
-  const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
+  const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8") + fs.readFileSync(path.join(root, "public/css/skins.css"), "utf8");
 
   // 3) ประกอบเป็น HTML ไฟล์เดียว
   const html = `<!DOCTYPE html>
@@ -51,7 +51,8 @@ const redirectApp = {
 <script>
 try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = document.documentElement;
   r.dataset.theme = p.mode && p.mode !== "auto" ? p.mode : ""; r.dataset.palette = p.palette || "violet"; r.dataset.font = p.fontSize || "md";
-  r.dataset.motion = p.motion || "auto"; if (p.contrast) r.dataset.contrast = "high"; if (p.dyslexic) r.dataset.dyslexic = "1"; } catch (e) {}
+  r.dataset.motion = p.motion || "auto"; if (p.contrast) r.dataset.contrast = "high"; if (p.dyslexic) r.dataset.dyslexic = "1";
+  r.dataset.skin = p.skin || "classic"; var F = {comic:"Kanit:wght@400;600;700;800",pixel:"Chakra+Petch:wght@400;600;700&family=Pixelify+Sans:wght@500;700",neon:"Chakra+Petch:wght@400;600;700",sketch:"Itim",glass:"Prompt:wght@400;500;600;700",clay:"Mitr:wght@400;500;600"}; if (F[p.skin]) { var l = document.createElement("link"); l.rel = "stylesheet"; l.id = "skin-font-" + p.skin; l.href = "https://fonts.googleapis.com/css2?family=" + F[p.skin] + "&display=swap"; document.head.appendChild(l); } } catch (e) {}
 </script>
 <style>${css}</style>
 </head>

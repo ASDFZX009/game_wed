@@ -2,7 +2,24 @@
 // ผู้เยี่ยมชม: เก็บในเบราว์เซอร์ · สมาชิก: เก็บกับบัญชี (ตามไปทุกเครื่อง)
 import { state, api } from "./core.js";
 
-export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoNext: false, contrast: false, dyslexic: false, tickSound: "synth" };
+export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoNext: false, contrast: false, dyslexic: false, tickSound: "synth", skin: "classic" };
+
+// สไตล์หน้าเว็บ (เปลี่ยนรูปทรง ฟอนต์ ขอบ เงา พื้นหลัง) ใช้คู่กับธีมสีได้ทุกธีม
+export const SKINS = [
+  { id: "classic", name: "มาตรฐาน", icon: "🚀", desc: "สะอาดตา อ่านง่าย" },
+  { id: "comic", name: "คอมิกแอ็กชัน", icon: "💥", desc: "ขอบหนา เงาแข็ง ตัวอักษรเอียง" },
+  { id: "pixel", name: "เกมพิกเซล", icon: "👾", desc: "ขอบเหลี่ยมแบบเกม 8 บิต" },
+  { id: "neon", name: "นีออนไซเบอร์", icon: "🌃", desc: "พื้นมืด เส้นตาราง แสงเรือง" },
+  { id: "sketch", name: "สมุดวาดเขียน", icon: "✏️", desc: "กระดาษมีเส้น ลายมือ ขอบวาดมือ" },
+  { id: "glass", name: "กระจกใส", icon: "🫧", desc: "การ์ดโปร่งแสง พื้นหลังไล่สี" },
+  { id: "clay", name: "ดินน้ำมันนุ่มนิ่ม", icon: "🧸", desc: "มุมมน ปุ่มนูน 3 มิติ" },
+];
+const SKIN_FONTS = {comic:"Kanit:wght@400;600;700;800",pixel:"Chakra+Petch:wght@400;600;700&family=Pixelify+Sans:wght@500;700",neon:"Chakra+Petch:wght@400;600;700",sketch:"Itim",glass:"Prompt:wght@400;500;600;700",clay:"Mitr:wght@400;500;600"};
+function loadSkinFont(id) {
+  if (!SKIN_FONTS[id] || document.getElementById("skin-font-" + id)) return;
+  const l = Object.assign(document.createElement("link"), { rel: "stylesheet", id: "skin-font-" + id, href: `https://fonts.googleapis.com/css2?family=${SKIN_FONTS[id]}&display=swap` });
+  document.head.appendChild(l);
+}
 
 // เสียงตอนตัวเลขบวกขึ้นในหน้าสรุปผล (ไฟล์อยู่ใน /sounds — เวอร์ชันเว็บไฟล์เดียวฝังเป็น data URL ไว้ใน window.__SOUND_DATA)
 export const TICK_SOUNDS = [
@@ -68,6 +85,8 @@ export function applyPrefs(p = current) {
   r.dataset.contrast = p.contrast ? "high" : "";
   r.dataset.dyslexic = p.dyslexic ? "1" : "";
   r.dataset.confetti = p.confetti ? "" : "off";
+  r.dataset.skin = SKINS.some((x) => x.id === p.skin) ? p.skin : "classic";
+  loadSkinFont(r.dataset.skin);
   r.dataset.bg = state.me?.equipped?.background || ""; // พื้นหลังจากร้านค้า (เฉพาะสมาชิก)
   // ผู้เยี่ยมชมหรือยังไม่มีธีมพิเศษ: ใช้ธีมพื้นฐาน
   const pal = PALETTES.find((x) => x.id === p.palette);

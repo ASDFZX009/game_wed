@@ -1,7 +1,7 @@
 // Service worker: ทำให้ติดตั้งเป็นแอปได้ และเปิดหน้าหลักได้แม้เน็ตหลุดชั่วคราว
 // ไม่เก็บข้อมูล API/คะแนนไว้ในเครื่อง (ข้อมูลต้องมาจากเซิร์ฟเวอร์เสมอ)
-const CACHE = "eduplay-v3";
-const SHELL = ["/", "/css/app.css", "/js/app.js", "/js/core.js", "/js/prefs.js", "/js/game.js", "/js/quizform.js",
+const CACHE = "eduplay-v4";
+const SHELL = ["/", "/css/app.css", "/css/skins.css", "/js/app.js", "/js/core.js", "/js/prefs.js", "/js/game.js", "/js/quizform.js",
   "/js/pages/public.js", "/js/pages/student.js", "/js/pages/teacher.js", "/js/pages/live.js", "/js/pages/admin.js", "/js/pages/shop.js",
   "/manifest.webmanifest", "/icons/icon-192.png", "/offline.html"];
 

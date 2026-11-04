@@ -2,7 +2,7 @@
 import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo, avatar, titleTag } from "../core.js";
 import { go, refreshMe } from "../app.js";
 import * as T from "./teacher.js";
-import { getPrefs, setPrefs, playSound, playTick, getTickSound, setTickSound, TICK_MAX_BYTES, TICK_SOUNDS, PALETTES, DEFAULTS } from "../prefs.js";
+import { getPrefs, setPrefs, playSound, playTick, getTickSound, setTickSound, TICK_MAX_BYTES, TICK_SOUNDS, SKINS, PALETTES, DEFAULTS } from "../prefs.js";
 
 const KIND = { game: "เล่นเกม", quiz: "ส่งแบบทดสอบ" };
 export function assignmentHref(a, classId) {
@@ -98,6 +98,11 @@ export async function settings({ main, me }) {
       <div class="preview" aria-hidden="true"><div class="ph"><b>ตัวอย่างธีม</b><div class="small" style="opacity:.9">เรียนสนุก เล่นได้จริง 🚀</div></div>
         <div class="pb"><div class="row"><span class="btn btn-sm">ปุ่มหลัก</span><span class="btn btn-sm btn-ghost">ปุ่มรอง</span><span class="badge badge-brand">ป้าย</span><span class="badge badge-ok">ถูกต้อง</span></div>
         <div class="progress" style="margin:0"><i style="width:65%"></i></div><div class="card" style="padding:10px 14px;box-shadow:none">การ์ดเนื้อหา · <a href="#s-look">ลิงก์</a> · <span class="muted">ข้อความรอง</span></div></div></div>
+      <h3 style="margin-top:18px">สไตล์หน้าเว็บ</h3>
+      <p class="small muted" style="margin:0">เปลี่ยนรูปทรง ฟอนต์ ขอบ และพื้นหลังทั้งเว็บ ใช้คู่กับธีมสีด้านล่างได้ทุกแบบ</p>
+      <div class="skins" role="radiogroup" aria-label="สไตล์หน้าเว็บ">${SKINS.map((x) => html`<button type="button" class="skin" role="radio" data-skin-id="${x.id}" aria-checked="${P.skin === x.id}">
+        <div class="sk-mini sk-${x.id}" aria-hidden="true"><i class="t"></i><i class="c"></i><i class="b"></i></div>
+        <span class="nm"><span>${x.icon} ${x.name}</span><span class="ok" aria-hidden="true">${P.skin === x.id ? "✓" : ""}</span></span><span class="ds">${x.desc}</span></button>`)}</div>
       <h3 style="margin-top:18px">ธีมสี</h3>
       <div class="palettes" role="radiogroup" aria-label="ธีมสี">${PALETTES.map((x) => html`<button type="button" class="pal" role="radio" data-pal="${x.id}" ${locked(x) ? raw('data-locked="1"') : ""} aria-checked="${P.palette === x.id}" ${locked(x) ? raw(`aria-label="${x.name} (ล็อกอยู่ ปลดล็อกได้ที่ร้านค้า)"`) : ""}>
         <div class="sw" style="background:linear-gradient(135deg, ${x.c[0]}, ${x.c[1]})${locked(x) ? ";filter:grayscale(.7);opacity:.6" : ""}">${locked(x) ? "🔒" : x.icon}</div><span class="ok">${P.palette === x.id ? "✓" : ""}</span><span class="nm">${x.name}${x.premium ? html` <span class="badge badge-warn">พิเศษ</span>` : ""}</span></button>`)}</div>
@@ -152,6 +157,12 @@ export async function settings({ main, me }) {
     main.querySelectorAll("[data-sw]").forEach((c) => { c.checked = !!p[c.dataset.sw]; });
   };
   main.querySelectorAll("[data-seg] button").forEach((b) => b.onclick = () => { setPrefs({ [b.closest("[data-seg]").dataset.seg]: b.dataset.v }); refresh(); });
+  main.querySelectorAll("[data-skin-id]").forEach((b) => b.onclick = () => {
+    setPrefs({ skin: b.dataset.skinId });
+    main.querySelectorAll("[data-skin-id]").forEach((x) => { const on = x === b; x.setAttribute("aria-checked", String(on)); x.querySelector(".ok").textContent = on ? "✓" : ""; });
+    const sk = SKINS.find((x) => x.id === b.dataset.skinId);
+    toast(`เปลี่ยนสไตล์เป็น “${sk.name}” ${sk.icon}${sk.id === "neon" ? " (พื้นมืดเสมอ)" : sk.id === "sketch" ? " (พื้นสว่างเสมอ)" : ""}`);
+  });
   main.querySelectorAll("[data-pal]").forEach((b) => b.onclick = () => { if (b.dataset.locked) { toast(me ? "ธีมนี้ยังล็อกอยู่ ไปปลดล็อกที่ร้านค้าได้เลย" : "เข้าสู่ระบบแล้วสะสมเหรียญเพื่อปลดล็อกธีมพิเศษ", "bad"); return; } setPrefs({ palette: b.dataset.pal }); refresh(); toast(`เปลี่ยนธีมเป็น “${PALETTES.find((x) => x.id === b.dataset.pal).name}”`); });
   main.querySelectorAll("[data-sw]").forEach((c) => c.onchange = () => { setPrefs({ [c.dataset.sw]: c.checked }); if (c.dataset.sw === "sound" && c.checked) playSound("correct"); });
   const drawTicks = () => {
