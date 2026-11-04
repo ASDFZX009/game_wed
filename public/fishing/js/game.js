@@ -1,5 +1,5 @@
 /* =========================================================
-   AWS Fishing — main game logic
+   EduFishing (ดัดแปลงจาก AWS Fishing) — main game logic
    ========================================================= */
 (function(){
 const G=GFX, S=SCENE, I=INV, D=DATA, A=AUDIO;
@@ -171,7 +171,7 @@ function openMap(){
     const th=G.canvas(96,54); const L=S.theme(z.theme); th.ctx.drawImage(L.sky,0,0,480,148,0,0,96,30); th.ctx.drawImage(L.far,0,0,480,148,0,0,96,30); th.ctx.drawImage(L.sea,0,0,480,54,0,30,96,11); th.ctx.drawImage(L.under,0,0,480,70,0,40,96,14);
     const sw=z.starW, tot=sw.reduce((a,b)=>a+b,0);
     const chance=sw.map((w,k)=>w?`<span>${k+1}★ ${Math.round(w/tot*100)}%</span>`:'').join('');
-    row.innerHTML=`<div></div><div><div class="zn">${z.name}<small>${z.en}</small></div><div class="zs">${chance}<span class="d">HP −${z.drain}/วิ</span><span>ราคา ×${z.mul}</span></div></div><div></div>`;
+    row.innerHTML=`<div></div><div><div class="zn">${z.name}<small>${z.en}</small></div><div class="zs"><span class="lvl">📚 คำถาม ${(window.LEVELS||[])[i+1]||''}</span>${chance}<span class="d">HP −${z.drain}/วิ</span><span>ราคา ×${z.mul}</span></div></div><div></div>`;
     row.children[0].appendChild(th);
     const b=document.createElement('button'); b.className='btn '+(locked?'':'go'); b.innerHTML= locked?`🔒 เรือ Lv.${z.boat}`:'ออกเรือ ▶'; b.disabled=locked;
     b.addEventListener('click',()=>{ A.sfx('click'); closeModal('mapModal'); transition(()=>goSea(i),0.6); });
@@ -243,11 +243,20 @@ function resetLine(){ const f=st.fishing; if(!f) return; f.state='idle'; f.bob=n
 /* ------------------------------------------------------------------ */
 const recentQ=[];
 function pickQuestion(star){
-  const rule=D.STAR_RULES[star]; let wantTF=false, lv=[1];
-  switch(rule.type){ case 'tf': wantTF=true; break; case 'mix': wantTF=Math.random()<0.5; lv=[1]; break; case 'mc12': lv=Math.random()<0.4?[1]:[2]; break; case 'mc23': lv=Math.random()<0.5?[2]:[3]; break; case 'mc3': lv=Math.random()<0.8?[3]:[2]; break; }
-  let pool=QUESTIONS.map((q,i)=>({q,i})).filter(o=> wantTF ? o.q.tf!==undefined : (o.q.c && lv.includes(o.q.lv)));
+  // ดาวของปลากำหนด "รูปแบบ" (ถูก/ผิด หรือ 4 ตัวเลือก) · ทะเลที่ออกเรือกำหนด "ระดับชั้น" ของคำถาม
+  const rule=D.STAR_RULES[star]; let wantTF=false;
+  switch(rule.type){ case 'tf': wantTF=true; break; case 'mix': wantTF=Math.random()<0.5; break; default: wantTF=false; }
+  const zl=st.zoneIdx+1;
+  // ส่วนใหญ่ถามระดับของทะเลนี้ มีระดับก่อนหน้าปนบ้าง (ปลาดาวสูงถามระดับทะเลนี้เสมอ)
+  const lv = (zl>1 && star<=2 && Math.random()<0.25) ? zl-1 : zl;
+  const fmt=o=> wantTF ? o.q.tf!==undefined : !!o.q.c;
+  const all=QUESTIONS.map((q,i)=>({q,i}));
+  let pool=all.filter(o=>o.q.lv===lv && fmt(o));
+  if(!pool.length) pool=all.filter(o=>o.q.lv<=zl && fmt(o));
+  if(!pool.length) pool=all.filter(o=>o.q.lv===lv);
+  if(!pool.length) pool=all;
   let fresh=pool.filter(o=>!recentQ.includes(o.i)); if(!fresh.length) fresh=pool;
-  const pick=fresh[Math.floor(Math.random()*fresh.length)]; recentQ.push(pick.i); if(recentQ.length>40) recentQ.shift(); return pick.q;
+  const pick=fresh[Math.floor(Math.random()*fresh.length)]; recentQ.push(pick.i); if(recentQ.length>60) recentQ.shift(); return pick.q;
 }
 function startQuiz(fish){
   const rule=D.STAR_RULES[fish.star]; let n=rule.n; if(fish.star>=3) n=Math.max(Math.ceil(rule.n/2), rule.n-st.upg.book);
@@ -261,6 +270,7 @@ function drawQuizFish(fish,sil){ const c=$('qFish').getContext('2d'); c.imageSmo
   if(sil){ c.fillStyle='#ffe070'; c.font='bold 20px "Pixelify Sans"'; c.textAlign='center'; c.fillText('?',48,40); } }
 function nextQuestion(){
   const Q=st.quiz; Q.q=pickQuestion(Q.fish.star); Q.locked=false; const q=Q.q;
+  const sj=(window.SUBJECTS||{})[q.s]; $('qTitle').textContent = sj ? `${sj.ic} ${sj.name} · ${(window.LEVELS||[])[q.lv]||''}` : 'ปลาติดเบ็ด!';
   $('qText').textContent=q.q; $('qExp').innerHTML=''; $('qProg').textContent='ตอบถูก '+'●'.repeat(Q.got)+'○'.repeat(Q.n-Q.got);
   const box=$('qAns'); box.innerHTML='';
   if(q.tf!==undefined){ box.className='qans tf'; Q.opts=[{t:'✔ ถูก',ok:q.tf===true,cls:'t'},{t:'✘ ผิด',ok:q.tf===false,cls:'f'}]; }
