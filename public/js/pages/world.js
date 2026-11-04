@@ -480,20 +480,21 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   M.stones.forEach((s, i) => addPillar({ bx: s.x * T + 8, by: s.y * T + T - 1, W: 16, H: s.h + 10, seed: (s.x * 7 + s.y) % 5, big: false, owl: s.owl, i }));
   addPillar({ bx: M.mono.x * T + 16, by: M.mono.y * T + T - 2, W: 26, H: 66, seed: 3, big: true, i: 99 });
   const bigP = pillars[pillars.length - 1];
-  const G = (a) => `rgba(196,255,120,${a})`;
+  const LIME = "#c4ff78", A = (x, a) => { x.globalAlpha = a < 0 ? 0 : a > 1 ? 1 : a; };
+  const GLOW = (() => { const [c, g] = canvas(64, 64), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(255,255,220,.9)"); gr.addColorStop(0.18, "rgba(210,255,140,.55)"); gr.addColorStop(0.5, "rgba(170,255,100,.18)"); gr.addColorStop(1, "rgba(150,255,90,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c; })();
   function magicBack(x, t) { // ส่วนหลังเสา (วาดก่อนวัตถุ): วงเวทย์บนพื้น + ครึ่งหลังของวงใบไม้
     const P = bigP, cx = P.bx, cy = P.by - 2;
-    x.globalCompositeOperation = "lighter";
-    for (let i = 0; i < 64; i++) { const a = (i / 64) * Math.PI * 2, px = cx + Math.cos(a) * 30, py = cy + Math.sin(a) * 10; x.fillStyle = G(0.32 + 0.2 * Math.sin(t * 2 + i * 0.5)); x.fillRect(Math.round(px), Math.round(py), 2, 1); }
-    for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2 - t * 0.6, px = cx + Math.cos(a) * 20, py = cy + Math.sin(a) * 6.5; if (i % 5 === 0) continue; x.fillStyle = G(0.34); x.fillRect(Math.round(px), Math.round(py), 1, 1); }
-    swirl(x, t, false); x.globalCompositeOperation = "source-over"; leaves(x, t, false);
+    x.globalCompositeOperation = "lighter"; x.fillStyle = LIME;
+    for (let i = 0; i < 64; i++) { const a = (i / 64) * Math.PI * 2, px = cx + Math.cos(a) * 30, py = cy + Math.sin(a) * 10; A(x, 0.32 + 0.2 * Math.sin(t * 2 + i * 0.5)); x.fillRect(Math.round(px), Math.round(py), 2, 1); }
+    for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2 - t * 0.6, px = cx + Math.cos(a) * 20, py = cy + Math.sin(a) * 6.5; if (i % 5 === 0) continue; A(x, 0.34); x.fillRect(Math.round(px), Math.round(py), 1, 1); }
+    swirl(x, t, false); x.globalAlpha = 1; x.globalCompositeOperation = "source-over"; leaves(x, t, false);
   }
   function swirl(x, t, front) { // วงลมใบไม้หมุนรอบเสาใหญ่ 2 ชั้น
     const P = bigP;
     for (const [ry0, rx, ry, sp, n] of [[8, 26, 8, 1.6, 3], [34, 19, 6, -2.1, 2]]) for (let k = 0; k < n; k++) { const a0 = t * sp + (k * Math.PI * 2) / n;
       for (let i = 0; i < 22; i++) { const a = a0 + (sp > 0 ? -1 : 1) * i * 0.06, sn = Math.sin(a); if ((sn >= 0) !== front) continue;
         const px = P.bx + Math.cos(a) * rx, py = P.by - ry0 + sn * ry, al = (1 - i / 22) * (front ? 1 : 0.55);
-        x.fillStyle = G(al); x.fillRect(Math.round(px), Math.round(py), i < 8 ? 3 : 2, i < 6 ? 2 : 1); if (i < 5) { x.fillStyle = `rgba(240,255,200,${al})`; x.fillRect(Math.round(px), Math.round(py), 1, 1); } } }
+        A(x, al); x.fillRect(Math.round(px), Math.round(py), i < 8 ? 3 : 2, i < 6 ? 2 : 1); if (i < 5) { x.fillStyle = "#f0ffc8"; x.fillRect(Math.round(px), Math.round(py), 1, 1); x.fillStyle = LIME; } } }
   }
   function leaves(x, t, front) { // ใบไม้ลอยวนรอบเสาใหญ่
     const P = bigP;
@@ -503,23 +504,23 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
       R(x, px, py, 3, 2, fl ? "#7cd44a" : "#5ab83a"); R(x, px + (fl ? 0 : 2), py, 1, 1, "#d4ff98"); R(x, px + 1, py + 2, 1, 1, "#2f7a2a"); }
     x.globalAlpha = 1;
   }
-  const spark = (x, X, Y, k) => { if (k < 0.12) return; X = Math.round(X); Y = Math.round(Y); x.fillStyle = `rgba(255,255,230,${k})`; x.fillRect(X, Y, 1, 1);
-    const L = k > 0.75 ? 3 : k > 0.4 ? 2 : 1; for (let i = 1; i <= L; i++) { x.fillStyle = G(k * (1 - i / (L + 1))); x.fillRect(X - i, Y, 1, 1); x.fillRect(X + i, Y, 1, 1); x.fillRect(X, Y - i, 1, 1); x.fillRect(X, Y + i, 1, 1); } };
+  const spark = (x, X, Y, k) => { if (k < 0.12) return; X = Math.round(X); Y = Math.round(Y); A(x, k); x.fillStyle = "#ffffe6"; x.fillRect(X, Y, 1, 1); x.fillStyle = LIME;
+    const L = k > 0.75 ? 3 : k > 0.4 ? 2 : 1; for (let i = 1; i <= L; i++) { A(x, k * (1 - i / (L + 1))); x.fillRect(X - i, Y, 1, 1); x.fillRect(X + i, Y, 1, 1); x.fillRect(X, Y - i, 1, 1); x.fillRect(X, Y + i, 1, 1); } };
   function magicFront(x, t, view) { // แสงเรือง ประกาย ลำแสง (วาดทับวัตถุ แบบเติมแสง)
-    x.globalCompositeOperation = "lighter";
+    x.globalCompositeOperation = "lighter"; x.fillStyle = LIME;
     for (const P of pillars) { if (P.owl || P.bx < view[0] - 40 || P.bx > view[1] + 40 || P.by < view[2] - 20 || P.by - P.H - 40 > view[3]) continue;
       const [qx, qy] = crystalAt(P, t * 1000), pulse = 0.75 + 0.25 * Math.sin(t * 2.4 + P.i), r = P.big ? 1.8 : 1;
-      x.fillStyle = G(0.1 * pulse); x.beginPath(); x.arc(qx, qy, 16 * r, 0, 7); x.fill(); x.fillStyle = G(0.18 * pulse); x.beginPath(); x.arc(qx, qy, 9 * r, 0, 7); x.fill(); x.fillStyle = `rgba(255,255,220,${0.22 * pulse})`; x.beginPath(); x.arc(qx, qy, 4 * r, 0, 7); x.fill();
+      A(x, 0.6 * pulse); const gs = 34 * r; x.drawImage(GLOW, qx - gs / 2, qy - gs / 2, gs, gs); x.fillStyle = LIME;
       for (let i = 0; i < (P.big ? 7 : 3); i++) { const a = hash(i, P.i, 81) * 6.28, d = (6 + hash(i, P.i, 82) * 10) * r; spark(x, qx + Math.cos(a) * d, qy + Math.sin(a) * d * 0.8 - 2, Math.max(0, Math.sin(t * (1.6 + hash(i, P.i, 83)) + i * 2.3))); }
     }
     const P = bigP;
     if (P.bx > view[0] - 60 && P.bx < view[1] + 60 && P.by > view[2] - 20 && P.by - P.H - 60 < view[3]) {
       for (let i = 0; i < 5; i++) { const lx = P.bx - 14 + i * 7 + Math.round(Math.sin(t + i) * 1), h = 18 + ((i * 11) % 14) + Math.sin(t * 3 + i * 1.7) * 6, al = 0.2 + 0.12 * Math.sin(t * 2.5 + i); // ลำแสงพุ่งขึ้นจากพื้น
-        for (let k = 0; k < h; k++) { x.fillStyle = G(al * (1 - k / h)); x.fillRect(lx, P.by - 3 - k, 1, 1); } }
+        for (let k = 0; k < h; k++) { A(x, al * (1 - k / h)); x.fillRect(lx, P.by - 3 - k, 1, 1); } }
       for (let i = 0; i < 12; i++) { const ph = (t * 0.35 + hash(i, 1, 84)) % 1, mx = P.bx + (hash(i, 2, 84) - 0.5) * 50, my = P.by - 4 - ph * 70; spark(x, mx + Math.sin(t * 2 + i) * 2, my, (1 - ph) * 0.9 * Math.abs(Math.sin(t * 3 + i))); }
       swirl(x, t, true);
     }
-    x.globalCompositeOperation = "source-over"; leaves(x, t, true);
+    x.globalAlpha = 1; x.globalCompositeOperation = "source-over"; leaves(x, t, true);
   }
   for (const p of PLACES) {
     if (p.dock) { add(spr("dock", dockSign), (p.x - 1) * T + 1, p.y * T + T - 40, p.y * T + T); continue; }
