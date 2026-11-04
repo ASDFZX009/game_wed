@@ -61,7 +61,9 @@ const noteFail = (key) => attempts.set(key, [...(attempts.get(key) || []), Date.
 
 function publicUser(u) {
   if (!u) return null;
-  return { id: u.id, email: u.email, displayName: u.display_name, role: u.role, grade: u.grade, xp: u.xp };
+  let prefs = {};
+  try { prefs = JSON.parse(u.prefs || "{}"); } catch { /* ignore */ }
+  return { id: u.id, email: u.email, displayName: u.display_name, role: u.role, grade: u.grade, xp: u.xp, prefs };
 }
 
 module.exports = { attachUser, startSession, endSession, need, hash, check, tooMany, noteFail, publicUser, userFromToken, parseCookies, COOKIE };

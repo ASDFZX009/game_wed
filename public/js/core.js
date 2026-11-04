@@ -156,7 +156,8 @@ export function barChart(rows, { label = (r) => r.label, value = (r) => r.value,
 
 // ---------- พลุฉลอง ----------
 export function confetti() {
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const r = document.documentElement.dataset;
+  if (r.confetti === "off" || r.motion === "reduce" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   const c = document.createElement("div");
   c.className = "confetti";
   const colors = ["#6d4aff", "#ff7ab6", "#ffd166", "#06d6a0", "#4cc9f0"];

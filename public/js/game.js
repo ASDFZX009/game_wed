@@ -1,5 +1,6 @@
 // เครื่องเล่นเกม 5 แบบ: ถูก/ผิด, ปรนัย, เรียงลำดับ, เรียงคำ, จับคู่ (พลิกการ์ด)
 import { api, html, raw, esc, toast, confetti, state } from "./core.js";
+import { playSound, getPrefs } from "./prefs.js";
 
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
@@ -28,7 +29,7 @@ export function startGame(root, data, opts = {}) {
     endsAt = Date.now() + game.timeLimitSec * 1000;
     timerId = setInterval(tick, 250);
   }
-  const stop = () => { clearInterval(timerId); timerId = null; };
+  const stop = () => { clearInterval(timerId); timerId = null; clearTimeout(autoTimer); };
 
   async function check(answer) {
     return api(`/api/games/${game.id}/check`, { body: { index: idx, answer } });
@@ -38,11 +39,15 @@ export function startGame(root, data, opts = {}) {
       ${r.explain ? html`<div class="small" style="font-weight:400;margin-top:4px">💡 ${r.explain}</div>` : ""}</div>
       <div class="row end" style="margin-top:12px"><button class="btn" id="g-next">${idx + 1 >= questions.length ? "ดูผลลัพธ์ 🏁" : "ข้อต่อไป ▶"}</button></div>`;
   }
+  let autoTimer = null;
   function afterAnswer(card, r) {
+    playSound(r.correct ? "correct" : "wrong");
     card.insertAdjacentHTML("beforeend", feedbackHtml(r).s);
     const nb = card.querySelector("#g-next");
     nb.focus();
-    nb.onclick = () => { idx++; idx >= questions.length ? finish() : renderQ(); };
+    const next = () => { clearTimeout(autoTimer); if (done) return; idx++; idx >= questions.length ? finish() : renderQ(); };
+    nb.onclick = next;
+    if (getPrefs().autoNext) autoTimer = setTimeout(next, r.correct ? 1200 : 2500);
   }
   function hintBtn(q) {
     return q.hint ? html`<button class="linkish small" id="g-hint">💡 ขอใบ้</button>` : "";
@@ -150,7 +155,7 @@ export function startGame(root, data, opts = {}) {
     els.forEach((el) => el.onclick = () => {
       const i = +el.dataset.i;
       if (busy || doneSet.has(i) || open.includes(i)) return;
-      el.classList.add("up"); el.setAttribute("aria-label", cards[i].text);
+      el.classList.add("up"); el.setAttribute("aria-label", cards[i].text); playSound("flip");
       open.push(i);
       if (open.length === 2) {
         moves++;
@@ -158,7 +163,7 @@ export function startGame(root, data, opts = {}) {
         const [a, b] = open;
         if (cards[a].pair === cards[b].pair) {
           [a, b].forEach((k) => { doneSet.add(k); els[k].classList.add("done"); els[k].disabled = true; });
-          found++; open = [];
+          found++; open = []; playSound("correct");
           root.querySelector("#m-found").textContent = `จับคู่ได้ ${found}/${pairs}`;
           if (found === pairs) setTimeout(() => finish({ moves, completed: true }), 500);
         } else {
@@ -184,6 +189,7 @@ export function startGame(root, data, opts = {}) {
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
     catch (e) { root.innerHTML = html`<div class="card center"><p>${e.message}</p></div>`.s; return; }
     if (r.perfect) confetti();
+    playSound(r.passed ? "win" : "wrong");
     root.innerHTML = html`<div class="play">${introHead()}<div class="card">
       <p class="result-big">${r.perfect ? "🎉" : r.passed ? "👏" : "💪"} ${r.score} / ${r.max} คะแนน</p>
       <p>${r.passed ? html`<span class="badge badge-ok">✅ ผ่านเกณฑ์ (${r.passPct}%)</span>` : html`<span class="badge badge-bad">ยังไม่ผ่านเกณฑ์ (${r.passPct}%)</span>`}

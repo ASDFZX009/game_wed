@@ -58,6 +58,21 @@ r.patch("/account", A.need(), (req, res) => {
   res.json({ ok: true });
 });
 
+// การตั้งค่าการแสดงผล (เก็บกับบัญชี เพื่อให้ตามไปทุกเครื่อง)
+const PREFS = {
+  mode: ["auto", "light", "dark"],
+  palette: ["violet", "ocean", "forest", "sunset", "sakura", "emerald"],
+  fontSize: ["sm", "md", "lg", "xl"],
+  motion: ["auto", "reduce"],
+  sound: [true, false], confetti: [true, false], autoNext: [true, false], contrast: [true, false], dyslexic: [true, false],
+};
+r.put("/prefs", A.need(), (req, res) => {
+  const out = {};
+  Object.entries(PREFS).forEach(([k, allowed]) => { if (allowed.includes(req.body?.[k])) out[k] = req.body[k]; });
+  db.prepare("UPDATE users SET prefs = ? WHERE id = ?").run(JSON.stringify(out), req.user.id);
+  res.json({ ok: true, prefs: out });
+});
+
 r.post("/password", A.need(), (req, res) => {
   const { current, next } = req.body || {};
   if (!A.check(String(current || ""), req.user.password_hash)) return res.status(400).json({ error: "รหัสผ่านปัจจุบันไม่ถูกต้อง" });

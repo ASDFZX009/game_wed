@@ -5,12 +5,13 @@ import * as S from "./pages/student.js";
 import * as T from "./pages/teacher.js";
 import * as L from "./pages/live.js";
 import * as A from "./pages/admin.js";
+import { loadPrefs, setPrefs, isDark } from "./prefs.js";
 
 const routes = [
   ["/", P.home], ["/games", P.library], ["/games/:id", P.playGame], ["/quizzes", P.quizList], ["/quizzes/:id", P.quizPage],
   ["/attempts/:id", P.attemptPage], ["/join", L.joinPage], ["/play/:pin", L.playerPage],
   ["/login", P.login], ["/register", P.register], ["/forgot", P.forgot], ["/privacy", P.privacy],
-  ["/dashboard", S.dashboard, "any"], ["/profile", S.profile, "any"], ["/settings", S.settings, "any"],
+  ["/dashboard", S.dashboard, "any"], ["/profile", S.profile, "any"], ["/settings", S.settings],
   ["/classes", S.classes, "any"], ["/classes/:id", S.classPage, "any"],
   ["/teacher", T.dashboard, "teacher"], ["/assignments/:id", T.assignmentReport, "teacher"],
   ["/teacher/quizzes", T.myQuizzes, "teacher"], ["/teacher/quizzes/new", T.quizBuilder, "teacher"], ["/teacher/quizzes/:id/edit", T.quizBuilder, "teacher"],
@@ -37,6 +38,7 @@ export function go(path, replace = false) {
 export async function refreshMe() {
   const { user } = await api("/api/auth/me");
   state.me = user;
+  loadPrefs();
   renderNav();
 }
 
@@ -88,7 +90,7 @@ function renderNav(cur = location.pathname) {
       ${link("/admin", "ภาพรวม", cur)} ${link("/admin/users", "ผู้ใช้", cur)} ${link("/admin/content", "ตรวจสอบเนื้อหา", cur)} ${link("/admin/categories", "หมวดหมู่", cur)}</div></div>` : "";
   const right = u
     ? html`<a href="/profile" class="me" title="${u.displayName}">👤 <span class="ellipsis">${u.displayName}</span></a><a href="/settings">ตั้งค่า</a><button class="linkish" id="logout">ออกจากระบบ</button>`
-    : html`<a href="/login${cur && !["/login", "/register", "/"].includes(cur) ? `?next=${encodeURIComponent(cur)}` : ""}">เข้าสู่ระบบ</a><a href="/register" class="btn btn-sm">สมัคร</a>`;
+    : html`<a href="/settings" title="ตั้งค่าการแสดงผล" aria-label="ตั้งค่าการแสดงผล">⚙️ ตั้งค่า</a><a href="/login${cur && !["/login", "/register", "/"].includes(cur) ? `?next=${encodeURIComponent(cur)}` : ""}">เข้าสู่ระบบ</a><a href="/register" class="btn btn-sm">สมัคร</a>`;
   nav.innerHTML = html`<div class="wrap topbar">
       <a href="/" class="logo" aria-label="EduPlay หน้าแรก"><span aria-hidden="true">🚀</span> EduPlay</a>
       <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
@@ -102,20 +104,14 @@ function renderNav(cur = location.pathname) {
   };
   document.getElementById("themeBtn").onclick = toggleTheme;
   const lo = document.getElementById("logout");
-  if (lo) lo.onclick = async () => { await api("/api/auth/logout", { method: "POST" }); state.me = null; toast("ออกจากระบบแล้ว"); go("/"); };
+  if (lo) lo.onclick = async () => { await api("/api/auth/logout", { method: "POST" }); state.me = null; loadPrefs(); toast("ออกจากระบบแล้ว"); go("/"); };
 }
 function closeMenu() { document.body.classList.remove("menu-open"); document.getElementById("menuBtn")?.setAttribute("aria-expanded", "false"); }
 
-// ---------- ธีม ----------
-function applyTheme() {
-  let t = null;
-  try { t = localStorage.getItem("theme"); } catch { /* ignore */ }
-  document.documentElement.dataset.theme = t || "";
-}
+// ---------- ธีม (ปุ่มลัดสลับมืด/สว่าง — ตั้งค่าละเอียดที่หน้า /settings) ----------
 function toggleTheme() {
-  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-  try { localStorage.setItem("theme", dark ? "light" : "dark"); } catch { /* ignore */ }
-  applyTheme();
+  setPrefs({ mode: isDark() ? "light" : "dark" });
+  toast(isDark() ? "เปลี่ยนเป็นโหมดมืด 🌙" : "เปลี่ยนเป็นโหมดสว่าง ☀️");
 }
 
 // ---------- เริ่มต้น ----------
@@ -130,11 +126,12 @@ document.addEventListener("click", (e) => {
 window.addEventListener("popstate", render);
 
 (async () => {
-  applyTheme();
+  loadPrefs(); // ใช้ค่าที่เก็บในเบราว์เซอร์ก่อน (กันหน้าจอกะพริบ)
   try {
     const [me, cfg] = await Promise.all([api("/api/auth/me"), api("/api/config")]);
     state.me = me.user; state.config = cfg;
   } catch { /* ออฟไลน์ */ }
+  loadPrefs();
   render();
 })();
 

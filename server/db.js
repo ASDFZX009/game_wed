@@ -181,6 +181,10 @@ CREATE INDEX IF NOT EXISTS idx_attempts_user ON quiz_attempts(user_id, submitted
 CREATE INDEX IF NOT EXISTS idx_activity_user ON activity(user_id, created_at);
 `);
 
+// ย้ายข้อมูล: เพิ่มคอลัมน์ที่มาทีหลัง (ฐานข้อมูลเดิมยังใช้ได้)
+const cols = db.prepare("PRAGMA table_info(users)").all().map((c) => c.name);
+if (!cols.includes("prefs")) db.exec("ALTER TABLE users ADD COLUMN prefs TEXT NOT NULL DEFAULT '{}'");
+
 const now = () => new Date().toISOString();
 const J = (s, d) => { try { return JSON.parse(s); } catch { return d; } };
 

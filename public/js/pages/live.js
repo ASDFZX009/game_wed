@@ -1,6 +1,7 @@
 // แข่งสด: สร้างห้อง (ครู), หน้าควบคุมของโฮสต์, เข้าร่วมด้วย PIN และหน้าผู้เล่น
 import { api, html, raw, state, toast, confetti, confirmBox, busy } from "../core.js";
 import { go, onLeave } from "../app.js";
+import { playSound } from "../prefs.js";
 
 const SHAPES = ["▲", "◆", "●", "■", "★", "✚"];
 const sock = () => window.io({ transports: ["websocket", "polling"] });
@@ -204,6 +205,7 @@ export async function playerPage({ main, params }) {
     stopTimer();
     me.score = r.you.score; me.rank = r.you.rank; save();
     const y = r.you;
+    playSound(y.correct ? "correct" : "wrong");
     shell(html`<div class="card center" style="padding:24px"><div style="font-size:3rem">${y.correct ? "✅" : y.answered ? "❌" : "⌛"}</div>
       <h2 style="margin:.2em 0">${y.correct ? `ถูกต้อง! +${y.gained.toLocaleString("th-TH")}` : y.answered ? "ยังไม่ถูก" : "ไม่ได้ตอบทันเวลา"}</h2><p class="muted">เฉลย: ${r.answer}</p></div>
       ${teamsHtml(r.teams)}${r.leaderboard ? html`<div class="card" style="margin-top:12px">${leaderboardHtml(r.leaderboard)}</div>` : ""}<p class="center muted small">รอครูไปข้อถัดไป…</p>`);
@@ -212,6 +214,7 @@ export async function playerPage({ main, params }) {
     stopTimer();
     me.score = r.you.score; me.rank = r.you.rank; save();
     if (r.you.rank && r.you.rank <= 3) confetti();
+    playSound("win");
     shell(html`<div class="card center" style="padding:24px"><div style="font-size:3rem">🏁</div><h2 style="margin:.2em 0">จบเกม</h2>
       <p style="font-size:1.2rem">คุณได้ ${r.you.score.toLocaleString("th-TH")} คะแนน${r.you.rank ? ` · อันดับ ${r.you.rank}` : ""}</p></div>
       ${teamsHtml(r.teams)}${r.leaderboard ? html`<div class="card" style="margin-top:12px">${leaderboardHtml(r.leaderboard)}</div>` : ""}

@@ -2,6 +2,7 @@
 import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo } from "../core.js";
 import { go, refreshMe } from "../app.js";
 import * as T from "./teacher.js";
+import { getPrefs, setPrefs, playSound, PALETTES, DEFAULTS } from "../prefs.js";
 
 const KIND = { game: "เล่นเกม", quiz: "ส่งแบบทดสอบ" };
 export function assignmentHref(a, classId) {
@@ -81,20 +82,66 @@ export async function classPage(ctx) {
 }
 
 export async function settings({ main, me }) {
-  main.innerHTML = html`<div class="narrow"><h1>ตั้งค่าบัญชี</h1><p class="muted">${me.email} · <a href="/privacy">นโยบายความเป็นส่วนตัว</a></p>
-    <form class="card" id="pf"><h2 style="margin-top:0">ข้อมูลส่วนตัว</h2><p class="small muted">ใช้ชื่อเล่นได้ ไม่จำเป็นต้องใช้ชื่อจริง ชื่อนี้ครูและเพื่อนในห้องจะเห็น</p>
+  const P = getPrefs();
+  const seg = (key, opts) => html`<div class="seg" role="group" data-seg="${key}">${opts.map(([v, t]) => html`<button type="button" data-v="${v}" aria-pressed="${P[key] === v}">${t}</button>`)}</div>`;
+  const sw = (key, title, desc) => html`<div class="set-row"><div class="t"><b id="l-${key}">${title}</b><span class="small muted">${desc}</span></div>
+    <label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label></div>`;
+  main.innerHTML = html`<div class="narrow"><h1>ตั้งค่า</h1>
+    <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a>${me ? html`<a href="#s-account">👤 บัญชี</a>` : ""}</nav>
+    <p class="small muted">${me ? "การตั้งค่าการแสดงผลจะบันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ" : "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้ — เข้าสู่ระบบเพื่อให้ตามไปทุกเครื่อง"} · มีผลทันทีที่เลือก</p>
+
+    <section class="card" id="s-look"><h2 style="margin-top:0">🎨 ธีมและการแสดงผล</h2>
+      <div class="preview" aria-hidden="true"><div class="ph"><b>ตัวอย่างธีม</b><div class="small" style="opacity:.9">เรียนสนุก เล่นได้จริง 🚀</div></div>
+        <div class="pb"><div class="row"><span class="btn btn-sm">ปุ่มหลัก</span><span class="btn btn-sm btn-ghost">ปุ่มรอง</span><span class="badge badge-brand">ป้าย</span><span class="badge badge-ok">ถูกต้อง</span></div>
+        <div class="progress" style="margin:0"><i style="width:65%"></i></div><div class="card" style="padding:10px 14px;box-shadow:none">การ์ดเนื้อหา · <a href="#s-look">ลิงก์</a> · <span class="muted">ข้อความรอง</span></div></div></div>
+      <h3 style="margin-top:18px">ธีมสี</h3>
+      <div class="palettes" role="radiogroup" aria-label="ธีมสี">${PALETTES.map((x) => html`<button type="button" class="pal" role="radio" data-pal="${x.id}" aria-checked="${P.palette === x.id}">
+        <div class="sw" style="background:linear-gradient(135deg, ${x.c[0]}, ${x.c[1]})">${x.icon}</div><span class="ok">${P.palette === x.id ? "✓" : ""}</span><span class="nm">${x.name}</span></button>`)}</div>
+      <div class="set-row" style="margin-top:12px"><div class="t"><b>โหมดสี</b><span class="small muted">“ตามอุปกรณ์” จะเปลี่ยนตามการตั้งค่ามืด/สว่างของเครื่อง</span></div>${seg("mode", [["light", "☀️ สว่าง"], ["dark", "🌙 มืด"], ["auto", "🖥️ ตามอุปกรณ์"]])}</div>
+      <div class="set-row"><div class="t"><b>ขนาดตัวอักษร</b><span class="small muted">ขยายทั้งหน้าเว็บ รวมเกมและแบบทดสอบ</span></div>${seg("fontSize", [["sm", "เล็ก"], ["md", "ปกติ"], ["lg", "ใหญ่"], ["xl", "ใหญ่มาก"]])}</div></section>
+
+    <section class="card" id="s-read"><h2 style="margin-top:0">👓 การอ่านและการเข้าถึง</h2>
+      ${sw("contrast", "ความต่างสีสูง", "ตัวอักษรรองเข้มขึ้น เส้นขอบชัดขึ้น อ่านง่ายในที่แสงจ้า")}
+      ${sw("dyslexic", "เว้นระยะตัวอักษร", "เพิ่มระยะห่างระหว่างตัวอักษร คำ และบรรทัด ช่วยให้อ่านง่ายขึ้น")}
+      <div class="set-row"><div class="t"><b>การเคลื่อนไหว</b><span class="small muted">ลดแอนิเมชันสำหรับผู้ที่ไวต่อการเคลื่อนไหว (ปิดพลุฉลองด้วย)</span></div>${seg("motion", [["auto", "ปกติ"], ["reduce", "ลดการเคลื่อนไหว"]])}</div></section>
+
+    <section class="card" id="s-game"><h2 style="margin-top:0">🎮 เกมและเสียง</h2>
+      <div class="set-row"><div class="t"><b id="l-sound">เสียงประกอบ</b><span class="small muted">เสียงเมื่อตอบถูก ตอบผิด พลิกการ์ด และจบเกม</span></div>
+        <div class="row"><button type="button" class="btn btn-ghost btn-sm" id="testSound">🔊 ลองฟัง</button><label class="switch"><input type="checkbox" data-sw="sound" aria-labelledby="l-sound" ${P.sound ? raw("checked") : ""}><span></span></label></div></div>
+      ${sw("confetti", "พลุฉลอง", "แสดงพลุกระดาษเมื่อได้คะแนนเต็มหรือติดอันดับ")}
+      ${sw("autoNext", "ไปข้อถัดไปอัตโนมัติ", "หลังตอบ เกมจะไปข้อต่อไปเอง (ตอบถูก 1.2 วินาที ตอบผิด 2.5 วินาที)")}</section>
+
+    <p class="row end"><button class="btn btn-ghost btn-sm" id="resetPrefs">↺ คืนค่าการแสดงผลเริ่มต้น</button></p>
+
+    ${me ? html`<h2 id="s-account" style="margin-top:28px">👤 บัญชี</h2><p class="muted" style="margin-top:-.4em">${me.email} · <a href="/privacy">นโยบายความเป็นส่วนตัว</a></p>
+    <form class="card" id="pf"><h3>ข้อมูลส่วนตัว</h3><p class="small muted">ใช้ชื่อเล่นได้ ไม่จำเป็นต้องใช้ชื่อจริง ชื่อนี้ครูและเพื่อนในห้องจะเห็น</p>
       <label for="dn">ชื่อที่แสดง</label><input id="dn" name="displayName" value="${me.displayName}" maxlength="60" required>
       <label for="gr">ระดับชั้น <span class="muted small">(ไม่บังคับ)</span></label><input id="gr" name="grade" value="${me.grade || ""}" maxlength="20" placeholder="เช่น ป.5">
       <div class="row" style="margin-top:12px"><button class="btn">บันทึก</button></div></form>
-    <form class="card" id="pw"><h2 style="margin-top:0">เปลี่ยนรหัสผ่าน</h2>
+    <form class="card" id="pw"><h3>เปลี่ยนรหัสผ่าน</h3>
       <label for="c1">รหัสผ่านปัจจุบัน</label><input id="c1" name="current" type="password" autocomplete="current-password" required>
       <label for="c2">รหัสผ่านใหม่ <span class="muted small">(อย่างน้อย 8 ตัว)</span></label><input id="c2" name="next" type="password" minlength="8" autocomplete="new-password" required>
       <div class="row" style="margin-top:12px"><button class="btn">เปลี่ยนรหัสผ่าน</button></div></form>
-    <form class="card" id="del" style="border-color:var(--bad)"><h2 style="margin-top:0;color:var(--bad)">ลบบัญชีและข้อมูลของฉัน</h2>
+    <form class="card" id="del" style="border-color:var(--bad)"><h3 style="color:var(--bad)">ลบบัญชีและข้อมูลของฉัน</h3>
       <p class="small">จะลบอีเมล ชื่อ คะแนน ประวัติการเล่น เหรียญ และการเป็นสมาชิกห้องเรียนทั้งหมดของคุณอย่างถาวร</p>
       <label for="d1">รหัสผ่านของคุณ</label><input id="d1" name="password" type="password" required>
       <label for="d2">พิมพ์ DELETE เพื่อยืนยัน</label><input id="d2" name="confirm" required autocomplete="off">
-      <div class="row" style="margin-top:12px"><button class="btn btn-danger" disabled>ลบบัญชีถาวร</button></div></form></div>`.s;
+      <div class="row" style="margin-top:12px"><button class="btn btn-danger" disabled>ลบบัญชีถาวร</button></div></form>`
+    : html`<div class="card center" id="s-account"><p>เข้าสู่ระบบเพื่อจัดการบัญชี และให้การตั้งค่าตามไปทุกเครื่อง</p><a class="btn" href="/login?next=/settings">เข้าสู่ระบบ</a> <a class="btn btn-ghost" href="/register">สมัครสมาชิก</a></div>`}</div>`.s;
+
+  const refresh = () => {
+    const p = getPrefs();
+    main.querySelectorAll("[data-seg]").forEach((g) => g.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(p[g.dataset.seg] === b.dataset.v))));
+    main.querySelectorAll("[data-pal]").forEach((b) => { const on = p.palette === b.dataset.pal; b.setAttribute("aria-checked", String(on)); b.querySelector(".ok").textContent = on ? "✓" : ""; });
+    main.querySelectorAll("[data-sw]").forEach((c) => { c.checked = !!p[c.dataset.sw]; });
+  };
+  main.querySelectorAll("[data-seg] button").forEach((b) => b.onclick = () => { setPrefs({ [b.closest("[data-seg]").dataset.seg]: b.dataset.v }); refresh(); });
+  main.querySelectorAll("[data-pal]").forEach((b) => b.onclick = () => { setPrefs({ palette: b.dataset.pal }); refresh(); toast(`เปลี่ยนธีมเป็น “${PALETTES.find((x) => x.id === b.dataset.pal).name}”`); });
+  main.querySelectorAll("[data-sw]").forEach((c) => c.onchange = () => { setPrefs({ [c.dataset.sw]: c.checked }); if (c.dataset.sw === "sound" && c.checked) playSound("correct"); });
+  main.querySelector("#testSound").onclick = () => { if (!getPrefs().sound) return toast("เปิดสวิตช์เสียงก่อน", "bad"); playSound("correct"); setTimeout(() => playSound("wrong"), 450); setTimeout(() => playSound("win"), 1000); };
+  main.querySelector("#resetPrefs").onclick = async () => { if (!(await confirmBox("คืนค่าการแสดงผลทั้งหมดเป็นค่าเริ่มต้น?", "คืนค่า"))) return; setPrefs({ ...DEFAULTS }); refresh(); toast("คืนค่าเริ่มต้นแล้ว"); };
+  if (!me) return;
+
   const pf = main.querySelector("#pf"), pw = main.querySelector("#pw"), del = main.querySelector("#del");
   pf.onsubmit = async (e) => { e.preventDefault(); try { await api("/api/auth/account", { method: "PATCH", body: formData(pf) }); await refreshMe(); toast("บันทึกแล้ว"); } catch (err) { toast(err.message, "bad"); } };
   pw.onsubmit = async (e) => { e.preventDefault(); try { await api("/api/auth/password", { body: formData(pw) }); pw.reset(); toast("เปลี่ยนรหัสผ่านแล้ว"); } catch (err) { toast(err.message, "bad"); } };

@@ -10,6 +10,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+/* ใช้ธีมที่บันทึกไว้ทันที (กันหน้าจอกะพริบก่อนโหลดสคริปต์หลัก) */
+try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = document.documentElement;
+  r.dataset.theme = p.mode && p.mode !== "auto" ? p.mode : ""; r.dataset.palette = p.palette || "violet"; r.dataset.font = p.fontSize || "md";
+  r.dataset.motion = p.motion || "auto"; if (p.contrast) r.dataset.contrast = "high"; if (p.dyslexic) r.dataset.dyslexic = "1"; } catch (e) {}
+</script>
 <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
