@@ -161,8 +161,8 @@ r.post("/:id/assignments", need("teacher"), (req, res) => {
   if (!c) return res.status(404).json({ error: "ไม่พบห้องเรียน" });
   const kind = req.body.kind === "game" ? "game" : "quiz";
   const ref = kind === "game"
-    ? db.prepare("SELECT * FROM games WHERE id=? AND status='published' AND (owner_id=? OR visibility='public')").get(req.body.refId, req.user.id)
-    : db.prepare("SELECT * FROM quizzes WHERE id=? AND status='published' AND (owner_id=? OR visibility='public')").get(req.body.refId, req.user.id);
+    ? db.prepare("SELECT * FROM games WHERE id=? AND status='published' AND (owner_id=? OR visibility='public')").get(+req.body.refId || 0, req.user.id)
+    : db.prepare("SELECT * FROM quizzes WHERE id=? AND status='published' AND (owner_id=? OR visibility='public')").get(+req.body.refId || 0, req.user.id);
   if (!ref) return res.status(400).json({ error: kind === "game" ? "กรุณาเลือกเกมที่เผยแพร่แล้ว" : "กรุณาเลือกแบบทดสอบที่เผยแพร่แล้ว" });
   const openAt = req.body.openAt ? zonedToUtc(req.body.openAt) : now();
   const dueAt = req.body.dueAt ? zonedToUtc(req.body.dueAt) : null;

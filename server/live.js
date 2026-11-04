@@ -68,7 +68,7 @@ function setup(app, io) {
 
   const r = express.Router();
   r.post("/", need("teacher"), (req, res) => {
-    const quiz = db.prepare("SELECT * FROM quizzes WHERE id=?").get(req.body.quizId);
+    const quiz = db.prepare("SELECT * FROM quizzes WHERE id=?").get(+req.body.quizId || 0);
     if (!quiz || (quiz.owner_id !== req.user.id && !(quiz.status === "published" && quiz.visibility === "public") && req.user.role !== "admin"))
       return res.status(404).json({ error: "ไม่พบแบบทดสอบ" });
     const questions = J(quiz.questions, []).filter((q) => LIVE_TYPES.includes(q.type)).map((q) => ({ ...q, time: DEFAULT_TIME }));

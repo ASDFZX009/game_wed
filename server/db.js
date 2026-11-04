@@ -1,15 +1,19 @@
 // ฐานข้อมูล SQLite (ไฟล์เดียว) — สร้างตารางอัตโนมัติเมื่อเริ่มระบบ
 const path = require("path");
 const fs = require("fs");
-const Database = require("better-sqlite3");
+const { DatabaseSync } = require("node:sqlite"); // SQLite ในตัวของ Node.js (ไม่ต้องคอมไพล์)
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || path.join(__dirname, "..", "data"));
 fs.mkdirSync(DATA_DIR, { recursive: true });
 const DB_FILE = process.env.DB_FILE || path.join(DATA_DIR, "eduplay.db");
 
-const db = new Database(DB_FILE);
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+const db = new DatabaseSync(DB_FILE);
+db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
+// ทำหลายคำสั่งเป็นชุดเดียว (สำเร็จทั้งหมดหรือยกเลิกทั้งหมด)
+db.transaction = (fn) => (...args) => {
+  db.exec("BEGIN");
+  try { const r = fn(...args); db.exec("COMMIT"); return r; } catch (e) { db.exec("ROLLBACK"); throw e; }
+};
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (

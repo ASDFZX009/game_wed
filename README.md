@@ -13,7 +13,7 @@
 
 ## เริ่มใช้งานบนเครื่อง
 
-ต้องมี [Node.js](https://nodejs.org) 18 ขึ้นไป
+ต้องมี [Node.js](https://nodejs.org) 22.13 ขึ้นไป (ใช้ฐานข้อมูล SQLite ที่มีในตัว Node ไม่ต้องติดตั้งโปรแกรมเพิ่มหรือคอมไพล์)
 
 ```bash
 npm install
@@ -53,7 +53,7 @@ npm start
 
 ## นำขึ้นออนไลน์
 
-แอปนี้มีเซิร์ฟเวอร์ (Node.js + Socket.IO + SQLite) จึง **ใช้ GitHub Pages ไม่ได้** ต้องใช้บริการที่รัน Node.js ได้และมีดิสก์ถาวร เช่น
+แอปนี้มีเซิร์ฟเวอร์ (Node.js 22.13+ พร้อม Socket.IO และ SQLite ในตัว) จึง **ใช้ GitHub Pages ไม่ได้** ต้องใช้บริการที่รัน Node.js ได้และมีดิสก์ถาวร เช่น
 
 - **Render:** เชื่อม repo นี้แล้วเลือก Blueprint ระบบจะอ่าน [`render.yaml`](render.yaml) ให้ (ต้องใช้แพ็กเกจที่มีดิสก์ถาวร) จากนั้นตั้ง `PUBLIC_BASE_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
 - **Railway / Fly.io / VPS:** คำสั่ง `npm ci && npm start` และเมานต์ดิสก์ไว้ที่ `DATA_DIR`
