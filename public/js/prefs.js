@@ -15,7 +15,7 @@ export const SKINS = [
   { id: "clay", name: "ดินน้ำมันนุ่มนิ่ม", icon: "🧸", desc: "มุมมน ปุ่มนูน 3 มิติ" },
 ];
 const SKIN_FONTS = {comic:"Kanit:wght@400;600;700;800",pixel:"Chakra+Petch:wght@400;600;700&family=Pixelify+Sans:wght@500;700",neon:"Chakra+Petch:wght@400;600;700",sketch:"Itim",glass:"Prompt:wght@400;500;600;700",clay:"Mitr:wght@400;500;600"};
-function loadSkinFont(id) {
+export function loadSkinFont(id) {
   if (!SKIN_FONTS[id] || document.getElementById("skin-font-" + id)) return;
   const l = Object.assign(document.createElement("link"), { rel: "stylesheet", id: "skin-font-" + id, href: `https://fonts.googleapis.com/css2?family=${SKIN_FONTS[id]}&display=swap` });
   document.head.appendChild(l);

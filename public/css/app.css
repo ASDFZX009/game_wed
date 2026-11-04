@@ -856,3 +856,68 @@ body.home-world { overflow: hidden; }
 @media (max-width: 640px) { .world-hint { font-size: .7rem; right: 10px; } }
 .world-hint .wh-short { display: none; }
 @media (hover: none), (max-width: 640px) { .world-hint .wh-long { display: none; } .world-hint .wh-short { display: inline; } }
+
+/* 🛒 ร้านค้าแนวพิกเซลอาร์ต (เข้ากับหมู่บ้านหน้าแรก): ฉากในร้าน + ตู้ไม้ + ป้ายกระดาษ */
+body.shop-world { --wood: #6e4224; --wood-d: #3a2210; --wood-l: #a8703e; --parch: #f4e4bc; --parch-d: #e2c992; --ink-w: #3a2412; --px-font: "Pixelify Sans", "Chakra Petch", "Kanit", "Noto Sans Thai", sans-serif;
+  background-color: #2c1a0e; background-image: repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 2px, transparent 2px 46px, rgba(255,255,255,.035) 46px 48px), repeating-linear-gradient(0deg, rgba(255,255,255,.025) 0 1px, transparent 1px 7px); color: #f6e7c8; }
+body.shop-world .foot { color: #c8a878; } body.shop-world .foot a { color: #f0c878; }
+body.shop-world main.wrap { padding-top: 0; }
+.shop-scene { position: relative; margin: 0 calc(50% - 50vw) 18px; width: 100vw; overflow: hidden; background: #3a2210; box-shadow: 0 4px 0 #1a0e06, 0 10px 24px rgba(0,0,0,.45); }
+.ss-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; }
+.shop-scene::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse 70% 80% at 45% 45%, transparent 55%, rgba(14,8,2,.5) 100%), linear-gradient(160deg, rgba(255,200,120,.12), transparent 50%); }
+.ss-sign { position: absolute; left: max(16px, calc(50vw - 560px)); top: 18%; margin: 0; z-index: 2; font-family: var(--px-font); font-size: clamp(1.2rem, 2.6vw, 1.9rem); color: #fff3d6; background: #8a5630; padding: 6px 16px 8px; text-shadow: 2px 2px 0 #3a2210;
+  box-shadow: inset 0 3px 0 #b07a46, inset 0 -4px 0 #5e3a1c, 0 0 0 3px #2a1608, 4px 6px 0 3px rgba(0,0,0,.35); transform: rotate(-2deg); }
+.ss-sign::before, .ss-sign::after { content: ""; position: absolute; top: -40px; width: 3px; height: 40px; background: #2a1608; } .ss-sign::before { left: 16px; } .ss-sign::after { right: 16px; }
+.ss-back { position: absolute; left: max(16px, calc(50vw - 560px)); bottom: 12px; z-index: 2; font-weight: 800; font-size: .9rem; text-decoration: none; color: #2a1608 !important; background: var(--parch); padding: 6px 12px; box-shadow: inset -3px -3px 0 var(--parch-d), 0 0 0 3px #2a1608, 3px 4px 0 3px rgba(0,0,0,.3); }
+.ss-back:hover { background: #fff3d0; } .ss-back:active { transform: translate(2px, 2px); }
+.ss-wallet { position: absolute; right: max(16px, calc(50vw - 560px)); top: 14px; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 8px 14px 8px 8px; background: rgba(30,18,8,.86); color: #fff3d6; box-shadow: 0 0 0 3px #f0c040, 0 0 0 6px #2a1608, 4px 6px 0 6px rgba(0,0,0,.3); }
+.ss-wallet .nm { font-size: .78rem; opacity: .85; } .ss-wallet .amt { font-family: var(--px-font); font-size: 1.5rem; font-weight: 700; color: #ffd84a; text-shadow: 2px 2px 0 #3a2210; line-height: 1.1; }
+.ss-wallet a { color: #ffd84a !important; font-weight: 800; padding: 2px 6px; }
+.ss-wallet .ava.lg { font-size: 1.6rem; }
+.ss-bubble { position: absolute; z-index: 3; transform: translate(-50%, -100%); max-width: min(300px, 70vw); width: max-content; padding: 7px 12px; font-weight: 700; font-size: .9rem; line-height: 1.4; color: #1a1420; background: #fffdf6; box-shadow: 0 0 0 3px #1a1420, 4px 5px 0 3px rgba(0,0,0,.3); pointer-events: none; }
+.ss-bubble::after { content: ""; position: absolute; left: 50%; bottom: -9px; margin-left: -6px; border: 6px solid transparent; border-top-color: #1a1420; border-bottom: 0; }
+.ss-bubble.pop { animation: ss-pop .35s steps(4); } @keyframes ss-pop { from { opacity: 0; margin-top: 8px; } }
+body.shop-world .shop-body h2 { display: inline-block; font-family: var(--px-font); color: #fff3d6; background: #8a5630; padding: 4px 14px 6px; margin: 22px 4px 14px; text-shadow: 2px 2px 0 #3a2210; box-shadow: inset 0 3px 0 #b07a46, inset 0 -3px 0 #5e3a1c, 0 0 0 3px #2a1608; }
+body.shop-world .note, body.shop-world details.info { background: var(--parch); color: var(--ink-w); border: 0; border-radius: 0; box-shadow: inset -4px -4px 0 var(--parch-d), 0 0 0 3px #2a1608; }
+body.shop-world details.info a, body.shop-world .note a { color: #8a3a10; }
+/* หีบสมบัติ */
+body.shop-world .boxes { gap: 22px; }
+body.shop-world .lootbox { border-radius: 0; text-align: center; padding: 16px 14px 14px; color: #fff3d6; background: linear-gradient(#7a4a28, #5e3820); box-shadow: inset 0 4px 0 #a8703e, inset 0 -5px 0 #3e2412, 0 0 0 4px #2a1608, 6px 8px 0 4px rgba(0,0,0,.35); }
+body.shop-world .lootbox.gold { background: linear-gradient(#5e3a1a, #3e260e); box-shadow: inset 0 4px 0 #8a5a2a, inset 0 -5px 0 #24160a, 0 0 0 4px #f0c040, 0 0 0 8px #2a1608, 6px 8px 0 8px rgba(0,0,0,.35); }
+body.shop-world .lootbox.profile { background: linear-gradient(#4a2a66, #2e1844); box-shadow: inset 0 4px 0 #6e4a92, inset 0 -5px 0 #1e0e30, 0 0 0 4px #ff6ab0, 0 0 0 8px #2a1608, 6px 8px 0 8px rgba(0,0,0,.35); }
+body.shop-world .lootbox .big.chest { width: 104px; height: auto; image-rendering: pixelated; image-rendering: crisp-edges; filter: drop-shadow(0 0 10px rgba(255,220,120,.35)); }
+body.shop-world .lootbox h3 { font-family: var(--px-font); font-size: 1.15rem; text-shadow: 2px 2px 0 #1a0e06; }
+body.shop-world .lootbox p, body.shop-world .lootbox details { color: #f0dcb8; }
+body.shop-world .lootbox .row { justify-content: center; }
+body.shop-world .btn { border: 0; border-radius: 0; font-family: var(--px-font); font-weight: 700; color: #fff !important; background: #4caf3c; text-shadow: 1px 1px 0 rgba(0,0,0,.35); box-shadow: inset -3px -3px 0 #2e7a24, inset 3px 3px 0 #8ee070, 0 0 0 3px #1a1006; margin: 3px; }
+body.shop-world .btn:hover { filter: brightness(1.08); } body.shop-world .btn:active { transform: translate(2px, 2px); box-shadow: inset 3px 3px 0 #2e7a24, 0 0 0 3px #1a1006; }
+body.shop-world .btn.free { background: #f0c040; color: #3a2210 !important; text-shadow: none; box-shadow: inset -3px -3px 0 #c08a1a, inset 3px 3px 0 #fff0a0, 0 0 0 3px #1a1006; }
+body.shop-world .btn-ghost, body.shop-world .btn[disabled] { background: var(--parch-d); color: var(--ink-w) !important; text-shadow: none; box-shadow: inset -3px -3px 0 #c0a46c, inset 3px 3px 0 #fff3d0, 0 0 0 3px #1a1006; }
+body.shop-world .lootbox .btn:not(.free) { background: #4caf3c; color: #fff !important; }
+/* แถบหมวด = ป้ายไม้ห้อย */
+body.shop-world .tabs { gap: 10px; margin: 24px 0 18px; }
+body.shop-world .tabs .chip { border: 0; border-radius: 0; font-weight: 700; color: var(--ink-w); background: #d8a868; box-shadow: inset 0 2px 0 #f0c890, inset 0 -3px 0 #a87440, 0 0 0 3px #2a1608; margin: 3px; }
+body.shop-world .tabs .chip[aria-pressed="true"], body.shop-world .tabs .chip[aria-selected="true"] { background: #f0c040; color: #2a1608; box-shadow: inset 0 2px 0 #fff0a0, inset 0 -3px 0 #c08a1a, 0 0 0 3px #2a1608, 0 4px 0 3px #2a1608; transform: translateY(-2px); }
+/* ตู้โชว์สินค้า + ป้ายกระดาษ */
+body.shop-world .items { padding: 16px; gap: 16px; background: #24140a; background-image: repeating-linear-gradient(90deg, rgba(255,255,255,.03) 0 2px, transparent 2px 40px); box-shadow: inset 0 0 0 4px #5e3820, inset 0 0 0 8px #2a1608, inset 0 12px 24px rgba(0,0,0,.5), 0 0 0 3px #1a0e06; }
+body.shop-world .item { border: 0; border-radius: 0; color: var(--ink-w); background: var(--parch); --rc: #6b4a2a; box-shadow: inset -4px -4px 0 var(--parch-d), inset 4px 4px 0 #fff6dc, 0 0 0 3px var(--rc), 0 0 0 6px #1a0e06, 0 8px 0 4px rgba(0,0,0,.35); margin: 6px; }
+body.shop-world .item.r-rare { --rc: #3a6ad0; } body.shop-world .item.r-epic { --rc: #9a4ae0; } body.shop-world .item.r-legendary { --rc: #f0b020; background: linear-gradient(#fff4cc, var(--parch)); }
+body.shop-world .item .rar { border-radius: 0; top: -8px; left: -6px; color: #fff; background: var(--rc); box-shadow: 0 0 0 2px #1a0e06; font-family: var(--px-font); }
+body.shop-world .item.equipped { box-shadow: inset -4px -4px 0 var(--parch-d), inset 4px 4px 0 #fff6dc, 0 0 0 3px #4caf3c, 0 0 0 6px #1a0e06, 0 0 18px 6px rgba(120,255,90,.35); }
+body.shop-world .item .muted, body.shop-world .item .small { color: #7a5a3a; }
+body.shop-world .item:hover { transform: translateY(-3px); }
+body.shop-world .empty { color: #f0dcb8; }
+/* สมุดบัญชีเหรียญ */
+body.shop-world .list { background: var(--parch); color: var(--ink-w); border: 0; border-radius: 0; box-shadow: inset -4px -4px 0 var(--parch-d), 0 0 0 3px #2a1608; background-image: repeating-linear-gradient(transparent 0 37px, rgba(120,80,40,.18) 37px 38px); }
+body.shop-world .list li { border-color: transparent; } body.shop-world .list .muted { color: #7a5a3a; }
+body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4px #f0c040, 0 0 0 8px #2a1608; }
+.px-chest { width: 120px; image-rendering: pixelated; image-rendering: crisp-edges; }
+@media (max-width: 640px) {
+  .ss-sign { top: 10px; font-size: 1.1rem; padding: 4px 10px 6px; } .ss-sign::before, .ss-sign::after { display: none; }
+  .ss-wallet { top: auto; bottom: 10px; right: 10px; padding: 4px 10px; gap: 6px; } .ss-wallet .amt { font-size: 1.1rem; } .ss-wallet .nm, .ss-wallet .ava { display: none; }
+  .ss-back { bottom: 10px; left: 10px; font-size: .8rem; padding: 4px 8px; }
+  .ss-bubble { font-size: .74rem; max-width: 54vw; padding: 5px 8px; } .ss-bubble.narrow { transform: translate(-62%, -100%); } .ss-bubble.narrow::after { left: 62%; }
+  .ss-sign { font-size: .9rem; padding: 3px 8px 5px; left: 8px; }
+  body.shop-world .items { padding: 10px; gap: 10px; } body.shop-world .item { margin: 4px; }
+  body.shop-world .lootbox .big.chest { width: 80px; }
+}

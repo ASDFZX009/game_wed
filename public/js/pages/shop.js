@@ -1,7 +1,8 @@
 // ร้านค้าของตกแต่ง + กล่องสุ่ม
 import { api, html, raw, state, toast, confetti, confirmBox, fmtDate, avatar, titleTag } from "../core.js";
-import { go, refreshMe } from "../app.js";
-import { playSound, setPrefs, getPrefs, playTick } from "../prefs.js";
+import { go, refreshMe, onLeave } from "../app.js";
+import { mountShopScene, chestImg } from "./shopscene.js";
+import { playSound, setPrefs, getPrefs, playTick, reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TYPE_IC = { avatar: "🐱", pfp: "🎭", frame: "🖼️", title: "🏷️", theme: "🎨", sound: "🎵", effect: "🎉", background: "🌌" };
 const REASON = { game: "เล่นเกม", quiz: "ส่งแบบทดสอบ", buy: "ซื้อ", box: "เปิดกล่อง", duplicate: "ได้ของซ้ำ คืนเหรียญ", free_box: "เปิดกล่องฟรี" };
@@ -29,9 +30,9 @@ export async function shop({ main, query }) {
     const list = d.items.filter((x) => tab === "all" || (tab === "mine" ? x.owned : x.type === tab));
     const ownedCount = d.items.filter((x) => x.owned).length;
     const look = me?.equipped || {};
-    main.innerHTML = html`
-      <div class="shop-head"><div><h1 style="margin:0">🛒 ร้านค้า</h1><p class="muted" style="margin:.2em 0 0">ใช้เหรียญจากการเล่นเกมและทำแบบทดสอบ แลกของตกแต่งเว็บไซต์</p></div>
-        ${me ? html`<div class="wallet">${avatar(look, "lg")}<div><div class="small muted">${me.displayName}${titleTag(look)}</div><div class="amt" id="coinAmt">🪙 ${d.coins.toLocaleString("th-TH")}</div></div></div>` : ""}</div>
+    const wallet = main.querySelector("#ssWallet");
+    if (wallet) wallet.innerHTML = me ? html`${avatar(look, "lg")}<div><div class="nm">${me.displayName}</div><div class="amt" id="coinAmt">🪙 ${d.coins.toLocaleString("th-TH")}</div></div>`.s : html`<a href="/login?next=/shop">🔐 เข้าสู่ระบบ</a>`.s;
+    body.innerHTML = html`
       ${!me ? html`<div class="note">👋 ดูของในร้านได้เลย — <a href="/login?next=/shop">เข้าสู่ระบบ</a> แล้วเล่นเกมเพื่อสะสมเหรียญมาแลกของ</div>` : ""}
       <details class="info small" style="margin-top:14px"><summary><b>ได้เหรียญ 🪙 จากไหน?</b></summary>
         <ul style="margin:6px 0 0"><li>เล่นเกมจบ 1 ครั้ง ได้สูงสุด 50 เหรียญ (ตามสัดส่วนคะแนน)</li><li>ส่งแบบทดสอบ ได้สูงสุด 20 เหรียญ</li><li>เปิดกล่องสุ่มธรรมดาฟรีวันละ 1 ครั้ง</li><li>ของที่ได้ทั้งหมดอยู่ใน <a href="/bag">🎒 กระเป๋า</a> เลือกใส่/ใช้ได้ที่นั่น</li><li>ได้ของซ้ำจากกล่องสุ่ม ระบบคืนเหรียญให้ (ธรรมดา 20 · หายาก 50 · ล้ำค่า 120 · ตำนาน 300)</li></ul>
@@ -39,7 +40,7 @@ export async function shop({ main, query }) {
 
       <h2>🎁 กล่องสุ่ม</h2>
       <div class="boxes">${d.boxes.map((b) => html`<div class="lootbox ${b.id === "gold" ? "gold" : b.id === "profile" ? "profile" : ""}">
-        <span class="big" aria-hidden="true">${b.icon}</span><h3>${b.name}</h3><p>${b.desc}</p>
+        <img class="big chest" src="${chestImg(b.id)}" alt="" aria-hidden="true"><h3>${b.name}</h3><p>${b.desc}</p>
         <div class="row">${b.id === "basic" && me && d.freeBox ? html`<button class="btn free" data-box="${b.id}" data-free="1">🎉 เปิดฟรีวันนี้!</button>` : ""}
           <button class="btn" data-box="${b.id}" ${!me ? raw("disabled") : ""}>เปิด 🪙 ${b.price}</button></div>
         <details><summary>ดูโอกาสที่จะได้ของแต่ละระดับ</summary><div class="odds">${Object.entries(b.odds).map(([k, v]) => html`<span>${d.rarity[k].name}</span><span style="opacity:.8">${d.items.filter((x) => x.rarity === k && (b.pool ? x.type === b.pool : x.type !== "pfp")).length} ชิ้น</span><b>${v}%</b>`)}</div></details></div>`)}</div>
@@ -88,7 +89,7 @@ export async function shop({ main, query }) {
     if (!free && !(await confirmBox(`เปิด “${box.name}” ด้วย 🪙 ${box.price}?`, "เปิดกล่อง"))) return;
     const dlg = document.createElement("dialog");
     dlg.className = "boxmodal";
-    dlg.innerHTML = html`<div class="reveal"><div class="inner"><div class="chest" aria-hidden="true">${box.icon}</div><p class="muted">กำลังเปิดกล่อง…</p></div></div>`.s;
+    dlg.innerHTML = html`<div class="reveal"><div class="inner"><div class="chest" aria-hidden="true"><img class="px-chest" src="${chestImg(box.id)}" alt=""></div><p class="muted">กำลังเปิดกล่อง…</p></div></div>`.s;
     document.body.appendChild(dlg);
     dlg.showModal();
     dlg.addEventListener("close", () => dlg.remove());
@@ -114,5 +115,21 @@ export async function shop({ main, query }) {
     dlg.addEventListener("close", () => reload(), { once: true });
   }
 
+  // โครงหน้า: ฉากในร้าน (สร้างครั้งเดียว) + เนื้อหาที่วาดใหม่ทุกครั้งที่ข้อมูลเปลี่ยน
+  document.body.classList.add("shop-world"); loadSkinFont("pixel");
+  main.innerHTML = html`<section class="shop-scene" aria-label="ในร้านค้า">
+      <div class="ss-bubble" role="status" aria-live="polite"></div>
+      <h1 class="ss-sign">🛒 ร้านค้า</h1>
+      <a class="ss-back" href="/" id="ssBack">⬅ กลับหมู่บ้าน</a>
+      <div class="ss-wallet" id="ssWallet"></div>
+    </section><div class="shop-body" id="shopBody"></div>`.s;
+  const body = main.querySelector("#shopBody");
+  main.querySelector("#ssBack").addEventListener("click", () => { try { sessionStorage.setItem("eduplay:worldPos", "shop"); } catch { /* ignore */ } });
+  const greet = [me ? `ยินดีต้อนรับ ${me.displayName}! เลือกดูของได้ตามสบายเลย` : "ยินดีต้อนรับสู่ร้านค้า! เลือกดูของได้ตามสบายเลย",
+    ...(me && d.freeBox ? ["วันนี้เปิดกล่องสุ่มธรรมดาฟรีได้ 1 ครั้งนะ!"] : []), ...(!me ? ["เข้าสู่ระบบแล้วเล่นเกมสะสมเหรียญ มาแลกของที่ร้านได้นะ"] : []),
+    "กล่องสุ่มโปรไฟล์มีรูปให้สะสมตั้ง 16 ร่างเลยนะ", "ของที่ได้แล้วไปเปลี่ยนใส่ได้ที่กระเป๋า"];
+  const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
+  const scene = mountShopScene(main.querySelector(".shop-scene"), { shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion(), greet });
+  onLeave(() => { scene.destroy(); document.body.classList.remove("shop-world"); });
   render();
 }

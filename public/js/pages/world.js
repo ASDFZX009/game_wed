@@ -717,3 +717,6 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     walkToPlace(id) { const p = PLACES.find((x) => x.id === id); if (p) walkTo(p.ex, p.ey, p); },
   };
 }
+
+// ใช้ร่วมกับฉากในร้านค้า (shopscene.js)
+export { canvas, R, shade, hash, outline, charFrame, PROP, crystalSprite, ellipseShadow, VILLAGERS };
