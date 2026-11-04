@@ -55,7 +55,9 @@ export async function connectRemote(onLoaded) {
     const snap = await doc.get();
     const data = snap?.data ? snap.data() : snap;
     const theirs = data && data.state ? JSON.parse(data.state) : null;
-    remote = { set: (st) => doc.set({ state: JSON.stringify(st), updatedAt: st.updatedAt }) };
+    let busy = false, again = false;
+    const push = async () => { if (busy) { again = true; return; } busy = true; try { do { again = false; await doc.set({ state: JSON.stringify(S), updatedAt: S.updatedAt || "" }); } while (again); } finally { busy = false; } };
+    remote = { set: () => push() };
     if (theirs && theirs.v === 1 && (theirs.updatedAt || "") > (S.updatedAt || "")) { S = { ...fresh(), ...theirs }; try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* */ } onLoaded?.(); }
     else remote.set(S).catch(() => {});
   } catch { /* ไม่มีที่เก็บในบัญชี: ใช้ในเบราว์เซอร์อย่างเดียว */ }

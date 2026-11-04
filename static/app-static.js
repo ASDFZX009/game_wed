@@ -14,11 +14,11 @@ const ROUTES = [
   [/^\/$/, "", P.home], [/^\/games$/, "games", P.library], [/^\/games\/(\d+)$/, "game-$1", P.playGame, "id"],
   [/^\/quizzes$/, "quizzes", P.quizList], [/^\/quizzes\/(\d+)$/, "quiz-$1", P.quizPage, "id"], [/^\/attempts\/(\d+)$/, "attempt-$1", P.attemptPage, "id"],
   [/^\/dashboard$/, "dashboard", S.dashboard], [/^\/profile$/, "profile", S.profile], [/^\/shop$/, "shop", SH.shop],
-  [/^\/settings$/, "settings", S.settings], [/^\/privacy$/, "privacy", privacyLocal],
+  [/^\/settings$/, "prefs", S.settings], [/^\/privacy$/, "privacy", privacyLocal],
 ];
 const HASH = [
   [/^$/, "/"], [/^games$/, "/games"], [/^game-(\d+)$/, "/games/$1"], [/^quizzes$/, "/quizzes"], [/^quiz-(\d+)$/, "/quizzes/$1"],
-  [/^attempt-(\d+)$/, "/attempts/$1"], [/^dashboard$/, "/dashboard"], [/^profile$/, "/profile"], [/^shop$/, "/shop"], [/^settings$/, "/settings"], [/^privacy$/, "/privacy"],
+  [/^attempt-(\d+)$/, "/attempts/$1"], [/^dashboard$/, "/dashboard"], [/^profile$/, "/profile"], [/^shop$/, "/shop"], [/^prefs$/, "/settings"], [/^settings$/, "/settings"], [/^privacy$/, "/privacy"],
 ];
 let pending = null; // ที่อยู่เต็ม (รวม ?query) ที่รอแสดง
 let cleanup = null;
