@@ -3,6 +3,8 @@ import { api, html, raw, state, toast, fmtDate, DIFF, formData, busy, confetti, 
 import { go, refreshMe, homeFor, onLeave } from "../app.js";
 import { startGame } from "../game.js";
 import { renderQuestion, bindQuestions, readAnswers, countUnanswered } from "../quizform.js";
+import { mountWorld } from "./world.js";
+import { reducedMotion } from "../prefs.js";
 
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
 
@@ -16,21 +18,28 @@ export function gameCard(g) {
 
 export async function home({ main }) {
   const [{ games, count }, { categories }] = await Promise.all([api("/api/games/featured"), api("/api/categories")]);
+  const local = state.config?.local;
   main.innerHTML = html`
-    <section class="hero"><h1>เรียนสนุก เล่นได้จริง</h1>
-      <p>มีเกมให้เล่น ${count} เกม ครอบคลุมทุกวิชา ลองเล่นได้ทันทีโดยไม่ต้องสมัคร${state.config?.local ? " สะสมเหรียญไปแลกของแต่งในร้านค้าได้" : " ครูสร้างเกม มอบหมายงาน และจัดแข่งสดในห้องเรียนได้"}</p>
-      <div class="row" style="margin-top:16px"><a class="btn btn-lg" href="/games">🎮 ดูคลังเกม</a>${state.config.local ? html`<a class="btn btn-lg btn-ghost" href="/shop">🛒 ร้านค้า &amp; กล่องสุ่ม</a>` : html`<a class="btn btn-lg btn-ghost" href="/join">⚡ เข้าร่วมด้วย PIN</a>`}</div>
-      <div class="hero-art" aria-hidden="true"><span>🚀</span></div></section>
+    <section class="world-wrap" aria-labelledby="w-title">
+      <div class="world-head"><div><h1 id="w-title">🏡 หมู่บ้านแห่งการเรียนรู้</h1>
+        <p class="muted">เดินไปเข้าบ้านวิชาที่อยากเล่น · มีเกม ${count} เกม ครอบคลุมทุกวิชา${local ? " · เดินไปท่าเรือเพื่อเล่นเกมตอบคำถาม" : ""}</p></div>
+        <a class="btn btn-ghost btn-sm" href="/games">🎮 ดูคลังเกมทั้งหมด</a></div>
+      <div class="world" id="world"></div>
+      <nav class="world-quick" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a class="chip" href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
+        ${local ? html`<a class="chip" href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a class="chip" href="/shop">🛒 ร้านค้า</a></nav>
+    </section>
+    <h2>เกมยอดนิยม</h2><div class="grid">${games.map(gameCard)}</div>
+    <p class="center" style="margin-top:20px"><a class="btn btn-ghost" href="/games">ดูเกมทั้งหมด →</a></p>
     <div class="features">
       <div class="feature"><div class="ic">🎯</div><b>เกม 5 แบบ</b><div class="small muted">ถูก/ผิด ปรนัย เรียงลำดับ เรียงคำ และพลิกการ์ดจับคู่</div></div>
       <div class="feature"><div class="ic">📝</div><b>คำถาม 10 ชนิด</b><div class="small muted">รวมเลือกหลายข้อ ตอบเป็นตัวเลข และเติมคำจากคลังคำ</div></div>
-      ${state.config.local ? html`<div class="feature"><div class="ic">🎁</div><b>ร้านค้า &amp; กล่องสุ่ม</b><div class="small muted">ใช้เหรียญจากการเล่นแลกอวาตาร์ ธีม และของตกแต่ง</div></div>` : html`<div class="feature"><div class="ic">⚡</div><b>แข่งสดในห้องเรียน</b><div class="small muted">สแกน QR เข้าร่วมจากมือถือ เห็นอันดับแบบเรียลไทม์</div></div>`}
+      <div class="feature"><div class="ic">🎁</div><b>ร้านค้า &amp; กล่องสุ่ม</b><div class="small muted">ใช้เหรียญจากการเล่นแลกอวาตาร์ ธีม และของตกแต่ง</div></div>
       <div class="feature"><div class="ic">🏅</div><b>สะสม XP และเหรียญ</b><div class="small muted">เล่นต่อเนื่อง ได้คะแนนเต็ม ปลดล็อกเหรียญรางวัล</div></div>
-    </div>
-    <h2>เลือกตามวิชา</h2>
-    <div class="chips">${categories.map((c) => html`<a class="chip" href="/games?category=${c.slug}" style="text-decoration:none">${c.icon} ${c.name}</a>`)}</div>
-    <h2>เกมยอดนิยม</h2><div class="grid">${games.map(gameCard)}</div>
-    <p class="center" style="margin-top:20px"><a class="btn btn-ghost" href="/games">ดูเกมทั้งหมด →</a></p>`.s;
+    </div>`.s;
+  const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#5b3df5";
+  const w = mountWorld(main.querySelector("#world"), { go, playerName: state.me?.displayName || "นักผจญภัย", shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion() });
+  window.__world = w; // ให้สคริปต์ทดสอบตรวจได้
+  onLeave(() => { w.destroy(); if (window.__world === w) delete window.__world; });
 }
 
 export async function library({ main, query }) {
