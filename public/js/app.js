@@ -73,7 +73,7 @@ async function render() {
     if (e.status === 401) return go(`/login?next=${encodeURIComponent(path)}`, true);
     main.innerHTML = html`<div class="card center"><h2>เกิดข้อผิดพลาด</h2><p>${e.message}</p><a class="btn" href="/">กลับหน้าแรก</a></div>`.s;
   }
-  document.title = (document.querySelector("#app h1")?.textContent?.trim() || "EduPlay") + " · EduPlay Universe";
+  document.title = (document.querySelector("#app h1")?.textContent?.trim() || "QUIZ ODYSSEY") + " · QUIZ ODYSSEY";
 }
 
 // ---------- แถบเมนู ----------
@@ -97,7 +97,7 @@ function renderNav(cur = location.pathname) {
     ? html`<a href="/shop" class="coins" title="เหรียญของฉัน" aria-label="เหรียญ ${u.coins} เหรียญ">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a><a href="/profile" class="me" title="${u.displayName}">${avatar(u.equipped)} <span class="ellipsis">${u.displayName}</span></a><a href="/settings">ตั้งค่า</a><button class="linkish" id="logout">ออกจากระบบ</button>`
     : html`<a href="/settings" title="ตั้งค่าการแสดงผล" aria-label="ตั้งค่าการแสดงผล">⚙️ ตั้งค่า</a><a href="/login${cur && !["/login", "/register", "/"].includes(cur) ? `?next=${encodeURIComponent(cur)}` : ""}">เข้าสู่ระบบ</a><a href="/register" class="btn btn-sm">สมัคร</a>`;
   nav.innerHTML = html`<div class="wrap topbar">
-      <a href="/" class="logo" aria-label="EduPlay หน้าแรก"><span aria-hidden="true">🚀</span> EduPlay</a>
+      <a href="/" class="logo" aria-label="QUIZ ODYSSEY หน้าแรก"><span aria-hidden="true">🧭</span> QUIZ ODYSSEY</a>
       <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
       <div class="menu" id="menu">
         <nav class="links" aria-label="เมนูหลัก">${main}</nav>
@@ -162,6 +162,6 @@ window.addEventListener("popstate", render);
   }
 })();
 window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); state.installPrompt = e; });
-window.addEventListener("appinstalled", () => { state.installPrompt = null; toast("ติดตั้ง EduPlay แล้ว 🎉"); });
+window.addEventListener("appinstalled", () => { state.installPrompt = null; toast("ติดตั้ง QUIZ ODYSSEY แล้ว 🎉"); });
 
 export { esc };

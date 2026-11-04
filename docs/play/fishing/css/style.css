@@ -213,5 +213,5 @@ button{font-family:inherit}
 /* hide HUD on title */
 .scene-title #coinBox,.scene-title #portrait,.scene-title #hpBox,.scene-title #invTitle,.scene-title #dropZone{display:none!important}
 
-/* EduPlay: ป้ายระดับชั้นของคำถามในแต่ละทะเล */
+/* QUIZ ODYSSEY: ป้ายระดับชั้นของคำถามในแต่ละทะเล */
 .zone .zs .lvl{color:#ffe070;font-weight:700}

@@ -30,7 +30,7 @@ const CATALOG = [
   I("ti-diligent", "title", "นักเรียนขยัน", "นักเรียนขยัน", "common"), I("ti-reader", "title", "นักอ่านตัวยง", "นักอ่านตัวยง", "common"),
   I("ti-thinker", "title", "ยอดนักคิด", "ยอดนักคิด", "rare"), I("ti-explorer", "title", "นักสำรวจ", "นักสำรวจ", "rare"),
   I("ti-genius", "title", "อัจฉริยะน้อย", "อัจฉริยะน้อย", "epic"), I("ti-math", "title", "เซียนคณิต", "เซียนคณิต", "epic"),
-  I("ti-legend", "title", "ตำนานแห่ง EduPlay", "ตำนานแห่ง EduPlay", "legendary"),
+  I("ti-legend", "title", "ตำนานแห่ง QUIZ ODYSSEY", "ตำนานแห่ง QUIZ ODYSSEY", "legendary"),
   // ธีมพิเศษ (ใช้ในหน้าตั้งค่า)
   I("th-candy", "theme", "ธีมลูกกวาด", "candy", "rare", { colors: ["#a21caf", "#fb923c"] }),
   I("th-galaxy", "theme", "ธีมกาแล็กซี", "galaxy", "epic", { colors: ["#6d28d9", "#22d3ee"] }),

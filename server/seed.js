@@ -33,7 +33,7 @@ function ensure() {
   // ฐานข้อมูลเดิม (ก่อนมีบทเรียน): เพิ่มบทเรียนทั้งหมดเข้าไปในคลังเกม
   if (db.prepare("SELECT COUNT(*) n FROM games").get().n) {
     if (!db.prepare("SELECT COUNT(*) n FROM games WHERE template='lesson'").get().n) {
-      const owner = db.prepare("SELECT id FROM users WHERE role IN ('teacher','admin') ORDER BY id LIMIT 1").get()?.id ?? user("content@eduplay.local", "ทีม EduPlay", "teacher", U.token(18));
+      const owner = db.prepare("SELECT id FROM users WHERE role IN ('teacher','admin') ORDER BY id LIMIT 1").get()?.id ?? user("content@eduplay.local", "ทีม QUIZ ODYSSEY", "teacher", U.token(18));
       const catId = (slug) => db.prepare("SELECT id FROM categories WHERE slug=?").get(slug)?.id ?? null;
       GAMES.forEach((g) => insertGame(owner, g, catId, now()));
       console.log(`เพิ่มบทเรียน ${GAMES.length} บทเข้าคลังเกมแล้ว`);
@@ -43,7 +43,7 @@ function ensure() {
   const demo = demoMode();
   const owner = demo
     ? user("teacher@eduplay.local", "ครูตัวอย่าง", "teacher", "teacher1234")
-    : user("content@eduplay.local", "ทีม EduPlay", "teacher", U.token(18));
+    : user("content@eduplay.local", "ทีม QUIZ ODYSSEY", "teacher", U.token(18));
   const catId = (slug) => db.prepare("SELECT id FROM categories WHERE slug=?").get(slug)?.id ?? null;
   const t0 = Date.now() - 20 * 86400000;
   const gameIds = {}, quizIds = {};

@@ -1,4 +1,4 @@
-/* EduPlay Universe — สไตล์หลัก (สีผ่านเกณฑ์ความต่างสี WCAG AA ทั้งโหมดสว่างและมืด) */
+/* QUIZ ODYSSEY — สไตล์หลัก (สีผ่านเกณฑ์ความต่างสี WCAG AA ทั้งโหมดสว่างและมืด) */
 :root {
   --bg: #f6f4ff; --card: #ffffff; --ink: #1f1b3a; --mute: #5f5b80; --line: #e4dff5; --soft: #efeaff;
   --brand: #5b3df5; --brand-ink: #ffffff; --brand-soft: #ece7ff; --link: #4a2de0; --accent: #ff6fae;
@@ -64,7 +64,7 @@ main.wrap { padding-top: 24px; padding-bottom: 40px; min-height: 60vh; outline: 
 .subnav .muted { white-space: nowrap; }
 .subnav-admin { background: var(--warn-soft); }
 
-@media (max-width: 1360px) {
+@media (max-width: 1560px) {
   .hamburger { display: flex; }
   .menu { display: none; position: absolute; left: 0; right: 0; top: 60px; background: var(--card); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); flex-direction: column; align-items: stretch; padding: 10px 20px 16px; gap: 6px; }
   body.menu-open .menu { display: flex; }
@@ -711,7 +711,7 @@ html.vs-open { overflow: hidden; }
 .auth-wrap { padding-top: 10px; }
 .auth-wrap .card { padding: 26px 26px 22px; }
 .nav-login { white-space: nowrap; }
-@media (max-width: 1360px) { .nav-right .nav-login { order: -1; } }
+@media (max-width: 1560px) { .nav-right .nav-login { order: -1; } }
 
 /* รูปโปรไฟล์วงกลม + ตัวอย่างเสียงในร้านค้า */
 .ava.has-pfp { background: #111; overflow: visible; }

@@ -1,4 +1,4 @@
-// สร้าง EduPlay เวอร์ชันเล่นบนเว็บเป็นไฟล์ HTML ไฟล์เดียว → docs/play/index.html
+// สร้าง QUIZ ODYSSEY เวอร์ชันเล่นบนเว็บเป็นไฟล์ HTML ไฟล์เดียว → docs/play/index.html
 // ใช้: npm run build:web
 const fs = require("fs");
 const path = require("path");
@@ -44,8 +44,8 @@ const redirectApp = {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EduPlay Universe — เกมการเรียนรู้</title>
-<meta name="description" content="EduPlay Universe เวอร์ชันเล่นบนเว็บ: เกมการเรียนรู้ 19 เกม แบบทดสอบ XP เหรียญรางวัล ร้านค้า และกล่องสุ่ม เล่นได้ทันทีไม่ต้องสมัคร">
+<title>QUIZ ODYSSEY — เกมการเรียนรู้</title>
+<meta name="description" content="QUIZ ODYSSEY เวอร์ชันเล่นบนเว็บ: เกมการเรียนรู้ 19 เกม แบบทดสอบ XP เหรียญรางวัล ร้านค้า และกล่องสุ่ม เล่นได้ทันทีไม่ต้องสมัคร">
 <meta name="theme-color" content="#5b3df5">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -64,7 +64,7 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
 <header id="nav" class="nav"></header>
 <main id="app" class="wrap" tabindex="-1"><div class="loading">กำลังโหลด…</div></main>
 <nav class="bottom-nav" id="bnav" aria-label="เมนูลัด"></nav>
-<footer class="foot wrap"><a href="/privacy">ความเป็นส่วนตัว</a><span>EduPlay Universe · เวอร์ชันเล่นบนเว็บ</span><a href="https://github.com/ASDFZX009/game_wed">GitHub</a></footer>
+<footer class="foot wrap"><a href="/privacy">ความเป็นส่วนตัว</a><span>QUIZ ODYSSEY · เวอร์ชันเล่นบนเว็บ</span><a href="https://github.com/ASDFZX009/game_wed">GitHub</a></footer>
 <script>window.__SOUND_DATA=${sounds};window.__PFP_DATA=${pfps}</script>
 <script>${js}</script>
 </body>

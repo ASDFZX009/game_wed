@@ -195,9 +195,9 @@ export async function settings({ main, me }) {
   const ib = main.querySelector("#installBox");
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  if (standalone) ib.innerHTML = html`<p style="margin:0">✅ คุณกำลังใช้ EduPlay แบบแอปอยู่แล้ว</p>`.s;
+  if (standalone) ib.innerHTML = html`<p style="margin:0">✅ คุณกำลังใช้ QUIZ ODYSSEY แบบแอปอยู่แล้ว</p>`.s;
   else if (state.installPrompt) {
-    ib.innerHTML = html`<div class="install-card"><span class="ic">🚀</span><div class="grow"><b>เพิ่ม EduPlay ลงหน้าจอโฮม</b><div class="small muted">เปิดได้เร็วเหมือนแอป เต็มจอ ไม่มีแถบเบราว์เซอร์</div></div><button class="btn" id="doInstall">ติดตั้ง</button></div>`.s;
+    ib.innerHTML = html`<div class="install-card"><span class="ic">🧭</span><div class="grow"><b>เพิ่ม QUIZ ODYSSEY ลงหน้าจอโฮม</b><div class="small muted">เปิดได้เร็วเหมือนแอป เต็มจอ ไม่มีแถบเบราว์เซอร์</div></div><button class="btn" id="doInstall">ติดตั้ง</button></div>`.s;
     ib.querySelector("#doInstall").onclick = async () => { const pr = state.installPrompt; pr.prompt(); const r = await pr.userChoice; if (r.outcome === "accepted") { state.installPrompt = null; ib.innerHTML = "<p>✅ กำลังติดตั้ง…</p>"; } };
   } else if (ios) ib.innerHTML = html`<p style="margin:0">บน iPhone/iPad: เปิดเว็บนี้ใน <b>Safari</b> → แตะปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น) → เลือก <b>“เพิ่มไปยังหน้าจอโฮม”</b></p>`.s;
   else ib.innerHTML = html`<p style="margin:0">บน Android (Chrome): แตะเมนู <b>⋮</b> มุมขวาบน → เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b><br><span class="small muted">หมายเหตุ: ต้องเปิดเว็บผ่าน https จึงจะติดตั้งได้</span></p>`.s;

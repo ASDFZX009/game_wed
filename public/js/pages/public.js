@@ -248,5 +248,5 @@ export function privacy({ main }) {
 export function notFound({ main }) {
   main.innerHTML = html`<div class="card center" style="padding:40px 20px"><div style="font-size:3.5rem" aria-hidden="true">🔭</div><h1>ไม่พบหน้านี้</h1>
     <p class="muted">หน้าที่คุณหาอาจถูกย้าย ลบ หรือพิมพ์ที่อยู่ผิด</p><div class="row" style="justify-content:center"><a class="btn" href="/games">ไปคลังเกม</a><a class="btn btn-ghost" href="/">หน้าแรก</a></div></div>`.s;
-  document.title = "ไม่พบหน้านี้ · EduPlay Universe";
+  document.title = "ไม่พบหน้านี้ · QUIZ ODYSSEY";
 }

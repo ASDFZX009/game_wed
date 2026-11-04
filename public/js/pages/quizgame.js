@@ -1,4 +1,4 @@
-// 🎣 เกมตอบคำถาม: AWS Fishing (โดย NAViK3069) แสดงในกรอบใต้แถบเมนูของ EduPlay
+// 🎣 เกมตอบคำถาม: AWS Fishing (โดย NAViK3069) แสดงในกรอบใต้แถบเมนูของ QUIZ ODYSSEY
 import { html, state } from "../core.js";
 import { onLeave } from "../app.js";
 

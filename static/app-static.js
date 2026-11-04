@@ -1,4 +1,4 @@
-// EduPlay เวอร์ชันเล่นบนเว็บ: ใช้หน้าเว็บชุดเดียวกับเวอร์ชันเต็ม แต่ทำงานในเบราว์เซอร์ล้วน
+// QUIZ ODYSSEY เวอร์ชันเล่นบนเว็บ: ใช้หน้าเว็บชุดเดียวกับเวอร์ชันเต็ม แต่ทำงานในเบราว์เซอร์ล้วน
 // เส้นทางใช้ #ชื่อ (เช่น #games, #game-5) เพื่อให้เปิดได้ทั้งบน GitHub Pages และ artifact
 import { localApi, connectRemote, resetProgress, exportProgress, importProgress, useCloud, dropCloud, syncInfo, flushCloud, ownedByAccount, setAdmin } from "./local-api.js";
 import { adminPage } from "./admin-static.js";
@@ -64,7 +64,7 @@ async function render() {
   main.innerHTML = '<div class="loading" aria-busy="true">กำลังโหลด…</div>';
   try { await r[2]({ main, params: r[3] ? { [r[3]]: m[1] } : {}, query: new URLSearchParams(qs || ""), me: state.me }); }
   catch (e) { if (e.status === 404) P.notFound({ main }); else main.innerHTML = html`<div class="card center"><h2>เกิดข้อผิดพลาด</h2><p>${e.message}</p><a class="btn" href="/">กลับหน้าแรก</a></div>`.s; }
-  document.title = (main.querySelector("h1")?.textContent?.trim() || "EduPlay") + " · EduPlay";
+  document.title = (main.querySelector("h1")?.textContent?.trim() || "QUIZ ODYSSEY") + " · QUIZ ODYSSEY";
 }
 
 function fullOnly(main) {
@@ -74,7 +74,7 @@ function fullOnly(main) {
 }
 function privacyLocal({ main }) {
   main.innerHTML = html`<article class="prose"><h1>ความเป็นส่วนตัว</h1>
-    <p>EduPlay เวอร์ชันเล่นบนเว็บ <b>ไม่ต้องสมัครสมาชิก ไม่ส่งข้อมูลไปที่เซิร์ฟเวอร์ใด</b> ความคืบหน้า (ชื่อที่ตั้ง XP เหรียญ ของสะสม และการตั้งค่า) เก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น</p>
+    <p>QUIZ ODYSSEY เวอร์ชันเล่นบนเว็บ <b>ไม่ต้องสมัครสมาชิก ไม่ส่งข้อมูลไปที่เซิร์ฟเวอร์ใด</b> ความคืบหน้า (ชื่อที่ตั้ง XP เหรียญ ของสะสม และการตั้งค่า) เก็บไว้ในเบราว์เซอร์ของคุณเท่านั้น</p>
     ${state.config.cloud ? html`<p><b>ถ้าสมัครสมาชิก:</b> เราเก็บอีเมล ชื่อที่แสดง รหัสผ่าน (เข้ารหัสแบบทางเดียว อ่านกลับไม่ได้) และความคืบหน้าไว้ในฐานข้อมูล Supabase เพื่อให้เล่นต่อได้ทุกเครื่อง ผู้เล่นคนอื่นมองไม่เห็นข้อมูลของคุณ และลบบัญชีพร้อมข้อมูลทั้งหมดได้เองที่หน้า “ตั้งค่า”</p>` : ""}
     <ul><li>ไม่มีโฆษณา ไม่มีคุกกี้ติดตาม</li><li>ล้างข้อมูลเบราว์เซอร์แล้วความคืบหน้าจะหาย — สำรองได้ที่หน้า “ตั้งค่า”</li>
     <li>ถ้าเปิดผ่านลิงก์ artifact ของ Claude ความคืบหน้าจะเก็บในพื้นที่ส่วนตัวของบัญชี Claude ของคุณด้วย (คนอื่นมองไม่เห็น)</li>
@@ -89,7 +89,7 @@ function link(href, text, cur) {
 function renderNav(cur = "/") {
   const u = state.me || {};
   document.getElementById("nav").innerHTML = html`<div class="wrap topbar">
-    <a href="/" class="logo" aria-label="EduPlay หน้าแรก"><span aria-hidden="true">🚀</span> EduPlay</a>
+    <a href="/" class="logo" aria-label="QUIZ ODYSSEY หน้าแรก"><span aria-hidden="true">🧭</span> QUIZ ODYSSEY</a>
     <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
     <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "คลังเกม", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "ความคืบหน้า", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
       <div class="nav-right">${state.config?.cloud && !u.cloud ? html`<a href="/login" class="btn btn-sm nav-login">🔐 เข้าสู่ระบบ</a>` : ""}${u.admin ? html`<a href="/admin" class="${cur === "/admin" ? "active" : ""}" title="ผู้ดูแลระบบ">🛡️ แอดมิน</a>` : ""}<a href="/shop" class="coins" title="เหรียญของฉัน">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a>

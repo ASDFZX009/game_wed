@@ -1,4 +1,4 @@
-// EduPlay Universe — เซิร์ฟเวอร์หลัก
+// QUIZ ODYSSEY — เซิร์ฟเวอร์หลัก
 const path = require("path");
 const fs = require("fs");
 const http = require("http");
@@ -73,7 +73,7 @@ app.get("*", (_req, res) => res.sendFile(path.join(pub, "index.html")));
 const PORT = parseInt(process.env.PORT) || 3100;
 if (require.main === module) {
   server.listen(PORT, () => {
-    console.log(`EduPlay Universe พร้อมใช้งานที่ http://localhost:${PORT}`);
+    console.log(`QUIZ ODYSSEY พร้อมใช้งานที่ http://localhost:${PORT}`);
     if (!process.env.PUBLIC_BASE_URL) console.log("หมายเหตุ: ยังไม่ได้ตั้ง PUBLIC_BASE_URL — ลิงก์แชร์/QR จะใช้ที่อยู่ที่ผู้ใช้เปิดเข้ามา");
   });
 }

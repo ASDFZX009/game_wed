@@ -59,7 +59,7 @@ D.FISH_BY_ID = {};
 D.FISH.forEach(f => D.FISH_BY_ID[f.id] = f);
 
 /* ---------- Quiz rules per star ---------- */
-/* ---------- สมดุลคำถาม (EduPlay) ----------
+/* ---------- สมดุลคำถาม (QUIZ ODYSSEY) ----------
    เวลาต่อข้อ = (ฐาน + ความยาวคำถามและตัวเลือก × perChar) × tm[ดาว] แล้วจำกัดไว้ min..max วินาที
    ตอบผิดเกจลด pen[ดาว] · ตอบถูกเกจคืน gain · ค่าจากการจำลองผู้เล่นระดับ ม.2 ให้อัตราจับได้ไล่ตามดาว */
 D.QUIZ_BAL = { baseTF:5, baseMC:7, perChar:0.09, min:8, max:30, gain:0.07, seaDrainDuringQuiz:0.35,

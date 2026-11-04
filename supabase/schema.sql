@@ -1,4 +1,4 @@
--- EduPlay เวอร์ชันเล่นบนเว็บ: ตารางเก็บความคืบหน้าผู้เล่น (1 แถวต่อ 1 บัญชี)
+-- QUIZ ODYSSEY เวอร์ชันเล่นบนเว็บ: ตารางเก็บความคืบหน้าผู้เล่น (1 แถวต่อ 1 บัญชี)
 -- วิธีใช้: Supabase → SQL Editor → New query → วางทั้งไฟล์นี้ → Run (รันซ้ำได้ ไม่พัง)
 
 create table if not exists public.progress (
