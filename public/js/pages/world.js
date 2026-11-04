@@ -173,18 +173,36 @@ function pineTree(s) {
   R(x, 13, 0, 2, 3, g[3]);
   return outline(c, 14, 39);
 }
-function stoneSprite(h) {
-  const [c, x] = canvas(14, h + 4); ellipseShadow(x, 7, h + 1, 14, 0.3);
-  for (let y = 0; y < h; y++) { const top = y < 3 ? 3 - y : 0; for (let xx = 1 + top; xx < 13 - top; xx++) R(x, xx, y + 1, 1, 1, y === 0 ? "#b4b2b8" : xx < 5 ? "#a2a0a6" : xx > 9 ? "#66646c" : "#86838c"); }
-  for (let i = 0; i < 4; i++) R(x, 2, 6 + i * 6, 10, 1, "rgba(40,36,44,.35)");
-  for (let i = 0; i < 10; i++) R(x, 2 + ((i * 5) % 9), 2 + ((i * 3) % 5), 2, 1, i % 3 ? "#4f8a3c" : "#6fae4a");
-  return outline(c, 7, h + 1);
+// เสาหินพันเถาวัลย์ (บนยอดมีคริสตัลสีเขียวลอยอยู่ วาดแยกตอนเล่นเพื่อให้ลอยขึ้นลงได้)
+function pillarSprite(W, H, seed, big) {
+  const MG = 4, cw = W + MG * 2, [c, x] = canvas(cw, H + 4), cx = cw / 2;
+  ellipseShadow(x, cx, H + 1, W + 6, 0.34);
+  const capH = big ? 9 : 6, baseH = big ? 8 : 5, sw = W - (big ? 10 : 6);
+  const st = (X, Y, fx, k = 1) => { const b = fx < 0.28 ? [204, 199, 184] : fx > 0.74 ? [122, 119, 110] : [168, 163, 149], n = (hash(X, Y, seed) - 0.5) * 16; return css([(b[0] + n) * k, (b[1] + n) * k, (b[2] + n) * k]); };
+  for (let Y = H - baseH; Y < H; Y++) for (let X = MG; X < MG + W; X++) { const r = Y - (H - baseH), fx = (X - MG) / W;
+    R(x, X, Y, 1, 1, r < 2 ? css([216, 211, 196]) : r === baseH - 1 ? st(X, Y, fx, 0.7) : (big && (X - MG) % 8 === 0 && r > 2) ? "#6a665c" : st(X, Y, fx)); }
+  for (let Y = capH; Y < H - baseH; Y++) for (let X = cx - sw / 2; X < cx + sw / 2; X++) { const r = Y - capH, fx = (X - (cx - sw / 2)) / sw, row = (r / 7) | 0;
+    R(x, X, Y, 1, 1, r % 7 === 6 ? "#7a766a" : big && (X + (row % 2) * 4) % 8 === 0 && fx > 0.1 && fx < 0.9 ? "#8a867a" : st(X, Y, fx)); }
+  R(x, cx - sw / 2, capH, sw, 2, "rgba(30,26,20,.35)");
+  for (let Y = 2; Y < capH; Y++) for (let X = MG + 1; X < MG + W - 1; X++) { const r = Y - 2, fx = (X - MG) / W; R(x, X, Y, 1, 1, r < 2 ? css([218, 213, 198]) : Y === capH - 1 ? st(X, Y, fx, 0.66) : st(X, Y, fx)); }
+  const pw = big ? 10 : 6; for (let Y = 0; Y < 2; Y++) R(x, cx - pw / 2, Y, pw, 1, Y ? "#a7a294" : "#d4cfbe");
+  for (let i = 0; i < 4; i++) { const X = cx - sw / 2 + 2 + Math.floor(hash(i, seed, 71) * (sw - 4)), Y = capH + 4 + Math.floor(hash(seed, i, 72) * (H - baseH - capH - 10)); for (let k = 0; k < 4; k++) R(x, X + (k >> 1), Y + k, 1, 1, "rgba(60,54,46,.55)"); }
+  for (let X = MG + 1; X < MG + W - 1; X++) { if (hash(X, seed, 73) < 0.35) R(x, X, 2, 1, 1 + (hash(X, 1, 74) < 0.3 ? 1 : 0), "#6aae46"); if (hash(X, seed, 75) < 0.3) R(x, X, H - baseH, 1, 1, "#5a9e3a"); }
+  for (let X = MG + 2; X < MG + W - 2; X += 3) if (hash(X, seed, 76) < 0.45) { const L = 2 + Math.floor(hash(X, 2, 77) * (big ? 7 : 4)); R(x, X, capH, 1, L, "#3f7a2a"); R(x, X, capH + L, 1, 1, "#7cc84c"); }
+  for (let sI = 0; sI < (big ? 2 : 1); sI++) for (let Y = capH - 1; Y < H - baseH + 2; Y++) { // เถาวัลย์พันเป็นเกลียว
+    const a = Y * (big ? 0.2 : 0.3) + seed * 1.7 + sI * Math.PI, sn = Math.sin(a), front = Math.cos(a) > -0.2, vx = Math.round(cx + sn * (sw / 2 + 1) - 1);
+    if (front) { R(x, vx, Y, 3, 1, "#3f8a2e"); R(x, vx, Y, 2, 1, "#5aac3a"); R(x, vx, Y, 1, 1, "#8ad65a"); } else if (Math.abs(sn) > 0.8) R(x, vx + (sn > 0 ? 1 : 0), Y, 1, 1, "#2f5e24");
+    if (front && (Y + sI * 3) % 4 === 0) { const lx = vx + (sn > 0 ? 2 : -3); R(x, lx, Y - 1, 3, 2, "#6cbc46"); R(x, lx + (sn > 0 ? 0 : 2), Y - 1, 1, 1, "#b8ec7a"); R(x, lx, Y + 1, 2, 1, "#3f8a2e"); }
+  }
+  return outline(c, cx, H);
 }
-function monoSprite() {
-  const [c, x] = canvas(28, 44); ellipseShadow(x, 14, 41, 28, 0.32);
-  for (let y = 0; y < 38; y++) { const top = y < 4 ? 4 - y : 0; for (let xx = top; xx < 24 - top; xx++) R(x, 2 + xx, 2 + y, 1, 1, y === 0 ? "#b0aeb8" : xx < 7 ? "#9a98a0" : xx > 17 ? "#5c5a64" : "#7e7b86"); }
-  for (let i = 0; i < 8; i++) R(x, 5 + ((i * 7) % 17), 4 + ((i * 5) % 6), 3, 1, i % 2 ? "#4f8a3c" : "#6fae4a");
-  return outline(c, 14, 40);
+function crystalSprite(s) {
+  const h = Math.round(s * 1.8), [c, x] = canvas(s * 2 + 1, h * 2 + 1);
+  for (let dy = -h; dy <= h; dy++) { const hw = Math.round(s * (1 - Math.abs(dy) / h)); for (let dx = -hw; dx <= hw; dx++) {
+    let col = dy > h * 0.25 ? (dx < 0 ? "#3fb82e" : "#22802a") : dx < -hw * 0.25 ? "#d6ff80" : dx < hw * 0.35 ? "#8ef04a" : "#4ccc36";
+    if (dx === 0 && dy <= h * 0.25) col = "#c4ff6a"; R(x, s + dx, h + dy, 1, 1, col); } }
+  R(x, s - Math.max(1, s >> 1), h - (h >> 1), 1, 2, "#ffffff"); R(x, s - 1, h + 2, 1, 1, "#e8ffc0");
+  return outline(c, s, h, [16, 58, 22]);
 }
 function houseSprite(p) {
   const [c, x] = canvas(80, 72);
@@ -449,13 +467,60 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     objects.push({ y: ysort ?? by, x0: dx, x1: dx + s.c.width, top: dy, bot: dy + s.c.height, draw: (x, now) => { x.drawImage(s.c, dx, dy); if (extra) extra(x, now); } }); };
   for (const t of M.trees) { const v = t.s < 0.5 ? 0 : 1, bx = t.x * T + 8, by = t.y * T + 14;
     if (t.kind === "pine") add(spr("pine" + v, () => pineTree(t.s)), bx, by); else add(spr(t.kind + v, () => roundTree(t.kind, t.s)), bx, by); }
-  for (const s of M.stones) { const bx = s.x * T + 8, by = s.y * T + T - 1;
-    add(spr("s" + s.h, () => stoneSprite(s.h)), bx, by, by, s.owl ? (x, now) => { const ox = s.x * T + 3, oy = s.y * T + T - s.h - 9; R(x, ox - 1, oy - 1, 11, 11, "#2a2030"); R(x, ox, oy, 9, 9, "#7a5434"); R(x, ox + 1, oy + 3, 7, 6, "#a87a4e");
-      const blink = Math.floor(now / 1000) % 5 === 0 && now % 1000 < 140; R(x, ox + 1, oy + 2, 3, blink ? 1 : 3, "#f6c040"); R(x, ox + 5, oy + 2, 3, blink ? 1 : 3, "#f6c040"); R(x, ox + 4, oy + 5, 1, 2, "#e08a2a"); R(x, ox, oy - 1, 2, 2, "#7a5434"); R(x, ox + 7, oy - 1, 2, 2, "#7a5434"); } : null); }
-  { const bx = M.mono.x * T + 16, by = M.mono.y * T + T - 2, X = bx - 12, Y = by - 38;
-    add(spr("mono", monoSprite), bx, by, by, (x, now) => { x.globalAlpha = 0.55 + 0.45 * Math.sin(now / (reduced ? 1e9 : 500));
-      for (let k = 0; k < 4; k++) { const cx = X + 12, cy = Y + 8 + k * 7; for (let d = 0; d < 3; d++) { R(x, cx - 3 + d, cy + d, 1, 1, "#9ff6ff"); R(x, cx + 3 - d, cy + d, 1, 1, "#9ff6ff"); R(x, cx - 3 + d, cy - d, 1, 1, "#9ff6ff"); } R(x, cx, cy - 1, 1, 1, "#dffcff"); R(x, cx, cy + 3, 1, 1, "#dffcff"); }
-      x.globalAlpha = 1; }); }
+  // เสาหินพันเถาวัลย์ + คริสตัล (เสาใหญ่กลางลานมีวงเวทย์ใบไม้หมุนรอบ)
+  const pillars = [], bobY = (P, now) => (reduced ? 0 : Math.round(Math.sin(now / 520 + P.i) * 1.5));
+  const crystalAt = (P, now) => [P.bx, P.by - P.H - (P.big ? 17 : 11) + bobY(P, now)];
+  const addPillar = (P) => { pillars.push(P);
+    add(spr(`pl${P.W}x${P.H}s${P.seed}`, () => pillarSprite(P.W, P.H, P.seed, P.big)), P.bx, P.by, P.by, (x, now) => {
+      if (P.owl) { const ox = P.bx - 5, oy = P.by - P.H - 8; R(x, ox - 1, oy - 1, 11, 11, "#2a2030"); R(x, ox, oy, 9, 9, "#7a5434"); R(x, ox + 1, oy + 3, 7, 6, "#a87a4e");
+        const blink = Math.floor(now / 1000) % 5 === 0 && now % 1000 < 140; R(x, ox + 1, oy + 2, 3, blink ? 1 : 3, "#f6c040"); R(x, ox + 5, oy + 2, 3, blink ? 1 : 3, "#f6c040"); R(x, ox + 4, oy + 5, 1, 2, "#e08a2a"); R(x, ox, oy - 1, 2, 2, "#7a5434"); R(x, ox + 7, oy - 1, 2, 2, "#7a5434"); return; }
+      if (P.big) { x.globalAlpha = 0.45 + 0.4 * Math.sin(now / (reduced ? 1e9 : 600)); const X = P.bx - 1, Y0 = P.by - P.H + 14; // อักษรรูนเรืองแสงบนเสา
+        for (let k = 0; k < 4; k++) { const cy = Y0 + k * 9; for (let d = 0; d < 3; d++) { R(x, X - 2 + d, cy + d, 1, 1, "#b8ff7a"); R(x, X + 3 - d, cy + d, 1, 1, "#b8ff7a"); } R(x, X, cy - 1, 2, 1, "#eaffc8"); } x.globalAlpha = 1; }
+      const cs = spr("cry" + (P.big ? 7 : 4), () => crystalSprite(P.big ? 7 : 4)), [qx, qy] = crystalAt(P, now); x.drawImage(cs.c, qx - cs.ax, qy - cs.ay); }); };
+  M.stones.forEach((s, i) => addPillar({ bx: s.x * T + 8, by: s.y * T + T - 1, W: 16, H: s.h + 10, seed: (s.x * 7 + s.y) % 5, big: false, owl: s.owl, i }));
+  addPillar({ bx: M.mono.x * T + 16, by: M.mono.y * T + T - 2, W: 26, H: 66, seed: 3, big: true, i: 99 });
+  const bigP = pillars[pillars.length - 1];
+  const G = (a) => `rgba(196,255,120,${a})`;
+  function magicBack(x, t) { // ส่วนหลังเสา (วาดก่อนวัตถุ): วงเวทย์บนพื้น + ครึ่งหลังของวงใบไม้
+    const P = bigP, cx = P.bx, cy = P.by - 2;
+    x.globalCompositeOperation = "lighter";
+    for (let i = 0; i < 64; i++) { const a = (i / 64) * Math.PI * 2, px = cx + Math.cos(a) * 30, py = cy + Math.sin(a) * 10; x.fillStyle = G(0.32 + 0.2 * Math.sin(t * 2 + i * 0.5)); x.fillRect(Math.round(px), Math.round(py), 2, 1); }
+    for (let i = 0; i < 40; i++) { const a = (i / 40) * Math.PI * 2 - t * 0.6, px = cx + Math.cos(a) * 20, py = cy + Math.sin(a) * 6.5; if (i % 5 === 0) continue; x.fillStyle = G(0.34); x.fillRect(Math.round(px), Math.round(py), 1, 1); }
+    swirl(x, t, false); x.globalCompositeOperation = "source-over"; leaves(x, t, false);
+  }
+  function swirl(x, t, front) { // วงลมใบไม้หมุนรอบเสาใหญ่ 2 ชั้น
+    const P = bigP;
+    for (const [ry0, rx, ry, sp, n] of [[8, 26, 8, 1.6, 3], [34, 19, 6, -2.1, 2]]) for (let k = 0; k < n; k++) { const a0 = t * sp + (k * Math.PI * 2) / n;
+      for (let i = 0; i < 22; i++) { const a = a0 + (sp > 0 ? -1 : 1) * i * 0.06, sn = Math.sin(a); if ((sn >= 0) !== front) continue;
+        const px = P.bx + Math.cos(a) * rx, py = P.by - ry0 + sn * ry, al = (1 - i / 22) * (front ? 1 : 0.55);
+        x.fillStyle = G(al); x.fillRect(Math.round(px), Math.round(py), i < 8 ? 3 : 2, i < 6 ? 2 : 1); if (i < 5) { x.fillStyle = `rgba(240,255,200,${al})`; x.fillRect(Math.round(px), Math.round(py), 1, 1); } } }
+  }
+  function leaves(x, t, front) { // ใบไม้ลอยวนรอบเสาใหญ่
+    const P = bigP;
+    for (let i = 0; i < 9; i++) { const a = t * 0.9 + (i * Math.PI * 2) / 9, sn = Math.sin(a); if ((sn >= 0) !== front) continue;
+      const h = ((t * 9 + i * 13) % 60), px = Math.round(P.bx + Math.cos(a) * (24 - h * 0.12)), py = Math.round(P.by - 6 - h + sn * 7), fl = Math.floor(t * 4 + i) % 2;
+      x.globalAlpha = Math.min(1, (60 - h) / 15) * (front ? 1 : 0.7);
+      R(x, px, py, 3, 2, fl ? "#7cd44a" : "#5ab83a"); R(x, px + (fl ? 0 : 2), py, 1, 1, "#d4ff98"); R(x, px + 1, py + 2, 1, 1, "#2f7a2a"); }
+    x.globalAlpha = 1;
+  }
+  const spark = (x, X, Y, k) => { if (k < 0.12) return; X = Math.round(X); Y = Math.round(Y); x.fillStyle = `rgba(255,255,230,${k})`; x.fillRect(X, Y, 1, 1);
+    const L = k > 0.75 ? 3 : k > 0.4 ? 2 : 1; for (let i = 1; i <= L; i++) { x.fillStyle = G(k * (1 - i / (L + 1))); x.fillRect(X - i, Y, 1, 1); x.fillRect(X + i, Y, 1, 1); x.fillRect(X, Y - i, 1, 1); x.fillRect(X, Y + i, 1, 1); } };
+  function magicFront(x, t, view) { // แสงเรือง ประกาย ลำแสง (วาดทับวัตถุ แบบเติมแสง)
+    x.globalCompositeOperation = "lighter";
+    for (const P of pillars) { if (P.owl || P.bx < view[0] - 40 || P.bx > view[1] + 40 || P.by < view[2] - 20 || P.by - P.H - 40 > view[3]) continue;
+      const [qx, qy] = crystalAt(P, t * 1000), pulse = 0.75 + 0.25 * Math.sin(t * 2.4 + P.i), r = P.big ? 1.8 : 1;
+      x.fillStyle = G(0.1 * pulse); x.beginPath(); x.arc(qx, qy, 16 * r, 0, 7); x.fill(); x.fillStyle = G(0.18 * pulse); x.beginPath(); x.arc(qx, qy, 9 * r, 0, 7); x.fill(); x.fillStyle = `rgba(255,255,220,${0.22 * pulse})`; x.beginPath(); x.arc(qx, qy, 4 * r, 0, 7); x.fill();
+      for (let i = 0; i < (P.big ? 7 : 3); i++) { const a = hash(i, P.i, 81) * 6.28, d = (6 + hash(i, P.i, 82) * 10) * r; spark(x, qx + Math.cos(a) * d, qy + Math.sin(a) * d * 0.8 - 2, Math.max(0, Math.sin(t * (1.6 + hash(i, P.i, 83)) + i * 2.3))); }
+    }
+    const P = bigP;
+    if (P.bx > view[0] - 60 && P.bx < view[1] + 60 && P.by > view[2] - 20 && P.by - P.H - 60 < view[3]) {
+      for (let i = 0; i < 5; i++) { const lx = P.bx - 14 + i * 7 + Math.round(Math.sin(t + i) * 1), h = 18 + ((i * 11) % 14) + Math.sin(t * 3 + i * 1.7) * 6, al = 0.2 + 0.12 * Math.sin(t * 2.5 + i); // ลำแสงพุ่งขึ้นจากพื้น
+        for (let k = 0; k < h; k++) { x.fillStyle = G(al * (1 - k / h)); x.fillRect(lx, P.by - 3 - k, 1, 1); } }
+      for (let i = 0; i < 12; i++) { const ph = (t * 0.35 + hash(i, 1, 84)) % 1, mx = P.bx + (hash(i, 2, 84) - 0.5) * 50, my = P.by - 4 - ph * 70; spark(x, mx + Math.sin(t * 2 + i) * 2, my, (1 - ph) * 0.9 * Math.abs(Math.sin(t * 3 + i))); }
+      swirl(x, t, true);
+    }
+    x.globalCompositeOperation = "source-over"; leaves(x, t, true);
+  }
   for (const p of PLACES) {
     if (p.dock) { add(spr("dock", dockSign), (p.x - 1) * T + 1, p.y * T + T - 40, p.y * T + T); continue; }
     add(spr("h" + p.id, () => houseSprite(p)), p.x * T, p.y * T - 4, (p.y + 4) * T);
@@ -555,11 +620,14 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     if (!reduced) for (let i = 0; i < 30; i++) { const wx = 39 * T + ((i * 53) % (9 * T)), wy = 28 * T + ((i * 37) % (6 * T)) + Math.sin(now / 600 + i) * 2; const [tx, ty] = tileAt(wx, wy);
       if (M.inb(tx, ty) && M.ground[M.at(tx, ty)] === 2) { x.globalAlpha = 0.35 + 0.35 * Math.sin(now / 400 + i * 1.7); R(x, wx, wy, 3 + (i % 3), 1, "#e8f6ff"); } }
     x.globalAlpha = 1;
+    const t = reduced ? 1.3 : now / 1000, viewBox = [cx, cx + vw, cy, cy + vh];
+    if (bigP.bx > cx - 80 && bigP.bx < cx + vw + 80 && bigP.by > cy - 40 && bigP.by - 120 < cy + vh) magicBack(x, t);
     const list = objects.filter((o) => o.x1 >= cx && o.x0 <= cx + vw && o.bot >= cy && o.top <= cy + vh);
     list.push({ y: fox.y, draw: (c) => { ellipseShadow(c, fox.x, fox.y, 14, 0.26); const f = spr(`fox${fox.face}${fox.step % 2}`, () => foxFrame(fox.face, fox.step % 2)); c.drawImage(f.c, Math.round(fox.x) - f.ax, Math.round(fox.y) - f.ay); } });
     list.push({ y: hero.y, draw: (c) => { ellipseShadow(c, hero.x, hero.y, 12); const f = heroF(hero.dir, hero.step); c.drawImage(f.c, Math.round(hero.x) - f.ax, Math.round(hero.y) - f.ay); } });
     list.sort((a, b) => a.y - b.y);
     for (const o of list) o.draw(x, now);
+    magicFront(x, t, viewBox);
     // แสงไฟโคมแบบเติมแสง
     x.globalCompositeOperation = "lighter";
     for (const [lx, ly] of lamps) { const a = reduced ? 0.12 : 0.1 + 0.03 * Math.sin(now / 300 + lx); x.fillStyle = `rgba(255,190,90,${a})`; x.beginPath(); x.arc(lx, ly, 14, 0, 7); x.fill(); x.beginPath(); x.arc(lx, ly, 8, 0, 7); x.fill(); }
