@@ -832,6 +832,16 @@ body.immersive main.wrap { max-width: none; padding: 0; }
 .world-canvas { display: block; image-rendering: pixelated; image-rendering: crisp-edges; cursor: pointer; outline: none; }
 .world-canvas:focus-visible { box-shadow: inset 0 0 0 3px #ffcf3a; }
 .world-ui { position: absolute; inset: 0; pointer-events: none; }
+/* แนว HD-2D: เบลอขอบบน/ล่างแบบ tilt-shift + แสงอุ่น + ขอบมืด (ป้ายวาดบน .world-labels จึงยังคม) */
+.world-canvas { filter: saturate(1.1) contrast(1.04); }
+.w-fx { position: absolute; left: 0; right: 0; pointer-events: none; }
+.w-tilt.top { top: 0; height: 30%; -webkit-backdrop-filter: blur(2.2px); backdrop-filter: blur(2.2px); -webkit-mask-image: linear-gradient(#000 0%, rgba(0,0,0,.6) 45%, transparent 100%); mask-image: linear-gradient(#000 0%, rgba(0,0,0,.6) 45%, transparent 100%); }
+.w-tilt.bot { bottom: 0; height: 26%; -webkit-backdrop-filter: blur(2.2px); backdrop-filter: blur(2.2px); -webkit-mask-image: linear-gradient(transparent 0%, rgba(0,0,0,.6) 55%, #000 100%); mask-image: linear-gradient(transparent 0%, rgba(0,0,0,.6) 55%, #000 100%); }
+.w-warm { inset: 0; mix-blend-mode: soft-light; background: linear-gradient(155deg, rgba(255,214,140,.55) 0%, rgba(255,236,190,.18) 40%, rgba(70,90,160,.28) 100%); }
+.w-vignette { inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 58%, rgba(18,12,4,.42) 100%); }
+.world-labels { position: absolute; left: 0; top: 0; pointer-events: none; }
+.w-lite .w-tilt { display: none; }
+@media (max-width: 640px) { .w-tilt.top, .w-tilt.bot { -webkit-backdrop-filter: blur(1.4px); backdrop-filter: blur(1.4px); height: 20%; } }
 .world-hint { position: absolute; left: 10px; top: 10px; font-size: .8rem; font-weight: 700; color: #fff; background: rgba(20,16,28,.72); padding: 4px 10px; border-radius: 6px; }
 .world-enter { pointer-events: auto; position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); font: inherit; font-weight: 800; font-size: 1.05rem; cursor: pointer;
   padding: 10px 22px; border: 3px solid #1a1420; background: #ffcf3a; color: #1a1420; border-radius: 8px; box-shadow: 0 4px 0 #1a1420; animation: wPulse 1.2s ease-in-out infinite; }
