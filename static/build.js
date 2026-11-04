@@ -73,6 +73,9 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
   const dir = path.join(root, "docs", "play");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "index.html"), html);
+  // 🎣 เกมตอบคำถาม (AWS Fishing) เป็นไฟล์แยก เปิดในกรอบจากหน้า #quiz-game
+  fs.rmSync(path.join(dir, "fishing"), { recursive: true, force: true });
+  fs.cpSync(path.join(root, "public/fishing"), path.join(dir, "fishing"), { recursive: true, filter: (f) => !/\.md$/.test(f) });
   try { fs.unlinkSync(process.env.DB_FILE); } catch { /* ignore */ }
   console.log(`สร้างแล้ว: docs/play/index.html (${(html.length / 1024).toFixed(0)} KB)`);
 })();

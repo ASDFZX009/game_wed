@@ -7,13 +7,14 @@ import * as L from "./pages/live.js";
 import * as A from "./pages/admin.js";
 import * as SH from "./pages/shop.js";
 import * as BG from "./pages/bag.js";
+import * as QG from "./pages/quizgame.js";
 import { loadPrefs, setPrefs, isDark } from "./prefs.js";
 
 const routes = [
   ["/", P.home], ["/games", P.library], ["/games/:id", P.playGame], ["/quizzes", P.quizList], ["/quizzes/:id", P.quizPage],
   ["/attempts/:id", P.attemptPage], ["/join", L.joinPage], ["/play/:pin", L.playerPage],
   ["/login", P.login], ["/register", P.register], ["/forgot", P.forgot], ["/privacy", P.privacy],
-  ["/dashboard", S.dashboard, "any"], ["/profile", S.profile, "any"], ["/settings", S.settings], ["/shop", SH.shop], ["/bag", BG.bag],
+  ["/dashboard", S.dashboard, "any"], ["/profile", S.profile, "any"], ["/settings", S.settings], ["/shop", SH.shop], ["/bag", BG.bag], ["/quiz-game", QG.quizGame],
   ["/classes", S.classes, "any"], ["/classes/:id", S.classPage, "any"],
   ["/teacher", T.dashboard, "teacher"], ["/assignments/:id", T.assignmentReport, "teacher"],
   ["/teacher/quizzes", T.myQuizzes, "teacher"], ["/teacher/quizzes/new", T.quizBuilder, "teacher"], ["/teacher/quizzes/:id/edit", T.quizBuilder, "teacher"],
@@ -83,7 +84,7 @@ function link(href, text, cur) {
 function renderNav(cur = location.pathname) {
   const u = state.me;
   const nav = document.getElementById("nav");
-  const main = [link("/games", "คลังเกม", cur), link("/quizzes", "แบบทดสอบ", cur), link("/join", "เข้าร่วมเกม", cur), link("/shop", "🛒 ร้านค้า", cur), ...(u ? [link("/bag", "🎒 กระเป๋า", cur)] : [])];
+  const main = [link("/games", "คลังเกม", cur), link("/quizzes", "แบบทดสอบ", cur), link("/quiz-game", "🎣 เกมตอบคำถาม", cur), link("/join", "เข้าร่วมเกม", cur), link("/shop", "🛒 ร้านค้า", cur), ...(u ? [link("/bag", "🎒 กระเป๋า", cur)] : [])];
   if (u) {
     main.push(link(u.role === "student" ? "/dashboard" : "/teacher", "แดชบอร์ด", cur));
     main.push(link("/classes", "ห้องเรียน", cur));
