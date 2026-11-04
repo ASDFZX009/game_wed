@@ -1,0 +1,5 @@
+{
+  "_help": "เปิดระบบบัญชี: ใส่ Project URL และ anon public key จาก Supabase (Project Settings → API) แล้ว commit ไฟล์นี้ — ดู README หัวข้อ 'บัญชีผู้ใช้ (Supabase)'",
+  "supabaseUrl": "",
+  "supabaseAnonKey": ""
+}

@@ -34,14 +34,55 @@ let S = fresh();
 let remote = null; // ที่เก็บในบัญชี Claude (artifact) ถ้ามี
 try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && v.v === 1) S = { ...fresh(), ...v }; } catch { /* โหมดส่วนตัว */ }
 let saveTimer = null;
+function localSave() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* ignore */ } }
 function save() {
   S.updatedAt = now();
-  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* ignore */ }
+  localSave();
   if (remote) { clearTimeout(saveTimer); saveTimer = setTimeout(() => remote.set(S).catch(() => {}), 800); }
+  if (cloud) { clearTimeout(cloudTimer); cloudTimer = setTimeout(pushCloud, 800); }
 }
-export function resetProgress() { const prefs = S.prefs; S = fresh(); S.prefs = prefs; save(); }
+
+// ---------- บัญชีออนไลน์ (Supabase): ความคืบหน้าตามไปทุกเครื่อง ----------
+let cloud = null, cloudUser = null, cloudTimer = null, cBusy = false, cAgain = false;
+export const syncInfo = { at: null, error: null };
+async function pushCloud() {
+  clearTimeout(cloudTimer); cloudTimer = null;
+  if (!cloud) return;
+  if (cBusy) { cAgain = true; return; }
+  cBusy = true;
+  try { do { cAgain = false; await cloud.save(S); syncInfo.at = now(); syncInfo.error = null; } while (cAgain && cloud); }
+  catch (e) { syncInfo.error = e.message; }
+  finally { cBusy = false; }
+}
+/** เข้าสู่ระบบแล้ว: ใช้ความคืบหน้าในบัญชี (หรืออัปโหลดของในเครื่องถ้าบัญชียังว่าง) */
+export async function useCloud(store, user, displayName) {
+  const theirs = await store.load();
+  let claimed = false;
+  if (theirs && theirs.v === 1) {
+    const mineIsNewer = S.owner === user.id && (S.updatedAt || "") > (theirs.updatedAt || "");
+    if (!mineIsNewer) { const prefs = S.prefs; S = { ...fresh(), ...theirs }; if (!S.prefs || !Object.keys(S.prefs).length) S.prefs = prefs; }
+  } else {
+    if (S.owner && S.owner !== user.id) { const prefs = S.prefs; S = fresh(); S.prefs = prefs; }
+    if (displayName && (!S.name || S.name === fresh().name)) S.name = displayName.slice(0, 40);
+    claimed = true;
+  }
+  S.owner = user.id;
+  cloud = store; cloudUser = user;
+  localSave();
+  await pushCloud();
+  return { claimed };
+}
+/** ออกจากระบบ: ล้างความคืบหน้าในเครื่องนี้ (ของจริงอยู่ในบัญชีแล้ว) แต่เก็บการตั้งค่าหน้าตาไว้ */
+export async function dropCloud() {
+  if (cloudTimer || cAgain) await pushCloud().catch(() => {});
+  cloud = null; cloudUser = null;
+  const prefs = S.prefs; S = fresh(); S.prefs = prefs; localSave();
+}
+export const flushCloud = () => (cloudTimer ? pushCloud() : Promise.resolve());
+addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushCloud(); });
+export function resetProgress() { const { prefs, owner } = S; S = fresh(); S.prefs = prefs; if (owner) S.owner = owner; save(); }
 export function exportProgress() { return JSON.stringify(S); }
-export function importProgress(text) { const v = JSON.parse(text); if (!v || v.v !== 1) throw new Error("ไฟล์ไม่ถูกต้อง"); S = { ...fresh(), ...v }; save(); }
+export function importProgress(text) { const v = JSON.parse(text); if (!v || v.v !== 1) throw new Error("ไฟล์ไม่ถูกต้อง"); const owner = S.owner; S = { ...fresh(), ...v, owner }; if (!owner) delete S.owner; save(); }
 
 /** ถ้าเปิดผ่าน artifact ของ Claude: เก็บความคืบหน้ากับบัญชีผู้ใช้ด้วย (ข้ามเครื่องได้) */
 export async function connectRemote(onLoaded) {
@@ -65,7 +106,7 @@ export async function connectRemote(onLoaded) {
 
 // ---------- ช่วยเหลือ ----------
 const equippedView = () => Object.fromEntries(Object.entries(S.equipped).filter(([s, id]) => ITEM[id]?.type === s).map(([s, id]) => [s, ITEM[id].value]));
-const me = () => ({ id: 1, email: "", displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), local: true,
+const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), local: true,
   level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL });
 function addXP(xp, kind, title) { S.xp += xp; S.activity.unshift({ kind, title, xp, created_at: now() }); S.activity = S.activity.slice(0, 200); }
 function addCoins(amount, reason, detail) { if (!amount && reason !== "free_box") return; S.coins += amount; S.coinTx.unshift({ amount, reason, detail, at: now() }); S.coinTx = S.coinTx.slice(0, 200); }

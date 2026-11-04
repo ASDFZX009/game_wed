@@ -702,3 +702,13 @@ html.vs-open { overflow: hidden; }
 .tick-opt .pl { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--soft); color: var(--brand); font-size: .8rem; flex: none; }
 .tick-opt[aria-checked="true"] .pl { background: var(--brand); color: #fff; }
 .tick-del { justify-self: start; align-self: center; }
+
+/* บัญชีออนไลน์ (เวอร์ชันเล่นบนเว็บ) */
+.cloud-card { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; background: var(--brand-soft); border: 1px solid var(--line); margin-bottom: 14px; }
+.cloud-card .ic { font-size: 2rem; line-height: 1; }
+.cloud-card.on { background: var(--ok-soft); }
+.cloud-card b { word-break: break-all; }
+.auth-wrap { padding-top: 10px; }
+.auth-wrap .card { padding: 26px 26px 22px; }
+.nav-login { white-space: nowrap; }
+@media (max-width: 1180px) { .nav-right .nav-login { order: -1; } }

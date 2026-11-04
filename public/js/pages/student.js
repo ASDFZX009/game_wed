@@ -131,8 +131,9 @@ export async function settings({ main, me }) {
     <p class="row end"><button class="btn btn-ghost btn-sm" id="resetPrefs">↺ คืนค่าการแสดงผลเริ่มต้น</button></p>
 
     ${state.config.local ? html`<section class="card" id="s-account"><h2 style="margin-top:0">👤 ผู้เล่นและความคืบหน้า</h2>
+      <div id="cloudBox"></div>
       <form id="lf"><label for="ln">ชื่อที่แสดง</label><div class="row"><input id="ln" name="displayName" value="${me.displayName}" maxlength="40" style="flex:1" required><button class="btn">บันทึก</button></div></form>
-      <p class="small muted">ความคืบหน้า (XP เหรียญ ของสะสม) เก็บไว้ในเบราว์เซอร์นี้ — ถ้าล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่องจะหายไป ใช้ “สำรอง” เพื่อย้ายไปเครื่องอื่นได้</p>
+      <p class="small muted" ${me.cloud ? raw("hidden") : ""}>ความคืบหน้า (XP เหรียญ ของสะสม) เก็บไว้ในเบราว์เซอร์นี้ — ถ้าล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่องจะหายไป ใช้ “สำรอง” เพื่อย้ายไปเครื่องอื่นได้</p>
       <div class="row"><button class="btn btn-ghost btn-sm" id="exp">💾 สำรองความคืบหน้า</button><button class="btn btn-ghost btn-sm" id="imp">📥 กู้คืนจากข้อความสำรอง</button><button class="btn btn-danger btn-sm" id="wipe">🗑 เริ่มใหม่ทั้งหมด</button></div>
       <div id="ioBox"></div></section>` : me ? html`<h2 id="s-account" style="margin-top:28px">👤 บัญชี</h2><p class="muted" style="margin-top:-.4em">${me.email} · <a href="/privacy">นโยบายความเป็นส่วนตัว</a></p>
     <form class="card" id="pf"><h3>ข้อมูลส่วนตัว</h3><p class="small muted">ใช้ชื่อเล่นได้ ไม่จำเป็นต้องใช้ชื่อจริง ชื่อนี้ครูและเพื่อนในห้องจะเห็น</p>
