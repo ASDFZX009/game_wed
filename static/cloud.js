@@ -132,3 +132,20 @@ export async function saveProgress(state) {
   await call("/rest/v1/progress?on_conflict=user_id", { method: "POST", auth: true, headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: { user_id: u.id, display_name: state.name, state, updated_at: new Date().toISOString() } });
 }
+
+// ---------- ผู้ดูแลระบบ (ต้องรัน supabase/schema.sql ส่วนแอดมินก่อน) ----------
+export async function checkAdmin() {
+  if (!session) return false;
+  try { return (await call("/rest/v1/rpc/is_admin", { method: "POST", auth: true, body: {} })) === true; } catch { return false; } // ยังไม่ได้รัน SQL ส่วนแอดมิน = ไม่ใช่แอดมิน
+}
+export const adminListPlayers = () => call("/rest/v1/rpc/admin_list_players", { method: "POST", auth: true, body: {} });
+export const adminGrant = (target, item, note) => call("/rest/v1/rpc/admin_grant_item", { method: "POST", auth: true, body: { target, item, note: note || null } });
+// ของขวัญที่ยังไม่ได้รับของตัวเอง → รับแล้วทำเครื่องหมาย
+export async function pendingGrants() {
+  if (!session) return [];
+  try { return (await call("/rest/v1/item_grants?claimed_at=is.null&select=id,item_id,note,created_at&order=id", { auth: true })) || []; } catch { return []; }
+}
+export async function claimGrants(ids) {
+  if (!ids.length) return;
+  await call(`/rest/v1/item_grants?id=in.(${ids.map(Number).join(",")})`, { method: "PATCH", auth: true, headers: { Prefer: "return=minimal" }, body: { claimed_at: new Date().toISOString() } });
+}

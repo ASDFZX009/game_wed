@@ -942,3 +942,14 @@ body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4p
 .lesson-modes { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; }
 .lesson-modes i { font-style: normal; font-size: .72rem; padding: 2px 8px; border-radius: 999px; background: var(--soft); color: var(--mute); }
 @media (max-width: 640px) { .su-row { grid-template-columns: 1fr; gap: 6px; } .su-row > b { padding-top: 0; } .su-chip { font-size: .85rem; padding: 5px 10px; } }
+
+/* 🛡️ หน้าผู้ดูแลระบบ (เวอร์ชันเว็บ) */
+.adm-self { margin-bottom: 16px; }
+.adm-table { display: grid; margin-top: 12px; border-top: 1px solid var(--line); }
+.adm-row { display: grid; grid-template-columns: 2.2fr 1.2fr .8fr .6fr .6fr 1.1fr 110px; gap: 10px; align-items: center; padding: 10px 4px; border-bottom: 1px solid var(--line); }
+.adm-head { font-weight: 700; font-size: .85rem; color: var(--mute); }
+.adm-row > span { min-width: 0; overflow-wrap: anywhere; }
+.adm-dialog { border: 0; border-radius: var(--radius); padding: 20px; width: min(460px, 92vw); background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+.adm-dialog::backdrop { background: rgba(10, 8, 20, .5); }
+.adm-gift label { display: grid; gap: 6px; margin-bottom: 12px; font-weight: 600; }
+@media (max-width: 760px) { .adm-head { display: none; } .adm-row { grid-template-columns: 1fr 1fr; } .adm-row > span:first-child { grid-column: 1 / -1; } }

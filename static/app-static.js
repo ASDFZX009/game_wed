@@ -1,6 +1,7 @@
 // EduPlay เวอร์ชันเล่นบนเว็บ: ใช้หน้าเว็บชุดเดียวกับเวอร์ชันเต็ม แต่ทำงานในเบราว์เซอร์ล้วน
 // เส้นทางใช้ #ชื่อ (เช่น #games, #game-5) เพื่อให้เปิดได้ทั้งบน GitHub Pages และ artifact
-import { localApi, connectRemote, resetProgress, exportProgress, importProgress, useCloud, dropCloud, syncInfo, flushCloud, ownedByAccount } from "./local-api.js";
+import { localApi, connectRemote, resetProgress, exportProgress, importProgress, useCloud, dropCloud, syncInfo, flushCloud, ownedByAccount, setAdmin } from "./local-api.js";
+import { adminPage } from "./admin-static.js";
 import * as C from "./cloud.js";
 import { state, api, html, raw, toast, avatar, confirmBox, formData, busy, fmtDate } from "../public/js/core.js";
 import { loadPrefs, setPrefs, isDark } from "../public/js/prefs.js";
@@ -17,12 +18,12 @@ const ROUTES = [
   [/^\/$/, "", P.home], [/^\/games$/, "games", P.library], [/^\/games\/(\d+)$/, "game-$1", P.playGame, "id"],
   [/^\/quizzes$/, "quizzes", P.quizList], [/^\/quizzes\/(\d+)$/, "quiz-$1", P.quizPage, "id"], [/^\/attempts\/(\d+)$/, "attempt-$1", P.attemptPage, "id"],
   [/^\/dashboard$/, "dashboard", S.dashboard], [/^\/profile$/, "profile", S.profile], [/^\/shop$/, "shop", SH.shop], [/^\/bag$/, "bag", BG.bag], [/^\/quiz-game$/, "quiz-game", QG.quizGame],
-  [/^\/settings$/, "prefs", S.settings], [/^\/privacy$/, "privacy", privacyLocal],
+  [/^\/settings$/, "prefs", S.settings], [/^\/admin$/, "admin", (ctx) => adminPage({ ...ctx, go, refreshMe })], [/^\/privacy$/, "privacy", privacyLocal],
   [/^\/login$/, "login", loginPage], [/^\/register$/, "register", registerPage], [/^\/forgot$/, "forgot", forgotPage], [/^\/reset-password$/, "reset-password", resetPage],
 ];
 const HASH = [
   [/^$/, "/"], [/^games$/, "/games"], [/^game-(\d+)$/, "/games/$1"], [/^quizzes$/, "/quizzes"], [/^quiz-(\d+)$/, "/quizzes/$1"],
-  [/^attempt-(\d+)$/, "/attempts/$1"], [/^dashboard$/, "/dashboard"], [/^profile$/, "/profile"], [/^shop$/, "/shop"], [/^bag$/, "/bag"], [/^quiz-game$/, "/quiz-game"], [/^prefs$/, "/settings"], [/^settings$/, "/settings"], [/^privacy$/, "/privacy"],
+  [/^attempt-(\d+)$/, "/attempts/$1"], [/^dashboard$/, "/dashboard"], [/^profile$/, "/profile"], [/^shop$/, "/shop"], [/^bag$/, "/bag"], [/^quiz-game$/, "/quiz-game"], [/^prefs$/, "/settings"], [/^admin$/, "/admin"], [/^settings$/, "/settings"], [/^privacy$/, "/privacy"],
   [/^login$/, "/login"], [/^register$/, "/register"], [/^forgot$/, "/forgot"], [/^reset-password$/, "/reset-password"],
 ];
 let pending = null; // ที่อยู่เต็ม (รวม ?query) ที่รอแสดง
@@ -91,7 +92,7 @@ function renderNav(cur = "/") {
     <a href="/" class="logo" aria-label="EduPlay หน้าแรก"><span aria-hidden="true">🚀</span> EduPlay</a>
     <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
     <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "คลังเกม", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "ความคืบหน้า", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
-      <div class="nav-right">${state.config?.cloud && !u.cloud ? html`<a href="/login" class="btn btn-sm nav-login">🔐 เข้าสู่ระบบ</a>` : ""}<a href="/shop" class="coins" title="เหรียญของฉัน">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a>
+      <div class="nav-right">${state.config?.cloud && !u.cloud ? html`<a href="/login" class="btn btn-sm nav-login">🔐 เข้าสู่ระบบ</a>` : ""}${u.admin ? html`<a href="/admin" class="${cur === "/admin" ? "active" : ""}" title="ผู้ดูแลระบบ">🛡️ แอดมิน</a>` : ""}<a href="/shop" class="coins" title="เหรียญของฉัน">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a>
         <a href="/profile" class="me">${avatar(u.equipped)} <span class="ellipsis">${u.displayName || ""}</span>${u.cloud ? html`<span title="บันทึกในบัญชีออนไลน์" aria-label="บันทึกในบัญชีออนไลน์">☁️</span>` : ""}</a><a href="/settings">⚙️ ตั้งค่า</a>
         <button class="theme" id="themeBtn" aria-label="สลับโหมดมืด/สว่าง" title="สลับโหมดมืด/สว่าง">🌓</button></div></div></div>`.s;
   document.getElementById("menuBtn").onclick = () => { const o = document.body.classList.toggle("menu-open"); document.getElementById("menuBtn").setAttribute("aria-expanded", o); };
@@ -105,7 +106,9 @@ function renderNav(cur = "/") {
 }
 
 // ---------- บัญชีออนไลน์ ----------
-const store = { load: C.loadProgress, save: C.saveProgress };
+const store = { load: C.loadProgress, save: C.saveProgress, pending: C.pendingGrants, claim: C.claimGrants };
+// เข้าระบบแล้ว: ตรวจสิทธิ์แอดมินที่ Supabase และแจ้งของขวัญที่ได้รับ
+async function connectAccount(u) { const r = await useCloud(store, u, C.displayNameOf(u)); setAdmin(await C.checkAdmin()); if (r.gifts?.length) setTimeout(() => toast(`🎁 ได้รับของขวัญจากผู้ดูแล: ${r.gifts.join(", ")} — ดูได้ในกระเป๋า`), 900); return r; }
 const pwOk = (p) => p.length >= 8;
 async function withBusy(btn, fn) { busy(btn, true); try { await fn(); } finally { if (btn.isConnected) busy(btn, false); } }
 function authCard(main, title, body, foot = "") {
@@ -120,7 +123,7 @@ function needCloud(main) {
 }
 async function afterLogin(main) {
   const u = C.currentUser();
-  const { isNew } = await useCloud(store, u, C.displayNameOf(u));
+  const { isNew } = await connectAccount(u);
   await refreshMe();
   toast(isNew ? `สร้างบัญชีแล้ว ยินดีต้อนรับ ${state.me.displayName}! รับ 150 🪙 ต้อนรับ ☁️` : `ยินดีต้อนรับกลับ ${state.me.displayName} 👋`);
   go("/dashboard");
@@ -307,7 +310,7 @@ window.addEventListener("hashchange", () => {
   const ci = await C.initCloud();
   state.config = { ...(await api("/api/config")), cloud: ci.enabled };
   if (ci.enabled && C.currentUser()) {
-    try { await useCloud(store, C.currentUser(), C.displayNameOf(C.currentUser())); }
+    try { await connectAccount(C.currentUser()); }
     catch (e) { if (!e.expired) toast("โหลดความคืบหน้าจากบัญชีไม่ได้: " + e.message, "bad"); }
   }
   else if (ownedByAccount()) await dropCloud(); // เซสชันหายไปแล้ว: ไม่แสดงความคืบหน้าของบัญชีค้างไว้

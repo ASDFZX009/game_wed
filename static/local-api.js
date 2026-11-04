@@ -32,6 +32,7 @@ const ITEM = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
 const fresh = () => ({ v: 1, name: "นักผจญภัย", grade: "", xp: 0, coins: WELCOME_COINS, createdAt: now(), updatedAt: now(), seq: 1,
   plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {} });
 let S = fresh();
+let adminFlag = false; // ตรวจสิทธิ์จริงที่ Supabase (is_admin) แล้วจึงเปิด
 let remote = null; // ที่เก็บในบัญชี Claude (artifact) ถ้ามี
 try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && v.v === 1) S = { ...fresh(), ...v }; } catch { /* โหมดส่วนตัว */ }
 let saveTimer = null;
@@ -72,12 +73,25 @@ export async function useCloud(store, user, displayName) {
   }
   S.owner = user.id;
   cloud = store; cloudUser = user;
+  const gifts = await receiveGifts(store);
   localSave();
   await pushCloud();
-  return { isNew };
+  if (gifts.length && store.claim) await store.claim(gifts.map((g) => g.id)).catch(() => {});
+  return { isNew, gifts: gifts.filter((g) => g.name).map((g) => g.name) };
 }
+// ของขวัญจากแอดมิน: ใส่ลงกระเป๋า (ของที่มีแล้วข้าม) แล้วค่อยทำเครื่องหมายว่ารับแล้วหลังบันทึกขึ้นคลาวด์
+async function receiveGifts(store) {
+  if (!store.pending) return [];
+  const list = await store.pending().catch(() => []), out = [];
+  for (const g of list) { const it = ITEM[g.item_id], fresh = it && !S.items[it.id]; out.push({ id: g.id, name: fresh ? it.name : null });
+    if (fresh) { S.items[it.id] = { source: "gift", at: now() }; S.activity.unshift({ kind: "gift", title: `ได้รับ “${it.name}” จากผู้ดูแล${g.note ? ` — ${g.note}` : ""}`, xp: 0, created_at: now() }); } }
+  if (out.length) S.updatedAt = now();
+  return out;
+}
+export function setAdmin(v) { adminFlag = !!v; }
 /** ออกจากระบบ: เอาความคืบหน้าของบัญชีออกจากเครื่องนี้ แล้วกลับไปใช้ของผู้เล่นไม่ล็อกอิน */
 export async function dropCloud() {
+  adminFlag = false;
   if (cloudTimer || cAgain) await pushCloud().catch(() => {});
   cloud = null; cloudUser = null;
   const prefs = S.prefs;
@@ -117,7 +131,7 @@ export async function connectRemote(onLoaded) {
 
 // ---------- ช่วยเหลือ ----------
 const equippedView = () => Object.fromEntries(Object.entries(S.equipped).filter(([s, id]) => ITEM[id]?.type === s).map(([s, id]) => [s, ITEM[id].value]));
-const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), owned: Object.keys(S.items), local: true,
+const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, admin: adminFlag && !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), owned: Object.keys(S.items), local: true,
   level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL });
 function addXP(xp, kind, title) { S.xp += xp; S.activity.unshift({ kind, title, xp, created_at: now() }); S.activity = S.activity.slice(0, 200); }
 function addCoins(amount, reason, detail) { if (!amount && reason !== "free_box") return; S.coins += amount; S.coinTx.unshift({ amount, reason, detail, at: now() }); S.coinTx = S.coinTx.slice(0, 200); }
@@ -209,6 +223,10 @@ on("PUT", "/api/auth/prefs", (_p, b) => { S.prefs = b || {}; const prem = CATALO
 on("PATCH", "/api/auth/account", (_p, b) => { const n = String(b.displayName || "").trim().slice(0, 40); if (!n) throw err(400, "กรุณาใส่ชื่อที่แสดง"); S.name = n; S.grade = String(b.grade || "").slice(0, 20); save(); return { ok: true }; });
 on("GET", "/api/classes", () => ({ classes: [] }));
 
+// เครื่องมือทดสอบของแอดมิน (บัญชีตัวเองเท่านั้น)
+const needAdmin = () => { if (!adminFlag || !cloudUser) throw err(403, "ต้องเป็นผู้ดูแลระบบ"); };
+on("POST", "/api/admin/unlock-all", () => { needAdmin(); let n = 0; for (const it of CATALOG) if (!S.items[it.id]) { S.items[it.id] = { source: "admin", at: now() }; n++; } save(); return { unlocked: n, total: CATALOG.length }; });
+on("POST", "/api/admin/coins", (_p, b) => { needAdmin(); let n = Math.max(-1e6, Math.min(1e6, Math.round(+b.amount || 0))); if (S.coins + n < 0) n = -S.coins; addCoins(n, "admin", "ผู้ดูแลปรับเหรียญ"); save(); return { coins: S.coins }; });
 on("GET", "/api/games/featured", () => ({ games: [...GAMES].sort((a, b) => (S.gamePlays[b.id] || 0) - (S.gamePlays[a.id] || 0) || a.id - b.id).slice(0, 6).map(gameRow), count: GAMES.length }));
 on("GET", "/api/games", (_p, _b, q) => {
   let list = GAMES.filter((g) => {
