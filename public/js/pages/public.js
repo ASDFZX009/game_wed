@@ -4,18 +4,19 @@ import { go, refreshMe, homeFor, onLeave } from "../app.js";
 import { startGame } from "../game.js";
 import { renderQuestion, bindQuestions, readAnswers, countUnanswered } from "../quizform.js";
 import { mountWorld } from "./world.js";
-import { reducedMotion } from "../prefs.js";
+import { mountQuestScene } from "./questscene.js";
+import { reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
 
 export function gameCard(g) {
-  if (g.template === "lesson") return html`<a class="game-card lesson" href="/games/${g.id}">
+  if (g.template === "lesson") return html`<a class="game-card lesson" href="/games/${g.id}" data-cat="${g.category?.slug || ""}">
     <span class="ic" aria-hidden="true">${g.icon || g.category?.icon}</span>
     <span class="meta">${g.category ? g.category.name + " · " : ""}บทเรียน · 5 ระดับ</span>
     <h3>${g.title}</h3><p>${g.description}</p>
     <span class="lesson-modes">${(g.modeNames || []).map((m) => html`<i>${m}</i>`)}</span>
     <span class="meta">อายุ ${g.ageMin}–${g.ageMax} ปี · ${g.generated ? "สร้างโจทย์ใหม่ไม่จำกัด" : `คลัง ${g.questionCount} ข้อ`} · ${g.sets} ชุดคำถาม · เล่นแล้ว ${g.plays} ครั้ง</span></a>`;
-  return html`<a class="game-card" href="/games/${g.id}">
+  return html`<a class="game-card" href="/games/${g.id}" data-cat="${g.category?.slug || ""}">
     <span class="ic" aria-hidden="true">${g.category?.icon || TPL_IC[g.template]}</span>
     <span class="meta">${g.category ? g.category.name + " · " : ""}${g.templateName} · ${DIFF[g.difficulty]}</span>
     <h3>${g.title}</h3><p>${g.description}</p>
@@ -45,18 +46,35 @@ export async function library({ main, query }) {
   const f = { q: query.get("q") || "", category: query.get("category") || "", difficulty: query.get("difficulty") || "", age: query.get("age") || "", sort: query.get("sort") || "new", page: query.get("page") || "1" };
   const data = await api("/api/games?" + new URLSearchParams(f));
   const sel = (v, cur) => (v === cur ? raw("selected") : "");
-  main.innerHTML = html`<h1>คลังเกม</h1>
+  const catOf = (slug) => categories.find((c) => c.slug === slug);
+  const cur = catOf(f.category);
+  // โครงหน้า: ลานกระดานภารกิจ (ฉากพิกเซล) + แผงไม้ตัวกรอง + ใบภารกิจ
+  document.body.classList.add("quest-world"); loadSkinFont("pixel");
+  main.innerHTML = html`<section class="shop-scene quest-scene" aria-label="ลานกระดานภารกิจ">
+      <div class="ss-bubble" role="status" aria-live="polite"></div>
+      <h1 class="ss-sign">📜 กระดานภารกิจ</h1>
+      <a class="ss-back" href="/" id="qsBack">⬅ กลับหมู่บ้าน</a>
+      <div class="qs-count"><b>${data.total}</b><span>ภารกิจ${cur ? ` · ${cur.icon} ${cur.name}` : ""}</span></div>
+    </section>
+    <div class="quest-body">
+    <nav class="q-cats" aria-label="เลือกหมวด"><a class="q-cat ${f.category ? "" : "on"}" href="/games?${new URLSearchParams({ ...f, category: "", page: 1 })}">🌈 ทั้งหมด</a>${categories.map((c) => html`<a class="q-cat ${f.category === c.slug ? "on" : ""}" href="/games?${new URLSearchParams({ ...f, category: c.slug, page: 1 })}">${c.icon} ${c.name}</a>`)}</nav>
     <form class="card filters" id="ff" role="search">
-      <div class="grow"><label for="f-q" class="sr-only">ค้นหา</label><input id="f-q" name="q" value="${f.q}" placeholder="ค้นหาชื่อเกม…"></div>
+      <div class="grow"><label for="f-q" class="sr-only">ค้นหา</label><input id="f-q" name="q" value="${f.q}" placeholder="🔎 ค้นหาภารกิจ…"></div>
       <div><label for="f-c" class="sr-only">หมวด</label><select id="f-c" name="category"><option value="">ทุกหมวด</option>${categories.map((c) => html`<option value="${c.slug}" ${sel(c.slug, f.category)}>${c.icon} ${c.name}</option>`)}</select></div>
       <div><label for="f-d" class="sr-only">ระดับ</label><select id="f-d" name="difficulty"><option value="">ทุกระดับ</option>${Object.entries(DIFF).map(([k, v]) => html`<option value="${k}" ${sel(k, f.difficulty)}>${v}</option>`)}</select></div>
       <div><label for="f-a" class="sr-only">อายุ</label><input id="f-a" name="age" type="number" min="1" max="99" value="${f.age}" placeholder="อายุ (ปี)"></div>
       <div><label for="f-s" class="sr-only">เรียงตาม</label><select id="f-s" name="sort"><option value="new" ${sel("new", f.sort)}>ใหม่ล่าสุด</option><option value="popular" ${sel("popular", f.sort)}>ยอดนิยม</option><option value="title" ${sel("title", f.sort)}>ชื่อ ก–ฮ</option></select></div>
       <button class="btn">ค้นหา</button></form>
-    <p class="muted small" style="margin:14px 0 8px">พบ ${data.total} เกม</p>
-    ${data.games.length ? html`<div class="grid">${data.games.map(gameCard)}</div>` : html`<div class="empty">ไม่พบเกมที่ตรงกับเงื่อนไข ลองล้างตัวกรอง</div>`}
+    ${data.games.length ? html`<div class="grid quests">${data.games.map(gameCard)}</div>` : html`<div class="empty">ไม่พบภารกิจที่ตรงกับเงื่อนไข ลองล้างตัวกรอง</div>`}
     ${data.pages > 1 ? html`<nav class="pager" aria-label="หน้า">${+f.page > 1 ? html`<a class="btn btn-ghost btn-sm" href="/games?${new URLSearchParams({ ...f, page: +f.page - 1 })}">← ก่อนหน้า</a>` : ""}
-      <span class="muted">หน้า ${data.page}/${data.pages}</span>${+f.page < data.pages ? html`<a class="btn btn-ghost btn-sm" href="/games?${new URLSearchParams({ ...f, page: +f.page + 1 })}">ถัดไป →</a>` : ""}</nav>` : ""}`.s;
+      <span class="pg">หน้า ${data.page}/${data.pages}</span>${+f.page < data.pages ? html`<a class="btn btn-ghost btn-sm" href="/games?${new URLSearchParams({ ...f, page: +f.page + 1 })}">ถัดไป →</a>` : ""}</nav>` : ""}
+    </div>`.s;
+  main.querySelector("#qsBack").addEventListener("click", () => { try { if (f.category) sessionStorage.setItem("eduplay:worldPos", f.category); } catch { /* ignore */ } });
+  const greet = [state.me ? `สวัสดี ${state.me.displayName}! วันนี้จะรับภารกิจไหนดี?` : "ยินดีต้อนรับสู่กิลด์นักผจญภัย! เลือกภารกิจได้เลย",
+    "ทุกภารกิจมี 5 ระดับ ตั้งแต่ง่ายมากจนถึงยากมากนะ", "ตอบถูกแล้วการ์ดจะปล่อยสกิลใส่บอส ⚔️", "เลือกตัวละครได้ 5 แบบ ลองเปลี่ยนดูสกิลใหม่ ๆ สิ", "ทำภารกิจสำเร็จได้เหรียญ เอาไปแลกของที่ร้านค้า"];
+  const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
+  const scene = mountQuestScene(main.querySelector(".quest-scene"), { shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion(), greet });
+  onLeave(() => { scene.destroy(); document.body.classList.remove("quest-world"); });
   const form = main.querySelector("#ff");
   form.onsubmit = (e) => { e.preventDefault(); const d = formData(form); Object.keys(d).forEach((k) => !d[k] && delete d[k]); go("/games?" + new URLSearchParams(d)); };
   form.querySelectorAll("select").forEach((s) => s.onchange = () => form.requestSubmit());
@@ -67,6 +85,8 @@ export async function playGame({ main, params, query }) {
   const SKEY = `eduplay:setup:${params.id}`;
   let setup = (() => { try { return JSON.parse(localStorage.getItem(SKEY)) || {}; } catch { return {}; } })();
   for (const k of ["level", "mode", "count", "set"]) if (query.get(k)) setup[k] = query.get(k);
+  document.body.classList.add("quest-world", "quest-play"); loadSkinFont("pixel");
+  onLeave(() => document.body.classList.remove("quest-world", "quest-play"));
   const load = async (change) => {
     if (change) { setup = { ...setup, ...change }; if (change.set === 0 || change.set === "0") setup.seed = Math.floor(Math.random() * 1e9); else delete setup.seed; try { localStorage.setItem(SKEY, JSON.stringify({ ...setup, seed: undefined })); } catch { /* ignore */ } }
     const qs = new URLSearchParams(Object.entries(setup).filter(([, v]) => v !== undefined && v !== null && v !== ""));
@@ -242,7 +262,8 @@ export function privacy({ main }) {
       <li>เราไม่ขายหรือแบ่งปันข้อมูลของผู้ใช้ให้บุคคลภายนอก</li></ul>
     <h2>การเก็บรักษาและการลบ</h2><p>เก็บไว้จนกว่าคุณจะลบบัญชี ที่ “ตั้งค่า” คุณลบบัญชีได้ด้วยตนเอง ระบบจะลบอีเมล ชื่อ คะแนน ประวัติ เหรียญ และการเป็นสมาชิกห้องเรียนทั้งหมดอย่างถาวร ครูที่ลบบัญชี: ห้องเรียนที่สร้างจะถูกลบ เนื้อหาที่สร้างจะถูกถอดออกจากสาธารณะ</p>
     <h2>เด็กและเยาวชน</h2><p>ระบบออกแบบให้เก็บข้อมูลส่วนบุคคลน้อยที่สุด สถานศึกษาหรือผู้ให้บริการควรดำเนินการขอความยินยอมจากผู้ปกครองตามกฎหมายก่อนให้นักเรียนอายุต่ำกว่าเกณฑ์สมัครใช้งาน</p>
-    <h2>ติดต่อ</h2><p class="muted">[ผู้ให้บริการระบุผู้ควบคุมข้อมูลและช่องทางติดต่อที่นี่]</p></article>`.s;
+    <h2>ติดต่อ</h2><p class="muted">[ผู้ให้บริการระบุผู้ควบคุมข้อมูลและช่องทางติดต่อที่นี่]</p>
+    <h2 id="credits">เครดิต</h2><p>เอฟเฟกต์สกิลในฉากต่อสู้บอสใช้ <a href="https://github.com/888wing/pixel-vfx-codex" target="_blank" rel="noopener">Pixel VFX Codex</a> (สัญญาอนุญาต MIT) ภาพตัวละคร บอส และฉากทั้งหมดวาดขึ้นใหม่ด้วยโค้ด</p></article>`.s;
 }
 
 export function notFound({ main }) {

@@ -3,6 +3,8 @@ import { api, html, raw, esc, toast, confetti, state } from "./core.js";
 import { playSound, getPrefs } from "./prefs.js";
 import { refreshMe } from "./app.js";
 import { showResultSplash, resultMeta, fmtTime } from "./result-splash.js";
+import { createBattle } from "./battle.js";
+import { reducedMotion } from "./prefs.js";
 
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
@@ -60,10 +62,26 @@ export function startGame(root, data, opts = {}) {
     if (b) b.onclick = () => { b.replaceWith(Object.assign(document.createElement("div"), { className: "info small", textContent: "💡 " + q.hint })); };
   }
 
+  // ⚔️ ปรนัยและถูก/ผิด: ตอบด้วยการ์ดสกิลโจมตีบอส (หลอดเลือดบอส = จำนวนข้อ)
+  let battle = null;
+  function renderBattle() {
+    if (!battle) {
+      root.innerHTML = html`<div class="play play-battle">${introHead(true)}<div id="g-battle"></div></div>`.s;
+      battle = createBattle(root.querySelector("#g-battle"), {
+        total: questions.length, lesson: game.title, category: game.category?.slug, reduced: reducedMotion(),
+        getTimerHtml: () => (game.timeLimitSec ? '<span class="timer" id="g-timer" role="timer" aria-live="off">⏱ --:--</span>' : ""),
+        onAnswer: async (a) => { answers[idx] = a; const r = await check(a).catch((e) => { toast(e.message, "bad"); return null; }); if (r) playSound(r.correct ? "correct" : "wrong"); return r; },
+        onNext: () => { clearTimeout(autoTimer); if (done) return; idx++; idx >= questions.length ? finish() : renderQ(); },
+      });
+      battle.state.after = (r) => { if (getPrefs().autoNext) autoTimer = setTimeout(() => root.querySelector("#g-next")?.click(), r.correct ? 1400 : 2600); };
+    }
+    battle.ask(idx, questions[idx]); tick();
+  }
   function renderQ() {
     locked = false;
     const q = questions[idx];
     const t = game.template;
+    if (t === "mcq" || t === "truefalse") return renderBattle();
     let body;
     if (t === "truefalse") {
       body = html`<div class="tf"><button class="btn btn-lg" data-a="true">✔ ถูก</button><button class="btn btn-lg btn-no" data-a="false">✖ ผิด</button></div>`;
@@ -178,15 +196,16 @@ export function startGame(root, data, opts = {}) {
     finishPayload.getMemory = () => ({ moves, found, completed: found === pairs });
   }
 
-  function introHead() {
+  function introHead(isBattle) {
+    const how = isBattle ? "⚔️ เลือกการ์ดคำตอบที่ถูก การ์ดจะปล่อยสกิลโจมตีบอส — ตอบถูกครบทุกข้อเพื่อล้มบอส (กดเลข 1–4 ได้)" : game.howTo;
     return html`<h1>${game.title}</h1><p class="muted" style="margin:-.3em 0 .2em">${game.description}</p>
-      <p class="small muted">วิธีเล่น: ${game.howTo}${game.template === "match" ? "" : ` · ข้อละ ${game.pointsPerQ} คะแนน`}</p>
+      <p class="small muted">วิธีเล่น: ${how}${game.template === "match" ? "" : ` · ข้อละ ${game.pointsPerQ} คะแนน`}</p>
       ${data.preview ? html`<div class="info small">👀 โหมดทดลองเล่น (ฉบับร่าง) — ไม่บันทึกผล</div>` : ""}`;
   }
 
   let t0 = 0;
   async function finish(extra) {
-    if (done) return; done = true; stop();
+    if (done) return; done = true; stop(); battle?.destroy(); battle = null;
     const body = { answers, assignmentId: finishPayload.assignmentId, key };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
@@ -256,5 +275,5 @@ export function startGame(root, data, opts = {}) {
   root.querySelector("#g-start").onclick = () => { t0 = Date.now(); startTimer(); game.template === "match" ? renderMemory() : renderQ(); };
   root.querySelectorAll(".su-chip").forEach((b) => b.onclick = () => { if (b.classList.contains("on") && b.dataset.v !== "0") return; const k = b.dataset.k, v = b.dataset.k === "mode" ? b.dataset.v : +b.dataset.v; root.querySelectorAll(".su-chip").forEach((x) => x.disabled = true); opts.reconfigure?.({ [k]: v }); });
   (data.setup ? root.querySelector(".su-chip.on") || root.querySelector("#g-start") : root.querySelector("#g-start")).focus({ preventScroll: true });
-  return () => stop();
+  return () => { stop(); battle?.destroy(); };
 }
