@@ -30,6 +30,9 @@ const redirectApp = {
     target: ["es2020"], charset: "utf8", plugins: [redirectApp], legalComments: "none", logLevel: "warning",
   });
   const js = out.outputFiles[0].text.replace(/<\/script/gi, "<\\/script");
+  const sdir = path.join(root, "public/sounds");
+  const sounds = JSON.stringify(Object.fromEntries(fs.readdirSync(sdir).filter((f) => f.endsWith(".mp3"))
+    .map((f) => [f.replace(/\.mp3$/, ""), "data:audio/mpeg;base64," + fs.readFileSync(path.join(sdir, f)).toString("base64")])));
   const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8");
 
   // 3) ประกอบเป็น HTML ไฟล์เดียว
@@ -58,6 +61,7 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
 <main id="app" class="wrap" tabindex="-1"><div class="loading">กำลังโหลด…</div></main>
 <nav class="bottom-nav" id="bnav" aria-label="เมนูลัด"></nav>
 <footer class="foot wrap"><a href="/privacy">ความเป็นส่วนตัว</a><span>EduPlay Universe · เวอร์ชันเล่นบนเว็บ</span><a href="https://github.com/ASDFZX009/game_wed">GitHub</a></footer>
+<script>window.__SOUND_DATA=${sounds}</script>
 <script>${js}</script>
 </body>
 </html>

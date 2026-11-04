@@ -65,6 +65,7 @@ const PREFS = {
   fontSize: ["sm", "md", "lg", "xl"],
   motion: ["auto", "reduce"],
   sound: [true, false], haptics: [true, false], confetti: [true, false], autoNext: [true, false], contrast: [true, false], dyslexic: [true, false],
+  tickSound: ["synth", "ka-ching", "register-ding", "register-open", "coins", "service-bell", "thank-you-bits", "custom"],
 };
 r.put("/prefs", A.need(), (req, res) => {
   const out = {};

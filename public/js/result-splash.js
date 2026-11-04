@@ -1,6 +1,6 @@
 // หน้าจอสรุปผลแบบเต็มจอหลังจบเกม: แถบเฉียง ดาวระเบิดคะแนน ตราแรงก์ ตัวเลขนับขึ้น
 import { html, raw } from "./core.js";
-import { playSound, playTick, getPrefs } from "./prefs.js";
+import { playSound, playTick, preloadTick, getPrefs } from "./prefs.js";
 
 const reduced = () => getPrefs().motion === "reduce" || (getPrefs().motion !== "full" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -30,6 +30,7 @@ export const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)
 export function showResultSplash(host, o) {
   const { r, game } = o;
   const { tone, rank, title, sub } = resultMeta(r);
+  preloadTick();
   const pct = r.max ? Math.round((r.score / r.max) * 100) : 0;
   const isMatch = game.template === "match";
   const saved = !!r.saved;

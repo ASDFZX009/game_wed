@@ -2,7 +2,7 @@
 import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo, avatar, titleTag } from "../core.js";
 import { go, refreshMe } from "../app.js";
 import * as T from "./teacher.js";
-import { getPrefs, setPrefs, playSound, playTick, getTickSound, setTickSound, TICK_MAX_BYTES, PALETTES, DEFAULTS } from "../prefs.js";
+import { getPrefs, setPrefs, playSound, playTick, getTickSound, setTickSound, TICK_MAX_BYTES, TICK_SOUNDS, PALETTES, DEFAULTS } from "../prefs.js";
 
 const KIND = { game: "เล่นเกม", quiz: "ส่งแบบทดสอบ" };
 export function assignmentHref(a, classId) {
@@ -113,10 +113,10 @@ export async function settings({ main, me }) {
     <section class="card" id="s-game"><h2 style="margin-top:0">🎮 เกมและเสียง</h2>
       <div class="set-row"><div class="t"><b id="l-sound">เสียงประกอบ</b><span class="small muted">เสียงเมื่อตอบถูก ตอบผิด พลิกการ์ด และจบเกม</span></div>
         <div class="row"><button type="button" class="btn btn-ghost btn-sm" id="testSound">🔊 ลองฟัง</button><label class="switch"><input type="checkbox" data-sw="sound" aria-labelledby="l-sound" ${P.sound ? raw("checked") : ""}><span></span></label></div></div>
-      <div class="set-row"><div class="t"><b>🎵 เสียงตอนตัวเลขบวกขึ้น</b><span class="small muted" id="tickInfo">ตอนจบเกม ทุกครั้งที่คะแนน XP และเหรียญนับขึ้น — เลือกไฟล์เสียงของคุณเองได้ (เก็บในเบราว์เซอร์นี้เท่านั้น ไม่ถูกอัปโหลดไปไหน)</span></div>
-        <div class="row"><button type="button" class="btn btn-ghost btn-sm" id="tickTest">🔊 ลองฟัง</button>
-          <label class="btn btn-sm" style="cursor:pointer">📁 เลือกไฟล์เสียง<input type="file" id="tickFile" accept="audio/*" hidden></label>
-          <button type="button" class="btn btn-ghost btn-sm" id="tickReset">ใช้เสียงเริ่มต้น</button></div></div>
+      <div class="set-row tick-row"><div class="t"><b id="l-tick">🎵 เสียงตอนตัวเลขบวกขึ้น</b><span class="small muted">ดังตอนจบเกม ทุกครั้งที่คะแนน XP เหรียญ และเหรียญรางวัลใหม่เด้งขึ้น — กดเพื่อเลือกและลองฟัง</span></div>
+        <div class="tick-grid" role="radiogroup" aria-labelledby="l-tick" id="tickGrid"></div>
+        <div class="row small" style="margin-top:8px"><label class="btn btn-ghost btn-sm" style="cursor:pointer">📁 ใช้ไฟล์เสียงของฉัน<input type="file" id="tickFile" accept="audio/*" hidden></label>
+          <span class="muted">ไฟล์ของคุณเก็บในเบราว์เซอร์นี้เท่านั้น ไม่ถูกอัปโหลดไปไหน</span></div></div>
       ${sw("haptics", "สั่นเมื่อตอบ (มือถือ)", "สั่นเบา ๆ เมื่อตอบถูก/ผิด — ใช้ได้กับมือถือ Android ส่วนใหญ่ (iPhone ไม่รองรับ)")}
       ${sw("confetti", "พลุฉลอง", "แสดงพลุกระดาษเมื่อได้คะแนนเต็มหรือติดอันดับ")}
       ${sw("autoNext", "ไปข้อถัดไปอัตโนมัติ", "หลังตอบ เกมจะไปข้อต่อไปเอง (ตอบถูก 1.2 วินาที ตอบผิด 2.5 วินาที)")}</section>
@@ -154,20 +154,30 @@ export async function settings({ main, me }) {
   main.querySelectorAll("[data-seg] button").forEach((b) => b.onclick = () => { setPrefs({ [b.closest("[data-seg]").dataset.seg]: b.dataset.v }); refresh(); });
   main.querySelectorAll("[data-pal]").forEach((b) => b.onclick = () => { if (b.dataset.locked) { toast(me ? "ธีมนี้ยังล็อกอยู่ ไปปลดล็อกที่ร้านค้าได้เลย" : "เข้าสู่ระบบแล้วสะสมเหรียญเพื่อปลดล็อกธีมพิเศษ", "bad"); return; } setPrefs({ palette: b.dataset.pal }); refresh(); toast(`เปลี่ยนธีมเป็น “${PALETTES.find((x) => x.id === b.dataset.pal).name}”`); });
   main.querySelectorAll("[data-sw]").forEach((c) => c.onchange = () => { setPrefs({ [c.dataset.sw]: c.checked }); if (c.dataset.sw === "sound" && c.checked) playSound("correct"); });
-  const tickInfo = () => { const has = !!getTickSound(); main.querySelector("#tickReset").hidden = !has; main.querySelector("#tickTest").textContent = has ? "🔊 ลองฟัง (ไฟล์ของคุณ)" : "🔊 ลองฟัง (เสียงเริ่มต้น)"; };
-  tickInfo();
-  main.querySelector("#tickTest").onclick = () => { if (!getPrefs().sound) return toast("เปิดสวิตช์เสียงก่อน", "bad"); [0, 1, 2].forEach((i) => setTimeout(() => playTick(i), i * 450)); };
+  const drawTicks = () => {
+    const sel = getPrefs().tickSound, hasFile = !!getTickSound();
+    main.querySelector("#tickGrid").innerHTML = TICK_SOUNDS.filter((x) => x.id !== "custom" || hasFile).map((x) => html`<button type="button" class="tick-opt" role="radio" data-tick="${x.id}" aria-checked="${sel === x.id}">
+      <span class="ic">${x.icon}</span><span class="nm">${x.name}${x.id === "synth" ? html`<small>ค่าเริ่มต้น</small>` : ""}</span><span class="pl" aria-hidden="true">${sel === x.id ? "✓" : "▶"}</span></button>`.s).join("")
+      + (hasFile ? html`<button type="button" class="tick-del linkish small" id="tickDel">ลบไฟล์ของฉัน</button>`.s : "");
+    main.querySelectorAll("[data-tick]").forEach((b) => b.onclick = () => {
+      setPrefs({ tickSound: b.dataset.tick }); drawTicks();
+      if (!getPrefs().sound) toast("เลือกแล้ว — เปิดสวิตช์เสียงประกอบเพื่อให้ได้ยิน", "bad"); else playTick(0, b.dataset.tick);
+      main.querySelector(`[data-tick="${b.dataset.tick}"]`)?.focus();
+    });
+    const del = main.querySelector("#tickDel");
+    if (del) del.onclick = () => { setTickSound(null); if (getPrefs().tickSound === "custom") setPrefs({ tickSound: "synth" }); drawTicks(); toast("ลบไฟล์แล้ว"); };
+  };
+  drawTicks();
   main.querySelector("#tickFile").onchange = (e) => {
     const f = e.target.files[0]; e.target.value = "";
     if (!f) return;
     if (!f.type.startsWith("audio/")) return toast("ต้องเป็นไฟล์เสียง เช่น .mp3 .wav .ogg", "bad");
     if (f.size > TICK_MAX_BYTES) return toast(`ไฟล์ใหญ่เกินไป (สูงสุด ${TICK_MAX_BYTES / 1024} KB) ควรเป็นเสียงสั้น ๆ ไม่เกิน 2–3 วินาที`, "bad");
     const rd = new FileReader();
-    rd.onload = () => { try { setTickSound(rd.result); tickInfo(); toast("ตั้งเสียงแล้ว 🎵"); playTick(); } catch (err) { toast(err.message, "bad"); } };
+    rd.onload = () => { try { setTickSound(rd.result); setPrefs({ tickSound: "custom" }); drawTicks(); toast("ตั้งเสียงแล้ว 🎵"); playTick(0, "custom"); } catch (err) { toast(err.message, "bad"); } };
     rd.onerror = () => toast("อ่านไฟล์ไม่สำเร็จ", "bad");
     rd.readAsDataURL(f);
   };
-  main.querySelector("#tickReset").onclick = () => { setTickSound(null); tickInfo(); toast("กลับไปใช้เสียงเริ่มต้นแล้ว"); playTick(); };
   main.querySelector("#testSound").onclick = () => { if (!getPrefs().sound) return toast("เปิดสวิตช์เสียงก่อน", "bad"); playSound("correct"); setTimeout(() => playSound("wrong"), 450); setTimeout(() => playSound("win"), 1000); };
   const ib = main.querySelector("#installBox");
   const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;

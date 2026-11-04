@@ -2,7 +2,19 @@
 // ผู้เยี่ยมชม: เก็บในเบราว์เซอร์ · สมาชิก: เก็บกับบัญชี (ตามไปทุกเครื่อง)
 import { state, api } from "./core.js";
 
-export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoNext: false, contrast: false, dyslexic: false };
+export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoNext: false, contrast: false, dyslexic: false, tickSound: "synth" };
+
+// เสียงตอนตัวเลขบวกขึ้นในหน้าสรุปผล (ไฟล์อยู่ใน /sounds — เวอร์ชันเว็บไฟล์เดียวฝังเป็น data URL ไว้ใน window.__SOUND_DATA)
+export const TICK_SOUNDS = [
+  { id: "synth", name: "เลเวลอัป", icon: "✨" },
+  { id: "ka-ching", name: "แคชเชียร์ คา-ชิง", icon: "💰" },
+  { id: "register-ding", name: "ลิ้นชักเงิน + ติ๊ง", icon: "🛎️" },
+  { id: "register-open", name: "เปิดลิ้นชักเงิน", icon: "🧾" },
+  { id: "coins", name: "เหรียญหล่นบนจาน", icon: "🪙" },
+  { id: "service-bell", name: "กริ่งเคาน์เตอร์", icon: "🔔" },
+  { id: "thank-you-bits", name: "Thank you for the bits", icon: "💎" },
+  { id: "custom", name: "ไฟล์ของฉัน", icon: "📁" },
+];
 
 export const PALETTES = [
   { id: "violet", name: "ม่วงจักรวาล", icon: "🔮", c: ["#5b3df5", "#ff6fae"] },
@@ -38,7 +50,9 @@ export const getPrefs = () => ({ ...current });
 export function loadPrefs() {
   const fromUser = state.me?.prefs && Object.keys(state.me.prefs).length ? state.me.prefs : null;
   const local = readLocal();
-  current = { ...DEFAULTS, ...(fromUser || local) };
+  const src = fromUser || local;
+  current = { ...DEFAULTS, ...src };
+  if (!("tickSound" in src) && getTickSound()) current.tickSound = "custom"; // เคยเลือกไฟล์เองไว้ก่อนมีตัวเลือก
   applyPrefs(current);
   // ล็อกอินครั้งแรกบนบัญชีที่ยังไม่มีค่า: เก็บค่าที่ตั้งไว้ในเบราว์เซอร์นี้ไปกับบัญชี
   if (state.me && !fromUser && Object.keys(local).length) setPrefs({});
@@ -70,10 +84,18 @@ export function setPrefs(patch) {
   if (state.me) {
     state.me.prefs = { ...current };
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => api("/api/auth/prefs", { method: "PUT", body: current }).catch(() => {}), 400);
+    saveTimer = setTimeout(flushPrefs, 400);
   }
   return current;
 }
+function flushPrefs() {
+  if (!saveTimer) return;
+  clearTimeout(saveTimer); saveTimer = null;
+  if (state.me) api("/api/auth/prefs", { method: "PUT", body: current, keepalive: true }).catch(() => {});
+}
+// ปิดแท็บหรือรีเฟรชก่อนครบเวลา: บันทึกทันที
+addEventListener("pagehide", flushPrefs);
+addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") flushPrefs(); });
 
 export function isDark() {
   return current.mode === "dark" || (current.mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -103,18 +125,33 @@ export function setTickSound(dataUrl) {
   try { dataUrl ? localStorage.setItem(TICK_KEY, dataUrl) : localStorage.removeItem(TICK_KEY); } catch { throw new Error("เบราว์เซอร์นี้เก็บไฟล์เสียงไม่ได้ (พื้นที่เต็มหรือถูกปิดไว้)"); }
   tickUrl = dataUrl || null;
 }
-/** เล่นเสียง "เลขบวกขึ้น" — ไฟล์ของผู้ใช้ถ้ามี ไม่งั้นใช้เสียงไล่โน้ตขึ้นที่สังเคราะห์เอง */
-export function playTick(step = 0) {
+const audioCache = {};
+function tickUrlFor(id) {
+  if (id === "custom") return getTickSound();
+  if (!TICK_SOUNDS.some((x) => x.id === id) || id === "synth") return null;
+  return window.__SOUND_DATA?.[id] || `/sounds/${id}.mp3`;
+}
+/** เล่นเสียง "เลขบวกขึ้น" ตามที่เลือกในตั้งค่า (id ระบุเองได้เพื่อลองฟัง) */
+export function playTick(step = 0, id = current.tickSound) {
   if (!current.sound) return;
-  const url = getTickSound();
-  if (url) { try { const a = new Audio(url); a.volume = 0.8; a.play().catch(() => {}); } catch { /* ignore */ } return; }
+  const url = tickUrlFor(id);
+  if (url) {
+    try {
+      const base = audioCache[url] || (audioCache[url] = Object.assign(new Audio(url), { preload: "auto" }));
+      const a = base.paused && base.currentTime === 0 ? base : base.cloneNode(); // เล่นซ้อนกันได้
+      a.volume = 0.8; a.currentTime = 0; a.play().catch(() => {});
+    } catch { /* ignore */ }
+    return;
+  }
   try {
     ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
     if (ctx.state === "suspended") ctx.resume();
-    const base = [523, 587, 659, 784, 880][step % 5];
-    tone(base, 0, 0.14, "triangle", 0.1); tone(base * 1.5, 0.07, 0.16, "triangle", 0.09); tone(base * 2, 0.14, 0.3, "sine", 0.08);
+    const f = [523, 587, 659, 784, 880][step % 5];
+    tone(f, 0, 0.14, "triangle", 0.1); tone(f * 1.5, 0.07, 0.16, "triangle", 0.09); tone(f * 2, 0.14, 0.3, "sine", 0.08);
   } catch { /* ignore */ }
 }
+/** โหลดไฟล์เสียงที่เลือกไว้ล่วงหน้า (เรียกก่อนเปิดหน้าสรุปผล) */
+export function preloadTick() { const u = tickUrlFor(current.tickSound); if (u && !audioCache[u]) try { audioCache[u] = Object.assign(new Audio(u), { preload: "auto" }); } catch { /* ignore */ } }
 
 export function playSound(kind) {
   // สั่นเบา ๆ บนมือถือ (ถ้าเครื่องรองรับและเปิดไว้)

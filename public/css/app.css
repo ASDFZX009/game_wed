@@ -690,3 +690,15 @@ html.vs-open { overflow: hidden; }
 .vs-counting { display: inline-block; animation: vsBump .18s ease-out infinite alternate; }
 .vs-burst .vs-counting { color: var(--hot); }
 @keyframes vsBump { to { transform: scale(1.12); } }
+.tick-row { display: block; }
+.tick-row .t { display: block; }
+.tick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 10px; }
+.tick-opt { display: flex; align-items: center; gap: 10px; text-align: left; font: inherit; cursor: pointer; padding: 10px 12px; border-radius: 12px;
+  border: 2px solid var(--line); background: var(--card); color: var(--ink); transition: border-color .15s, transform .1s; }
+.tick-opt:hover { border-color: var(--brand); transform: translateY(-1px); }
+.tick-opt[aria-checked="true"] { border-color: var(--brand); background: var(--brand-soft); box-shadow: inset 0 0 0 1px var(--brand); }
+.tick-opt .ic { font-size: 1.4rem; } .tick-opt .nm { flex: 1; font-weight: 600; line-height: 1.3; }
+.tick-opt .nm small { display: block; font-weight: 500; color: var(--mute); font-size: .75rem; }
+.tick-opt .pl { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; background: var(--soft); color: var(--brand); font-size: .8rem; flex: none; }
+.tick-opt[aria-checked="true"] .pl { background: var(--brand); color: #fff; }
+.tick-del { justify-self: start; align-self: center; }

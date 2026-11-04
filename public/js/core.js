@@ -15,7 +15,7 @@ export function html(strings, ...vals) {
 // ---------- API ----------
 export async function api(path, opts = {}) {
   if (window.__LOCAL_API) return window.__LOCAL_API(path, opts); // เวอร์ชันเล่นบนเว็บ (ไม่มีเซิร์ฟเวอร์)
-  const o = { method: opts.method || (opts.body ? "POST" : "GET"), headers: {}, credentials: "same-origin" };
+  const o = { method: opts.method || (opts.body ? "POST" : "GET"), headers: {}, credentials: "same-origin", keepalive: !!opts.keepalive };
   if (opts.body !== undefined) { o.headers["Content-Type"] = "application/json"; o.body = JSON.stringify(opts.body); }
   const res = await fetch(path, o);
   let data = {};
