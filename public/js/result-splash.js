@@ -13,7 +13,14 @@ export function rankOf(score, max, passed) {
   return { r: "D", name: "สู้ต่อไป" };
 }
 
-const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+export function resultMeta(r) {
+  const tone = r.perfect ? "win" : r.passed ? "pass" : "try";
+  return { tone, rank: rankOf(r.score, r.max, r.passed),
+    title: { win: ["ไร้ที่ติ", "สุดยอด!"], pass: ["ภารกิจ", "สำเร็จ!"], try: ["เกือบ", "แล้ว!"] }[tone],
+    sub: { win: "ตอบถูกครบทุกข้อ ไม่มีพลาดเลย", pass: `ผ่านเกณฑ์ ${r.passPct}% แล้ว เก่งมาก`, try: `ต้องได้ ${r.passPct}% ถึงจะผ่าน ลองอีกรอบนะ` }[tone] };
+}
+
+export const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
 /**
  * แสดงหน้าจอผลลัพธ์ทับเนื้อหาใน host
@@ -22,10 +29,7 @@ const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padSt
  */
 export function showResultSplash(host, o) {
   const { r, game } = o;
-  const tone = r.perfect ? "win" : r.passed ? "pass" : "try";
-  const rank = rankOf(r.score, r.max, r.passed);
-  const title = { win: ["ไร้ที่ติ", "สุดยอด!"], pass: ["ภารกิจ", "สำเร็จ!"], try: ["เกือบ", "แล้ว!"] }[tone];
-  const sub = { win: "ตอบถูกครบทุกข้อ ไม่มีพลาดเลย", pass: `ผ่านเกณฑ์ ${r.passPct}% แล้ว เก่งมาก`, try: `ต้องได้ ${r.passPct}% ถึงจะผ่าน ลองอีกรอบนะ` }[tone];
+  const { tone, rank, title, sub } = resultMeta(r);
   const pct = r.max ? Math.round((r.score / r.max) * 100) : 0;
   const isMatch = game.template === "match";
   const saved = !!r.saved;

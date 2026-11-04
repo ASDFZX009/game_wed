@@ -639,3 +639,51 @@ html.vs-open { overflow: hidden; }
   .vs-hint { display: none; }
   .vs-shard.s1 { top: 18%; height: 26%; } .vs-shard.s2 { top: 30%; }
 }
+
+/* ===== การ์ดสรุปผลในหน้า (ต่อจากหน้าจอเต็ม) ===== */
+.rs { --hot: var(--brand); --hot2: var(--accent); --gold: #ffd23f; --ink0: #0c0a14;
+  position: relative; overflow: hidden; color: #fff; border-radius: 20px; padding: 26px 26px 22px; isolation: isolate;
+  background: radial-gradient(circle at 85% 20%, color-mix(in srgb, var(--hot) 45%, transparent), transparent 55%),
+    repeating-linear-gradient(-28deg, rgba(255,255,255,.04) 0 12px, transparent 12px 26px), var(--ink0);
+  box-shadow: 0 14px 40px rgba(0,0,0,.35); scroll-margin-top: 80px; }
+.rs-try { --hot2: #8f8aa8; }
+.rs::before { content: ""; position: absolute; z-index: -1; left: -10%; right: -10%; top: 60px; height: 150px; background: var(--hot);
+  clip-path: polygon(0 40%, 100% 0, 100% 45%, 62% 60%, 70% 72%, 0 100%); opacity: .9; }
+.rs::after { content: ""; position: absolute; z-index: -1; left: -10%; right: -10%; top: 120px; height: 70px; background: var(--hot2);
+  clip-path: polygon(0 60%, 100% 0, 100% 30%, 0 100%); opacity: .85; }
+.rs-head { display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap; }
+.rs-title { margin: 0; font-size: clamp(2rem, 5.5vw, 3.2rem); line-height: 1.05; font-weight: 800; display: flex; flex-wrap: wrap; gap: 4px 12px; }
+.rs-title span { display: inline-block; padding: .02em .22em .1em; }
+.rs-title .w1 { background: #fff; color: var(--ink0); transform: rotate(-4deg) skewX(-10deg); box-shadow: 6px 6px 0 var(--hot); }
+.rs-title .w2 { background: var(--ink0); border: 3px solid #fff; transform: rotate(3deg) skewX(-10deg) translateY(8px); box-shadow: 6px 6px 0 var(--hot2); }
+.rs-sub { margin: 18px 0 0; font-weight: 700; display: inline-block; background: rgba(0,0,0,.6); padding: 3px 12px; transform: skewX(-10deg); }
+.rs-hero { display: flex; align-items: center; gap: 6px; }
+.rs-burst { width: 150px; animation: none; }
+.rs-burst b { font-size: 2.2rem; }
+.rs-burst small { font-size: .75rem; }
+.rs-rank { width: 92px; animation: none; } .rs-rank b { font-size: 2.8rem; }
+.rs-chips { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+.rs-chip { background: #fff; color: var(--ink0); font-weight: 700; padding: 6px 16px; clip-path: polygon(6% 0, 100% 0, 94% 100%, 0 100%); padding-inline: 20px; }
+.rs-chip b { font-size: 1.15rem; font-style: italic; }
+.rs-chip:nth-child(even) { background: var(--ink0); color: #fff; box-shadow: inset 0 0 0 2px #fff; }
+.rs-chip.xp b { color: #a77800; } .rs-chip.xp:nth-child(even) b, .rs-chip.coin:nth-child(even) b { color: var(--gold); } .rs-chip.coin b { color: #a77800; }
+.rs-chip.ok { background: #19c26b; color: #04210f; } .rs-chip.bad { background: #ff5c7a; color: #2a0510; box-shadow: none; }
+.rs-badges { display: grid; gap: 8px; margin-top: 16px; max-width: 560px; }
+.rs-badges .vs-badge { animation: none; } .rs-badges .vs-badge .small { font-size: .8rem; opacity: .8; }
+.rs-note { margin: 14px 0 0; background: rgba(0,0,0,.55); padding: 6px 12px; font-size: .9rem; } .rs-note a { color: var(--gold); }
+.rs-review { margin-top: 18px; background: rgba(255,255,255,.06); border: 2px solid rgba(255,255,255,.15); border-radius: 14px; padding: 10px 14px; }
+.rs-review summary { cursor: pointer; font-weight: 800; padding: 4px 0; }
+.rs-list { list-style: none; margin: 8px 0 2px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.rs-list li { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: center; padding: 8px 12px; background: rgba(0,0,0,.45); border-left: 6px solid #19c26b; }
+.rs-list li.bad { border-left-color: #ff5c7a; }
+.rs-list .n { grid-row: span 2; width: 30px; height: 30px; display: grid; place-items: center; font-weight: 800; background: #19c26b; color: #04210f; transform: skewX(-10deg); }
+.rs-list li.bad .n { background: #ff5c7a; color: #2a0510; }
+.rs-list .q { font-weight: 700; } .rs-list .a { font-size: .88rem; opacity: .85; }
+.rs-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+.rs-actions a.vs-btn { text-decoration: none; display: inline-flex; align-items: center; }
+@media (max-width: 760px) {
+  .rs { padding: 20px 16px 18px; border-radius: 16px; }
+  .rs-head { justify-content: center; } .rs-hero { justify-content: center; width: 100%; }
+  .rs-burst { width: 140px; } .rs-rank { width: 84px; }
+  .rs-actions .vs-btn { flex: 1 1 100%; justify-content: center; }
+}

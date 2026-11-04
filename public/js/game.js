@@ -2,7 +2,7 @@
 import { api, html, raw, esc, toast, confetti, state } from "./core.js";
 import { playSound, getPrefs } from "./prefs.js";
 import { refreshMe } from "./app.js";
-import { showResultSplash } from "./result-splash.js";
+import { showResultSplash, resultMeta, fmtTime } from "./result-splash.js";
 
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
@@ -194,18 +194,40 @@ export function startGame(root, data, opts = {}) {
     if (r.saved) refreshMe().catch(() => {});
     const seconds = t0 ? (Date.now() - t0) / 1000 : null;
     playSound(r.passed ? "win" : "wrong");
-    root.innerHTML = html`<div class="play">${introHead()}<div class="card">
-      <p class="result-big">${r.perfect ? "🎉" : r.passed ? "👏" : "💪"} ${r.score} / ${r.max} คะแนน</p>
-      <p>${r.passed ? html`<span class="badge badge-ok">✅ ผ่านเกณฑ์ (${r.passPct}%)</span>` : html`<span class="badge badge-bad">ยังไม่ผ่านเกณฑ์ (${r.passPct}%)</span>`}
-        ${game.template === "match" ? html` · พลิก ${body.moves || 0} ครั้ง` : html` · ตอบถูก ${r.correct} จาก ${r.total}`}</p>
-      ${r.newBadges.map((b) => html`<div class="new-badge"><span class="ic">${b.icon}</span><div><b>ได้รับเหรียญใหม่: ${b.name}</b><div class="small muted">${b.desc}</div></div></div>`)}
-      <p class="small muted">${r.preview ? "โหมดทดลองเล่น — ไม่บันทึกผล" : r.saved ? `บันทึกผลแล้ว (+${r.xp} XP · +${r.coins} 🪙)` : html`คุณเล่นในฐานะผู้เยี่ยมชม ผลนี้จะไม่ถูกบันทึก — <a href="/login?next=${encodeURIComponent(location.pathname)}">เข้าสู่ระบบ</a> เพื่อสะสม XP`}</p>
-      ${game.template !== "match" ? html`<details ${r.total <= 12 ? raw("open") : ""}><summary>ดูเฉลยทุกข้อ</summary><ul class="review">${r.review.map((x) => html`<li><span>${x.correct ? "✅" : "❌"}</span><span>${x.prompt} → <span class="muted">เฉลย: ${x.answer}</span></span></li>`)}</ul></details>` : ""}
-      <div class="row" style="margin-top:14px"><button class="btn" id="g-again">🔁 เล่นอีกครั้ง</button><a class="btn btn-ghost" href="${opts.backHref || "/games"}">${opts.backText || "กลับคลังเกม"}</a></div>
-      </div></div>`.s;
+    const m = resultMeta(r), isMatch = game.template === "match";
+    const splash = () => showResultSplash(root, { r, game, moves: body.moves, seconds, onAgain: () => opts.restart?.(),
+      onClose: () => root.querySelector(".rs")?.scrollIntoView({ block: "start", behavior: "smooth" }) });
+    root.innerHTML = html`<div class="play">${introHead()}
+      <section class="rs rs-${m.tone}" aria-labelledby="rs-title">
+        <div class="rs-head">
+          <div class="rs-left">
+            <h2 class="rs-title" id="rs-title"><span class="w1">${m.title[0]}</span><span class="w2">${m.title[1]}</span></h2>
+            <p class="rs-sub">${m.sub}</p>
+          </div>
+          <div class="rs-hero">
+            <div class="vs-burst rs-burst"><div class="in"><b>${r.score.toLocaleString("th-TH")}</b><small>/ ${r.max} คะแนน</small></div></div>
+            <div class="vs-rank vs-rank-${m.rank.r} rs-rank"><b>${m.rank.r}</b><span>${m.rank.name}</span></div>
+          </div>
+        </div>
+        <div class="rs-chips">
+          <span class="rs-chip">${isMatch ? html`🃏 พลิก <b>${body.moves || 0}</b> ครั้ง` : html`✅ ตอบถูก <b>${r.correct}/${r.total}</b>`}</span>
+          ${r.saved ? html`<span class="rs-chip xp">⭐ <b>+${r.xp}</b> XP</span><span class="rs-chip coin">🪙 <b>+${r.coins || 0}</b> เหรียญ</span>` : ""}
+          ${seconds != null ? html`<span class="rs-chip">⏱ <b>${fmtTime(seconds)}</b></span>` : ""}
+          <span class="rs-chip ${r.passed ? "ok" : "bad"}">${r.passed ? "ผ่านเกณฑ์" : "ยังไม่ผ่าน"} ${r.passPct}%</span>
+        </div>
+        ${r.newBadges.length ? html`<div class="rs-badges">${r.newBadges.map((b) => html`<div class="vs-badge"><span class="ic">${b.icon}</span><div><small>ปลดล็อกเหรียญใหม่!</small><b>${b.name}</b><div class="small">${b.desc}</div></div></div>`)}</div>` : ""}
+        ${!r.saved ? html`<p class="rs-note">${r.preview ? "โหมดทดลองเล่น — ไม่บันทึกผล" : html`คุณเล่นในฐานะผู้เยี่ยมชม ผลนี้จะไม่ถูกบันทึก — <a href="/login?next=${encodeURIComponent(location.pathname)}">เข้าสู่ระบบ</a> เพื่อสะสม XP`}</p>` : ""}
+        ${!isMatch ? html`<details class="rs-review" ${r.total <= 12 ? raw("open") : ""}><summary>📖 ดูเฉลยทุกข้อ</summary>
+          <ol class="rs-list">${r.review.map((x, i) => html`<li class="${x.correct ? "ok" : "bad"}"><span class="n">${i + 1}</span><span class="q">${x.prompt}</span><span class="a">${x.correct ? "✓" : "✗"} ${x.answer}</span></li>`)}</ol></details>` : ""}
+        <div class="rs-actions">
+          <button class="vs-btn" id="g-again">🔁 เล่นอีกครั้ง</button>
+          <button class="vs-btn alt" id="g-replay">🎬 ดูฉากสรุปผลอีกครั้ง</button>
+          <a class="vs-btn alt" href="${opts.backHref || "/games"}">${opts.backText || "กลับคลังเกม"}</a>
+        </div>
+      </section></div>`.s;
     root.querySelector("#g-again").onclick = () => opts.restart?.();
-    showResultSplash(root, { r, game, moves: body.moves, seconds, onAgain: () => opts.restart?.(),
-      onClose: () => { root.querySelector(".play .card:last-child")?.scrollIntoView({ block: "start", behavior: "smooth" }); } });
+    root.querySelector("#g-replay").onclick = splash;
+    splash();
     if (r.perfect) setTimeout(() => confetti(), 1500);
   }
 
