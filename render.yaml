@@ -1,0 +1,31 @@
+# ติดตั้งบน Render.com แบบกดครั้งเดียว (Blueprint)
+# หมายเหตุ: ฐานข้อมูลเป็นไฟล์ SQLite จึงต้องใช้ดิสก์ถาวร (มีในแพ็กเกจแบบเสียเงินของ Render)
+services:
+  - type: web
+    name: eduplay
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/config
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATA_DIR
+        value: /var/data
+      - key: APP_TIMEZONE
+        value: Asia/Bangkok
+      - key: PUBLIC_BASE_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: AI_PROVIDER
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+    disk:
+      name: eduplay-data
+      mountPath: /var/data
+      sizeGB: 1
