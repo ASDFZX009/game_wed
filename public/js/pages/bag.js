@@ -29,7 +29,7 @@ export async function bag({ main }) {
       <span class="ic" aria-hidden="true">${c.ic}</span><span class="th">${c.th}</span><span class="en" aria-hidden="true">${c.en}</span>
       ${c.types ? html`<span class="cnt">${have}/${total}</span>` : ""}</button>`;
   };
-  const words = Array.from({ length: 28 }, (_, i) => `<span style="--x:${(i * 37) % 100}%;--y:${(i * 61) % 100}%;--s:${2.4 + (i % 5) * 1.1}rem">${["กระเป๋า", "BAG", "ของสะสม", "ITEM", "EDUPLAY"][i % 5]}</span>`).join("");
+  const words = Array.from({ length: 28 }, (_, i) => `<span style="--x:${(i * 37) % 100}%;--y:${(i * 61) % 100}%;--s:${2.4 + (i % 5) * 1.1}rem">${["กระเป๋า", "BAG", "ของสะสม", "ITEM", "QUIZ ODYSSEY"][i % 5]}</span>`).join("");
 
   const draw = () => {
     const me = state.me, look = me.equipped || {};
