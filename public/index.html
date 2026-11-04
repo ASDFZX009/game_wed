@@ -6,6 +6,13 @@
 <title>EduPlay Universe</title>
 <meta name="description" content="EduPlay Universe — เรียนสนุก เล่นได้จริง เกมและแบบทดสอบเพื่อการเรียนรู้สำหรับนักเรียนและครู">
 <meta name="theme-color" content="#5b3df5">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="EduPlay">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,6 +29,7 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
 <a class="skip" href="#app">ข้ามไปยังเนื้อหา</a>
 <header id="nav" class="nav"></header>
 <main id="app" class="wrap" tabindex="-1"></main>
+<nav class="bottom-nav" id="bnav" aria-label="เมนูลัด"></nav>
 <footer class="foot wrap"><a href="/privacy">นโยบายความเป็นส่วนตัว</a><span>EduPlay Universe</span></footer>
 <script src="/socket.io/socket.io.js" defer></script>
 <script type="module" src="/js/app.js"></script>

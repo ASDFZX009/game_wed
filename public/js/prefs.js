@@ -2,7 +2,7 @@
 // ผู้เยี่ยมชม: เก็บในเบราว์เซอร์ · สมาชิก: เก็บกับบัญชี (ตามไปทุกเครื่อง)
 import { state, api } from "./core.js";
 
-export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, confetti: true, autoNext: false, contrast: false, dyslexic: false };
+export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoNext: false, contrast: false, dyslexic: false };
 
 export const PALETTES = [
   { id: "violet", name: "ม่วงจักรวาล", icon: "🔮", c: ["#5b3df5", "#ff6fae"] },
@@ -92,6 +92,11 @@ function tone(freq, start, dur, type = "sine", vol = 0.12) {
   o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur + 0.02);
 }
 export function playSound(kind) {
+  // สั่นเบา ๆ บนมือถือ (ถ้าเครื่องรองรับและเปิดไว้)
+  if (current.haptics && navigator.vibrate) {
+    const pat = { correct: 25, wrong: [70, 50, 70], win: [30, 40, 30, 40, 80], flip: 8 }[kind];
+    if (pat) try { navigator.vibrate(pat); } catch { /* ignore */ }
+  }
   if (!current.sound) return;
   try {
     ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();

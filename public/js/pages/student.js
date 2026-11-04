@@ -91,7 +91,7 @@ export async function settings({ main, me }) {
   const sw = (key, title, desc) => html`<div class="set-row"><div class="t"><b id="l-${key}">${title}</b><span class="small muted">${desc}</span></div>
     <label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label></div>`;
   main.innerHTML = html`<div class="narrow"><h1>ตั้งค่า</h1>
-    <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a>${me ? html`<a href="#s-account">👤 บัญชี</a>` : ""}</nav>
+    <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a><a href="#s-app">📲 ติดตั้งแอป</a>${me ? html`<a href="#s-account">👤 บัญชี</a>` : ""}</nav>
     <p class="small muted">${me ? "การตั้งค่าการแสดงผลจะบันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ" : "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้ — เข้าสู่ระบบเพื่อให้ตามไปทุกเครื่อง"} · มีผลทันทีที่เลือก</p>
 
     <section class="card" id="s-look"><h2 style="margin-top:0">🎨 ธีมและการแสดงผล</h2>
@@ -113,8 +113,11 @@ export async function settings({ main, me }) {
     <section class="card" id="s-game"><h2 style="margin-top:0">🎮 เกมและเสียง</h2>
       <div class="set-row"><div class="t"><b id="l-sound">เสียงประกอบ</b><span class="small muted">เสียงเมื่อตอบถูก ตอบผิด พลิกการ์ด และจบเกม</span></div>
         <div class="row"><button type="button" class="btn btn-ghost btn-sm" id="testSound">🔊 ลองฟัง</button><label class="switch"><input type="checkbox" data-sw="sound" aria-labelledby="l-sound" ${P.sound ? raw("checked") : ""}><span></span></label></div></div>
+      ${sw("haptics", "สั่นเมื่อตอบ (มือถือ)", "สั่นเบา ๆ เมื่อตอบถูก/ผิด — ใช้ได้กับมือถือ Android ส่วนใหญ่ (iPhone ไม่รองรับ)")}
       ${sw("confetti", "พลุฉลอง", "แสดงพลุกระดาษเมื่อได้คะแนนเต็มหรือติดอันดับ")}
       ${sw("autoNext", "ไปข้อถัดไปอัตโนมัติ", "หลังตอบ เกมจะไปข้อต่อไปเอง (ตอบถูก 1.2 วินาที ตอบผิด 2.5 วินาที)")}</section>
+
+    <section class="card" id="s-app"><h2 style="margin-top:0">📲 ติดตั้งเป็นแอปบนมือถือ</h2><div id="installBox"></div></section>
 
     <p class="row end"><button class="btn btn-ghost btn-sm" id="resetPrefs">↺ คืนค่าการแสดงผลเริ่มต้น</button></p>
 
@@ -144,6 +147,16 @@ export async function settings({ main, me }) {
   main.querySelectorAll("[data-pal]").forEach((b) => b.onclick = () => { if (b.dataset.locked) { toast(me ? "ธีมนี้ยังล็อกอยู่ ไปปลดล็อกที่ร้านค้าได้เลย" : "เข้าสู่ระบบแล้วสะสมเหรียญเพื่อปลดล็อกธีมพิเศษ", "bad"); return; } setPrefs({ palette: b.dataset.pal }); refresh(); toast(`เปลี่ยนธีมเป็น “${PALETTES.find((x) => x.id === b.dataset.pal).name}”`); });
   main.querySelectorAll("[data-sw]").forEach((c) => c.onchange = () => { setPrefs({ [c.dataset.sw]: c.checked }); if (c.dataset.sw === "sound" && c.checked) playSound("correct"); });
   main.querySelector("#testSound").onclick = () => { if (!getPrefs().sound) return toast("เปิดสวิตช์เสียงก่อน", "bad"); playSound("correct"); setTimeout(() => playSound("wrong"), 450); setTimeout(() => playSound("win"), 1000); };
+  const ib = main.querySelector("#installBox");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  if (standalone) ib.innerHTML = html`<p style="margin:0">✅ คุณกำลังใช้ EduPlay แบบแอปอยู่แล้ว</p>`.s;
+  else if (state.installPrompt) {
+    ib.innerHTML = html`<div class="install-card"><span class="ic">🚀</span><div class="grow"><b>เพิ่ม EduPlay ลงหน้าจอโฮม</b><div class="small muted">เปิดได้เร็วเหมือนแอป เต็มจอ ไม่มีแถบเบราว์เซอร์</div></div><button class="btn" id="doInstall">ติดตั้ง</button></div>`.s;
+    ib.querySelector("#doInstall").onclick = async () => { const pr = state.installPrompt; pr.prompt(); const r = await pr.userChoice; if (r.outcome === "accepted") { state.installPrompt = null; ib.innerHTML = "<p>✅ กำลังติดตั้ง…</p>"; } };
+  } else if (ios) ib.innerHTML = html`<p style="margin:0">บน iPhone/iPad: เปิดเว็บนี้ใน <b>Safari</b> → แตะปุ่ม <b>แชร์</b> (สี่เหลี่ยมมีลูกศรชี้ขึ้น) → เลือก <b>“เพิ่มไปยังหน้าจอโฮม”</b></p>`.s;
+  else ib.innerHTML = html`<p style="margin:0">บน Android (Chrome): แตะเมนู <b>⋮</b> มุมขวาบน → เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b><br><span class="small muted">หมายเหตุ: ต้องเปิดเว็บผ่าน https จึงจะติดตั้งได้</span></p>`.s;
+
   main.querySelector("#resetPrefs").onclick = async () => { if (!(await confirmBox("คืนค่าการแสดงผลทั้งหมดเป็นค่าเริ่มต้น?", "คืนค่า"))) return; setPrefs({ ...DEFAULTS }); refresh(); toast("คืนค่าเริ่มต้นแล้ว"); };
   if (!me) return;
 

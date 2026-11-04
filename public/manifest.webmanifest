@@ -1,0 +1,21 @@
+{
+  "name": "EduPlay Universe",
+  "short_name": "EduPlay",
+  "description": "เรียนสนุก เล่นได้จริง — เกมและแบบทดสอบเพื่อการเรียนรู้",
+  "lang": "th",
+  "start_url": "/?source=app",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f6f4ff",
+  "theme_color": "#5b3df5",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "เข้าร่วมเกมด้วย PIN", "url": "/join", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "คลังเกม", "url": "/games", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

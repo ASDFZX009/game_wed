@@ -64,7 +64,7 @@ const PREFS = {
   palette: ["violet", "ocean", "forest", "sunset", "sakura", "emerald", "candy", "galaxy", "gold", "aurora"],
   fontSize: ["sm", "md", "lg", "xl"],
   motion: ["auto", "reduce"],
-  sound: [true, false], confetti: [true, false], autoNext: [true, false], contrast: [true, false], dyslexic: [true, false],
+  sound: [true, false], haptics: [true, false], confetti: [true, false], autoNext: [true, false], contrast: [true, false], dyslexic: [true, false],
 };
 r.put("/prefs", A.need(), (req, res) => {
   const out = {};

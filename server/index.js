@@ -64,7 +64,9 @@ app.use((err, _req, res, _next) => {
 });
 
 const pub = path.join(__dirname, "..", "public");
-app.use(express.static(pub, { index: false, maxAge: "1h" }));
+app.get("/sw.js", (_req, res) => { res.setHeader("Cache-Control", "no-cache"); res.sendFile(path.join(pub, "sw.js")); });
+app.use("/icons", express.static(path.join(pub, "icons"), { maxAge: "7d" }));
+app.use(express.static(pub, { index: false, maxAge: 0 })); // ตรวจไฟล์ใหม่ทุกครั้ง (ใช้ ETag) กันไฟล์เก่าค้างหลังอัปเดต
 // SPA: ทุกเส้นทางที่ไม่ใช่ไฟล์ ให้ส่ง index.html
 app.get("*", (_req, res) => res.sendFile(path.join(pub, "index.html")));
 

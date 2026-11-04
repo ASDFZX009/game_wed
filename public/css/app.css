@@ -475,3 +475,67 @@ dialog.boxmodal::backdrop { background: rgba(10, 8, 25, .75); }
 .rar-name { font-weight: 800; letter-spacing: .05em; }
 .reveal.r-rare .rar-name { color: #2563eb; } .reveal.r-epic .rar-name { color: #9333ea; } .reveal.r-legendary .rar-name { color: #d97706; }
 .confetti .emo { position: absolute; top: -40px; font-size: 1.6rem; animation: fall 3s ease-in forwards; }
+
+/* ================= มือถือ ================= */
+button, .btn, .opt, .tile, .mcard, .live-opt, .chip { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+input, select, textarea { font-size: max(16px, 1rem); } /* กัน iOS ซูมเข้าเองตอนแตะช่องกรอก */
+.bottom-nav { display: none; }
+@media (max-width: 760px) {
+  main.wrap { padding-top: 16px; padding-left: 14px; padding-right: 14px; }
+  .wrap { padding-left: 14px; padding-right: 14px; }
+  .topbar { min-height: 54px; }
+  .menu { top: 54px; max-height: calc(100vh - 54px); overflow-y: auto; }
+  .card { padding: 14px 14px; }
+  h1 { font-size: 1.45rem; }
+  .hero { padding: 26px 18px; border-radius: 20px; }
+  .hero .row { flex-direction: column; align-items: stretch; }
+  .hero .btn-lg { width: 100%; }
+  .grid { grid-template-columns: 1fr; gap: 12px; }
+  .palettes { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .pal .sw { height: 44px; }
+  .items { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .item { padding: 12px 8px 10px; }
+  .item .vis { height: 56px; font-size: 2.2rem; }
+  .badges { grid-template-columns: repeat(2, 1fr); }
+  .memory { grid-template-columns: repeat(4, 1fr); gap: 7px; }
+  .mcard { font-size: clamp(.7rem, 3.3vw, .9rem); }
+  .mcard .f { font-size: 1.2rem; }
+  .q-prompt { font-size: 1.15rem; }
+  .opt { padding: 12px 14px; }
+  .live-opt { min-height: 64px; padding: 14px; font-size: 1.05rem; }
+  .pin-big { letter-spacing: .06em; }
+  .qr { width: 190px; height: 190px; }
+  .fill-line input { width: 130px; }
+  .match-row { grid-template-columns: 1fr auto 1.3fr; gap: 6px; }
+  .set-row .seg { width: 100%; }
+  .set-row .seg button { flex: 1; padding: 8px 6px; }
+  .wallet { width: 100%; }
+  .lootbox .big { font-size: 2.8rem; }
+  .podium .p { width: 96px; }
+  /* ป้ายวันที่ในกราฟ: แสดงทุก 2 วันเมื่อมีหลายแท่ง */
+  .bars-plot { gap: 3px; }
+  .bars-plot:has(.bar-col:nth-child(9)) .bar-col:nth-child(even) .bar-label { visibility: hidden; }
+  .bar-label { font-size: .64rem; }
+  /* ปุ่มเล็กให้แตะง่าย */
+  .linkish, .link-danger, .actions a { min-height: 40px; display: inline-flex; align-items: center; }
+  .player-chip button { min-width: 32px; min-height: 32px; font-size: 1.1rem; }
+  .icon-btn { min-width: 44px; height: 44px; }
+  /* แถบเมนูด้านล่าง */
+  body.has-bottom-nav { padding-bottom: calc(66px + env(safe-area-inset-bottom)); }
+  body.has-bottom-nav .bottom-nav { display: grid; }
+  body.has-bottom-nav .sticky-bar { bottom: calc(64px + env(safe-area-inset-bottom)); }
+  body.has-bottom-nav #toasts { bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .bottom-nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; grid-template-columns: repeat(5, 1fr); background: color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
+  .bottom-nav a { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; min-height: 54px; text-decoration: none; color: var(--mute) !important; font-size: .7rem; border-radius: 12px; }
+  .bottom-nav a .i { font-size: 1.35rem; line-height: 1.2; }
+  .bottom-nav a.active { color: var(--brand) !important; background: var(--brand-soft); font-weight: 700; }
+  :root[data-theme="dark"] .bottom-nav a.active { color: var(--link) !important; }
+  .foot { padding-bottom: 20px; flex-wrap: wrap; }
+}
+@media (max-width: 760px) and (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .bottom-nav a.active { color: var(--link) !important; } }
+@media (max-width: 380px) { .stats { gap: 8px; } .stat { padding: 10px 8px; } .stat .k { font-size: .76rem; } .items { gap: 8px; } }
+/* ระหว่างเล่นแข่งสด: ไม่ให้ลากแล้วรีเฟรชหน้าโดยไม่ตั้งใจ */
+body.playing { overscroll-behavior-y: contain; }
+@media (display-mode: standalone) { .nav { padding-top: env(safe-area-inset-top); } }
+.install-card { display: flex; gap: 12px; align-items: center; }
+.install-card .ic { font-size: 2.2rem; }

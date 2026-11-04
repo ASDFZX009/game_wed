@@ -41,6 +41,7 @@ export async function refreshMe() {
   state.me = user;
   loadPrefs();
   renderNav();
+  renderBottomNav(location.pathname);
 }
 
 async function render() {
@@ -55,6 +56,7 @@ async function render() {
     if (m) { match = { r, params: Object.fromEntries(r.keys.map((k, i) => [k, decodeURIComponent(m[i + 1])])) }; break; }
   }
   renderNav(path);
+  renderBottomNav(path);
   if (!match) return P.notFound({ main });
   const { r, params } = match;
   if (r.guard && !state.me) return go(`/login?next=${encodeURIComponent(path + url.search)}`, true);
@@ -107,6 +109,24 @@ function renderNav(cur = location.pathname) {
   const lo = document.getElementById("logout");
   if (lo) lo.onclick = async () => { await api("/api/auth/logout", { method: "POST" }); state.me = null; loadPrefs(); toast("ออกจากระบบแล้ว"); go("/"); };
 }
+// ---------- แถบเมนูด้านล่าง (มือถือ) ----------
+function renderBottomNav(cur) {
+  const u = state.me;
+  const el = document.getElementById("bnav");
+  if (!el) return;
+  const items = !u ? [["/", "🏠", "หน้าแรก"], ["/games", "🎮", "คลังเกม"], ["/join", "⚡", "เข้าร่วม"], ["/shop", "🛒", "ร้านค้า"], ["/login", "👤", "เข้าระบบ"]]
+    : u.role === "student" ? [["/dashboard", "🏠", "หน้าหลัก"], ["/games", "🎮", "คลังเกม"], ["/join", "⚡", "เข้าร่วม"], ["/classes", "🏫", "ห้องเรียน"], ["/shop", "🛒", "ร้านค้า"]]
+    : [["/teacher", "🏠", "แดชบอร์ด"], ["/classes", "🏫", "ห้องเรียน"], ["/teacher/quizzes", "📝", "แบบทดสอบ"], ["/teacher/games", "🎮", "เกม"], ["/teacher/live", "⚡", "แข่งสด"]];
+  el.innerHTML = items.map(([href, i, t]) => {
+    const on = ["/", "/teacher", "/dashboard"].includes(href) ? cur === href : cur === href || cur.startsWith(href + "/");
+    return html`<a href="${href}" class="${on ? "active" : ""}" ${on ? raw('aria-current="page"') : ""}><span class="i" aria-hidden="true">${i}</span>${t}</a>`.s;
+  }).join("");
+  // ซ่อนระหว่างเล่นแข่งสด (กันแตะพลาด) และหน้ากรอก PIN/ล็อกอิน
+  const hide = /^\/play\//.test(cur);
+  document.body.classList.toggle("has-bottom-nav", !hide);
+  document.body.classList.toggle("playing", hide);
+}
+
 function closeMenu() { document.body.classList.remove("menu-open"); document.getElementById("menuBtn")?.setAttribute("aria-expanded", "false"); }
 
 // ---------- ธีม (ปุ่มลัดสลับมืด/สว่าง — ตั้งค่าละเอียดที่หน้า /settings) ----------
@@ -134,6 +154,12 @@ window.addEventListener("popstate", render);
   } catch { /* ออฟไลน์ */ }
   loadPrefs();
   render();
+  // ติดตั้งเป็นแอป (PWA)
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }
 })();
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); state.installPrompt = e; });
+window.addEventListener("appinstalled", () => { state.installPrompt = null; toast("ติดตั้ง EduPlay แล้ว 🎉"); });
 
 export { esc };
