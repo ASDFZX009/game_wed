@@ -63,7 +63,7 @@ export async function shop({ main, query }) {
   const reload = async () => { d = await api("/api/shop"); await refreshMe(); render(); };
 
   function bind() {
-    main.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { tab = b.dataset.tab; history.replaceState({}, "", `/shop${tab === "all" ? "" : `?tab=${tab}`}`); render(); });
+    main.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => { tab = b.dataset.tab; if (!state.config.local) history.replaceState({}, "", `/shop${tab === "all" ? "" : `?tab=${tab}`}`); render(); });
     main.querySelectorAll("[data-buy]").forEach((b) => b.onclick = async () => {
       const it = d.items.find((x) => x.id === b.dataset.buy);
       if (d.coins < it.price) return toast(`เหรียญไม่พอ ต้องการอีก ${it.price - d.coins} เหรียญ — ไปเล่นเกมสะสมเพิ่มกัน!`, "bad");

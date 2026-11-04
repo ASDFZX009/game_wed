@@ -19,8 +19,8 @@ export async function dashboard({ main, me }) {
       <a class="coins" href="/shop" style="font-size:1.1rem;padding:8px 14px">🪙 ${(me.coins || 0).toLocaleString("th-TH")} · ไปร้านค้า</a></div>
       <div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="${lv.per}" aria-valuenow="${lv.into}" aria-label="ความคืบหน้าสู่ระดับถัดไป"><i style="width:${(lv.into / lv.per) * 100}%"></i></div>
       <div class="small muted">อีก ${lv.need} XP ถึงระดับ ${lv.level + 1}</div></section>
-    <h2>งานที่ต้องทำ</h2>
-    ${d.todo.length ? html`<ul class="list">${d.todo.map((a) => html`<li><div class="grow"><b>${a.title}</b><div class="small muted">${a.className} · ${a.kind === "game" ? "เกม" : "แบบทดสอบ"} · ${a.overdue ? html`<span class="badge badge-bad">${dueText(a.dueAt)}</span>` : dueText(a.dueAt)}</div></div>
+    ${state.config.local ? "" : html`<h2>งานที่ต้องทำ</h2>`}
+    ${state.config.local ? "" : d.todo.length ? html`<ul class="list">${d.todo.map((a) => html`<li><div class="grow"><b>${a.title}</b><div class="small muted">${a.className} · ${a.kind === "game" ? "เกม" : "แบบทดสอบ"} · ${a.overdue ? html`<span class="badge badge-bad">${dueText(a.dueAt)}</span>` : dueText(a.dueAt)}</div></div>
       <a class="btn btn-sm" href="${assignmentHref(a, a.classId)}">ทำเลย</a></li>`)}</ul>` : html`<div class="empty">ไม่มีงานค้าง เยี่ยมมาก! 🎉</div>`}
     <div class="stats">
       <div class="stat"><div class="k">แบบทดสอบที่ส่งแล้ว</div><div class="v">${d.stats.quizzes}</div></div>
@@ -91,8 +91,8 @@ export async function settings({ main, me }) {
   const sw = (key, title, desc) => html`<div class="set-row"><div class="t"><b id="l-${key}">${title}</b><span class="small muted">${desc}</span></div>
     <label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label></div>`;
   main.innerHTML = html`<div class="narrow"><h1>ตั้งค่า</h1>
-    <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a><a href="#s-app">📲 ติดตั้งแอป</a>${me ? html`<a href="#s-account">👤 บัญชี</a>` : ""}</nav>
-    <p class="small muted">${me ? "การตั้งค่าการแสดงผลจะบันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ" : "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้ — เข้าสู่ระบบเพื่อให้ตามไปทุกเครื่อง"} · มีผลทันทีที่เลือก</p>
+    <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a>${state.config.local ? "" : html`<a href="#s-app">📲 ติดตั้งแอป</a>`}${me ? html`<a href="#s-account">👤 ${state.config.local ? "ผู้เล่นและความคืบหน้า" : "บัญชี"}</a>` : ""}</nav>
+    <p class="small muted">${state.config.local ? "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้" : me ? "การตั้งค่าการแสดงผลจะบันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ" : "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้ — เข้าสู่ระบบเพื่อให้ตามไปทุกเครื่อง"} · มีผลทันทีที่เลือก</p>
 
     <section class="card" id="s-look"><h2 style="margin-top:0">🎨 ธีมและการแสดงผล</h2>
       <div class="preview" aria-hidden="true"><div class="ph"><b>ตัวอย่างธีม</b><div class="small" style="opacity:.9">เรียนสนุก เล่นได้จริง 🚀</div></div>
@@ -117,11 +117,15 @@ export async function settings({ main, me }) {
       ${sw("confetti", "พลุฉลอง", "แสดงพลุกระดาษเมื่อได้คะแนนเต็มหรือติดอันดับ")}
       ${sw("autoNext", "ไปข้อถัดไปอัตโนมัติ", "หลังตอบ เกมจะไปข้อต่อไปเอง (ตอบถูก 1.2 วินาที ตอบผิด 2.5 วินาที)")}</section>
 
-    <section class="card" id="s-app"><h2 style="margin-top:0">📲 ติดตั้งเป็นแอปบนมือถือ</h2><div id="installBox"></div></section>
+    <section class="card" id="s-app" ${state.config.local ? raw("hidden") : ""}><h2 style="margin-top:0">📲 ติดตั้งเป็นแอปบนมือถือ</h2><div id="installBox"></div></section>
 
     <p class="row end"><button class="btn btn-ghost btn-sm" id="resetPrefs">↺ คืนค่าการแสดงผลเริ่มต้น</button></p>
 
-    ${me ? html`<h2 id="s-account" style="margin-top:28px">👤 บัญชี</h2><p class="muted" style="margin-top:-.4em">${me.email} · <a href="/privacy">นโยบายความเป็นส่วนตัว</a></p>
+    ${state.config.local ? html`<section class="card" id="s-account"><h2 style="margin-top:0">👤 ผู้เล่นและความคืบหน้า</h2>
+      <form id="lf"><label for="ln">ชื่อที่แสดง</label><div class="row"><input id="ln" name="displayName" value="${me.displayName}" maxlength="40" style="flex:1" required><button class="btn">บันทึก</button></div></form>
+      <p class="small muted">ความคืบหน้า (XP เหรียญ ของสะสม) เก็บไว้ในเบราว์เซอร์นี้ — ถ้าล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่องจะหายไป ใช้ “สำรอง” เพื่อย้ายไปเครื่องอื่นได้</p>
+      <div class="row"><button class="btn btn-ghost btn-sm" id="exp">💾 สำรองความคืบหน้า</button><button class="btn btn-ghost btn-sm" id="imp">📥 กู้คืนจากข้อความสำรอง</button><button class="btn btn-danger btn-sm" id="wipe">🗑 เริ่มใหม่ทั้งหมด</button></div>
+      <div id="ioBox"></div></section>` : me ? html`<h2 id="s-account" style="margin-top:28px">👤 บัญชี</h2><p class="muted" style="margin-top:-.4em">${me.email} · <a href="/privacy">นโยบายความเป็นส่วนตัว</a></p>
     <form class="card" id="pf"><h3>ข้อมูลส่วนตัว</h3><p class="small muted">ใช้ชื่อเล่นได้ ไม่จำเป็นต้องใช้ชื่อจริง ชื่อนี้ครูและเพื่อนในห้องจะเห็น</p>
       <label for="dn">ชื่อที่แสดง</label><input id="dn" name="displayName" value="${me.displayName}" maxlength="60" required>
       <label for="gr">ระดับชั้น <span class="muted small">(ไม่บังคับ)</span></label><input id="gr" name="grade" value="${me.grade || ""}" maxlength="20" placeholder="เช่น ป.5">
@@ -158,6 +162,7 @@ export async function settings({ main, me }) {
   else ib.innerHTML = html`<p style="margin:0">บน Android (Chrome): แตะเมนู <b>⋮</b> มุมขวาบน → เลือก <b>“ติดตั้งแอป”</b> หรือ <b>“เพิ่มลงในหน้าจอหลัก”</b><br><span class="small muted">หมายเหตุ: ต้องเปิดเว็บผ่าน https จึงจะติดตั้งได้</span></p>`.s;
 
   main.querySelector("#resetPrefs").onclick = async () => { if (!(await confirmBox("คืนค่าการแสดงผลทั้งหมดเป็นค่าเริ่มต้น?", "คืนค่า"))) return; setPrefs({ ...DEFAULTS }); refresh(); toast("คืนค่าเริ่มต้นแล้ว"); };
+  if (state.config.local) { window.__bindLocalSettings?.(main); return; }
   if (!me) return;
 
   const pf = main.querySelector("#pf"), pw = main.querySelector("#pw"), del = main.querySelector("#del");

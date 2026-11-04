@@ -18,13 +18,13 @@ export async function home({ main }) {
   const [{ games, count }, { categories }] = await Promise.all([api("/api/games/featured"), api("/api/categories")]);
   main.innerHTML = html`
     <section class="hero"><h1>เรียนสนุก เล่นได้จริง</h1>
-      <p>มีเกมให้เล่น ${count} เกม ครอบคลุมทุกวิชา ลองเล่นได้ทันทีโดยไม่ต้องสมัคร ครูสร้างเกม มอบหมายงาน และจัดแข่งสดในห้องเรียนได้</p>
-      <div class="row" style="margin-top:16px"><a class="btn btn-lg" href="/games">🎮 ดูคลังเกม</a><a class="btn btn-lg btn-ghost" href="/join">⚡ เข้าร่วมด้วย PIN</a></div>
+      <p>มีเกมให้เล่น ${count} เกม ครอบคลุมทุกวิชา ลองเล่นได้ทันทีโดยไม่ต้องสมัคร${state.config?.local ? " สะสมเหรียญไปแลกของแต่งในร้านค้าได้" : " ครูสร้างเกม มอบหมายงาน และจัดแข่งสดในห้องเรียนได้"}</p>
+      <div class="row" style="margin-top:16px"><a class="btn btn-lg" href="/games">🎮 ดูคลังเกม</a>${state.config.local ? html`<a class="btn btn-lg btn-ghost" href="/shop">🛒 ร้านค้า &amp; กล่องสุ่ม</a>` : html`<a class="btn btn-lg btn-ghost" href="/join">⚡ เข้าร่วมด้วย PIN</a>`}</div>
       <div class="hero-art" aria-hidden="true"><span>🚀</span></div></section>
     <div class="features">
       <div class="feature"><div class="ic">🎯</div><b>เกม 5 แบบ</b><div class="small muted">ถูก/ผิด ปรนัย เรียงลำดับ เรียงคำ และพลิกการ์ดจับคู่</div></div>
       <div class="feature"><div class="ic">📝</div><b>คำถาม 10 ชนิด</b><div class="small muted">รวมเลือกหลายข้อ ตอบเป็นตัวเลข และเติมคำจากคลังคำ</div></div>
-      <div class="feature"><div class="ic">⚡</div><b>แข่งสดในห้องเรียน</b><div class="small muted">สแกน QR เข้าร่วมจากมือถือ เห็นอันดับแบบเรียลไทม์</div></div>
+      ${state.config.local ? html`<div class="feature"><div class="ic">🎁</div><b>ร้านค้า &amp; กล่องสุ่ม</b><div class="small muted">ใช้เหรียญจากการเล่นแลกอวาตาร์ ธีม และของตกแต่ง</div></div>` : html`<div class="feature"><div class="ic">⚡</div><b>แข่งสดในห้องเรียน</b><div class="small muted">สแกน QR เข้าร่วมจากมือถือ เห็นอันดับแบบเรียลไทม์</div></div>`}
       <div class="feature"><div class="ic">🏅</div><b>สะสม XP และเหรียญ</b><div class="small muted">เล่นต่อเนื่อง ได้คะแนนเต็ม ปลดล็อกเหรียญรางวัล</div></div>
     </div>
     <h2>เลือกตามวิชา</h2>
