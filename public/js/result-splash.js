@@ -1,6 +1,6 @@
 // หน้าจอสรุปผลแบบเต็มจอหลังจบเกม: แถบเฉียง ดาวระเบิดคะแนน ตราแรงก์ ตัวเลขนับขึ้น
 import { html, raw } from "./core.js";
-import { playSound, getPrefs } from "./prefs.js";
+import { playSound, playTick, getPrefs } from "./prefs.js";
 
 const reduced = () => getPrefs().motion === "reduce" || (getPrefs().motion !== "full" && matchMedia("(prefers-reduced-motion: reduce)").matches);
 
@@ -74,22 +74,35 @@ export function showResultSplash(host, o) {
   host.appendChild(el);
   document.documentElement.classList.add("vs-open");
 
-  // ตัวเลขนับขึ้น
+  // ตัวเลขนับขึ้นทีละตัว (คะแนน → XP → เหรียญ) พร้อมเสียงทุกครั้งที่ตัวเลขบวกขึ้น แล้วตามด้วยเหรียญรางวัลใหม่
   const counters = [...el.querySelectorAll("[data-count]")];
-  if (reduced()) counters.forEach((c) => (c.textContent = c.dataset.count));
-  else setTimeout(() => {
-    const t0 = performance.now(), dur = 900;
-    const step = (t) => {
-      const k = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - k, 3);
-      counters.forEach((c) => (c.textContent = Math.round(+c.dataset.count * e).toLocaleString("th-TH")));
-      if (k < 1 && el.isConnected) requestAnimationFrame(step);
-    };
-    requestAnimationFrame(step);
-  }, 550);
-  if (!reduced()) setTimeout(() => el.isConnected && playSound("stamp"), 1150);
+  const badges = [...el.querySelectorAll(".vs-badge")];
+  const timers = [];
+  const later = (fn, ms) => timers.push(setTimeout(() => el.isConnected && fn(), ms));
+  if (reduced()) counters.forEach((c) => (c.textContent = (+c.dataset.count).toLocaleString("th-TH")));
+  else {
+    const START = 550, DUR = 650, GAP = 160;
+    counters.forEach((c) => (c.textContent = "0"));
+    counters.forEach((c, i) => later(() => {
+      const target = +c.dataset.count;
+      if (target > 0) playTick(i);
+      c.classList.add("vs-counting");
+      const t0 = performance.now();
+      const step = (t) => {
+        const k = Math.min(1, (t - t0) / DUR), e = 1 - Math.pow(1 - k, 3);
+        c.textContent = Math.round(target * e).toLocaleString("th-TH");
+        if (k < 1 && el.isConnected) requestAnimationFrame(step); else c.classList.remove("vs-counting");
+      };
+      requestAnimationFrame(step);
+    }, START + i * (DUR + GAP)));
+    const after = START + counters.length * (DUR + GAP);
+    badges.forEach((b, i) => { b.style.animationDelay = `${(after + i * 450) / 1000}s`; later(() => playTick(counters.length + i), after + i * 450 + 120); });
+    later(() => playSound("stamp"), 1150);
+  }
 
   const close = () => {
     if (!el.isConnected) return;
+    timers.forEach(clearTimeout);
     document.removeEventListener("keydown", onKey);
     document.documentElement.classList.remove("vs-open");
     if (reduced()) { el.remove(); o.onClose?.(); return; }
@@ -106,7 +119,7 @@ export function showResultSplash(host, o) {
   };
   document.addEventListener("keydown", onKey);
   el.querySelector("#vs-next").onclick = close;
-  el.querySelector("#vs-again").onclick = () => { document.removeEventListener("keydown", onKey); document.documentElement.classList.remove("vs-open"); el.remove(); o.onAgain?.(); };
+  el.querySelector("#vs-again").onclick = () => { timers.forEach(clearTimeout); document.removeEventListener("keydown", onKey); document.documentElement.classList.remove("vs-open"); el.remove(); o.onAgain?.(); };
   el.addEventListener("click", (e) => { if (!e.target.closest(".vs-right, .vs-hero, button")) close(); });
   setTimeout(() => el.isConnected && el.querySelector("#vs-next").focus({ preventScroll: true }), reduced() ? 0 : 900);
   return close;

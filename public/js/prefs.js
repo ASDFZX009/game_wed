@@ -91,6 +91,31 @@ function tone(freq, start, dur, type = "sine", vol = 0.12) {
   o.connect(g).connect(ctx.destination);
   o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur + 0.02);
 }
+// ---------- เสียงตอนตัวเลขบวกขึ้น (ผู้ใช้เลือกไฟล์เองได้ เก็บในเบราว์เซอร์นี้เท่านั้น) ----------
+const TICK_KEY = "eduplay:tickSound";
+export const TICK_MAX_BYTES = 400 * 1024;
+let tickUrl;
+export function getTickSound() {
+  if (tickUrl === undefined) { try { tickUrl = localStorage.getItem(TICK_KEY) || null; } catch { tickUrl = null; } }
+  return tickUrl;
+}
+export function setTickSound(dataUrl) {
+  try { dataUrl ? localStorage.setItem(TICK_KEY, dataUrl) : localStorage.removeItem(TICK_KEY); } catch { throw new Error("เบราว์เซอร์นี้เก็บไฟล์เสียงไม่ได้ (พื้นที่เต็มหรือถูกปิดไว้)"); }
+  tickUrl = dataUrl || null;
+}
+/** เล่นเสียง "เลขบวกขึ้น" — ไฟล์ของผู้ใช้ถ้ามี ไม่งั้นใช้เสียงไล่โน้ตขึ้นที่สังเคราะห์เอง */
+export function playTick(step = 0) {
+  if (!current.sound) return;
+  const url = getTickSound();
+  if (url) { try { const a = new Audio(url); a.volume = 0.8; a.play().catch(() => {}); } catch { /* ignore */ } return; }
+  try {
+    ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === "suspended") ctx.resume();
+    const base = [523, 587, 659, 784, 880][step % 5];
+    tone(base, 0, 0.14, "triangle", 0.1); tone(base * 1.5, 0.07, 0.16, "triangle", 0.09); tone(base * 2, 0.14, 0.3, "sine", 0.08);
+  } catch { /* ignore */ }
+}
+
 export function playSound(kind) {
   // สั่นเบา ๆ บนมือถือ (ถ้าเครื่องรองรับและเปิดไว้)
   if (current.haptics && navigator.vibrate) {

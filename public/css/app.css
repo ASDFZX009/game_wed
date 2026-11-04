@@ -687,3 +687,6 @@ html.vs-open { overflow: hidden; }
   .rs-burst { width: 140px; } .rs-rank { width: 84px; }
   .rs-actions .vs-btn { flex: 1 1 100%; justify-content: center; }
 }
+.vs-counting { display: inline-block; animation: vsBump .18s ease-out infinite alternate; }
+.vs-burst .vs-counting { color: var(--hot); }
+@keyframes vsBump { to { transform: scale(1.12); } }
