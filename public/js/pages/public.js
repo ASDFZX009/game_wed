@@ -5,6 +5,8 @@ import { startGame } from "../game.js";
 import { renderQuestion, bindQuestions, readAnswers, countUnanswered } from "../quizform.js";
 import { mountWorld } from "./world.js";
 import { mountQuestScene } from "./questscene.js";
+import { openTitle, titleSeen } from "./title.js";
+import { myLook, loadProfile } from "../look.js";
 import { reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
@@ -31,12 +33,20 @@ export async function home({ main }) {
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
+      <button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button>
       <div class="world" id="world"></div>
       <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
         ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
     </section>`.s;
   const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#5b3df5";
-  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: state.me?.displayName || "นักผจญภัย", shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion() });
+  const shirt = /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", nameOf = (p) => p?.name || state.me?.displayName || "นักผจญภัย";
+  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion() });
+  // หน้าเริ่มเกม: เปิดครั้งแรกของแต่ละรอบการใช้งาน หรือกด "เมนูหลัก"
+  let title = null;
+  const showTitle = (startAt) => { title = openTitle({ go, me: state.me, reduced: reducedMotion(), startAt, onEnter: (p) => { title = null; w.setLook(myLook(shirt), nameOf(p)); main.querySelector(".world-canvas")?.focus({ preventScroll: true }); } }); };
+  main.querySelector("#wTitle").addEventListener("click", () => showTitle("menu"));
+  if (!titleSeen()) showTitle("intro");
+  onLeave(() => title?.close());
   window.__world = w; // ให้สคริปต์ทดสอบตรวจได้
   onLeave(() => { w.destroy(); if (window.__world === w) delete window.__world; document.body.classList.remove("immersive", "home-world"); });
 }
@@ -73,7 +83,7 @@ export async function library({ main, query }) {
   const greet = [state.me ? `สวัสดี ${state.me.displayName}! วันนี้จะรับภารกิจไหนดี?` : "ยินดีต้อนรับสู่กิลด์นักผจญภัย! เลือกภารกิจได้เลย",
     "ทุกภารกิจมี 5 ระดับ ตั้งแต่ง่ายมากจนถึงยากมากนะ", "ตอบถูกแล้วการ์ดจะปล่อยสกิลใส่บอส ⚔️", "เลือกตัวละครได้ 5 แบบ ลองเปลี่ยนดูสกิลใหม่ ๆ สิ", "ทำภารกิจสำเร็จได้เหรียญ เอาไปแลกของที่ร้านค้า"];
   const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
-  const scene = mountQuestScene(main.querySelector(".quest-scene"), { shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion(), greet });
+  const scene = mountQuestScene(main.querySelector(".quest-scene"), { shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", look: myLook(/^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5"), reduced: reducedMotion(), greet });
   onLeave(() => { scene.destroy(); document.body.classList.remove("quest-world"); });
   const form = main.querySelector("#ff");
   form.onsubmit = (e) => { e.preventDefault(); const d = formData(form); Object.keys(d).forEach((k) => !d[k] && delete d[k]); go("/games?" + new URLSearchParams(d)); };

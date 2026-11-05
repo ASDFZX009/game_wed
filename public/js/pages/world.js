@@ -147,7 +147,7 @@ function castShadow(x, sil, dx, dy, footY, mode, lift, ox = 0, oy = 0) {
 const SHADOW = "#16163a", SHADOW_A = 0.55;
 
 // ---------- ติดตั้งบนหน้า ----------
-export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", reduced = false, fill = false }) {
+export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false }) {
   const M = buildMap();
   const cache = new Map(), spr = (key, make) => cache.get(key) || (cache.set(key, make()), cache.get(key));
   const silCache = new Map(), sil = (s) => silCache.get(s.c) || (silCache.set(s.c, tint(silhouette(s.c))), silCache.get(s.c));
@@ -202,7 +202,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   const home = (() => { let b = [24, 20], bd = 1e9; for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const k = M.at(x, y); if (M.ground[k] !== 1 || M.block[k]) continue; const d = Math.hypot(x - 26.5, y - 22.5); if (d < bd) { bd = d; b = [x, y]; } } return b; })();
   const hero = { x: (start ? start.ex : home[0]) * T + 16, y: ((start ? start.ey : home[1]) + 0.6) * T, dir: 0, step: 0, stepT: 0, path: null, target: null };
   const fox = { x: (PLAZA.x + 2) * T, y: (PLAZA.y + 2) * T, tx: 0, ty: 0, face: 1, step: 0, wait: 1 };
-  const heroLook = { shirt, pants: "#2a3550", hair: "#3a2a20" };
+  const heroLook = look ? { ...look } : { shirt, pants: "#2a3550", hair: "#3a2a20" };
   const frames = (key, look) => (dir, step) => spr(`${key}${dir}${step}`, () => charFrame(dir, step, look));
   const heroF = frames("hero", heroLook);
   const npcs = M.npcs.map((n, i) => ({ ...n, fx: n.x * T + 16, fy: n.y * T + 26, F: frames("npc" + i, n.look), phase: i * 0.7 }));
@@ -442,6 +442,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     reachable() { const [sx, sy] = tileAt(hero.x, hero.y - 1); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) || (sx === p.ex && sy === p.ey) })); },
     _hero: hero,
     _npcs: npcs,
+    setLook(l, name) { for (const k of Object.keys(heroLook)) delete heroLook[k]; Object.assign(heroLook, l); for (const k of [...cache.keys()]) if (k.startsWith("hero")) cache.delete(k); if (name) playerName = name; },
     walkToPlace(id) { const p = PLACES.find((x) => x.id === id); if (p) walkTo(p.ex, p.ey, p); },
   };
 }

@@ -62,11 +62,11 @@ function bakeYard(W, L) {
   return c;
 }
 
-export function mountQuestScene(host, { shirt = "#5b3df5", reduced = false, greet = [] } = {}) {
+export function mountQuestScene(host, { shirt = "#5b3df5", look = null, reduced = false, greet = [] } = {}) {
   const view = document.createElement("canvas"); view.className = "qs-canvas"; view.setAttribute("aria-hidden", "true");
   host.prepend(view);
   const bubble = host.querySelector(".ss-bubble");
-  const clerk = [charFrame(0, 0, CLERK), charFrame(0, 1, CLERK)], heroFr = [charFrame(3, 0, { shirt, pants: "#2a3550", hair: "#3a2a20" }), charFrame(3, 1, { shirt, pants: "#2a3550", hair: "#3a2a20" })];
+  const clerk = [charFrame(0, 0, CLERK), charFrame(0, 1, CLERK)], HL = look || { shirt, pants: "#2a3550", hair: "#3a2a20" }, heroFr = [charFrame(3, 0, HL), charFrame(3, 1, HL)];
   const lamp = PROP.lamp(), barrel = PROP.barrel(), crate = PROP.crate(), sign = PROP.sign();
   const [buf, bx] = canvas(10, 10);
   let S = 1.5, W = 0, dpr = 1, bg = null, board = null, L = null, raf = 0, line = 0, lineT = 0, smooth = false;

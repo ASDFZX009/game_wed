@@ -1079,3 +1079,73 @@ body.quest-play .bt-stage { box-shadow: 0 0 0 4px #f0c040, 0 0 0 8px #2a1608, 0 
   .q-cats { gap: 6px; } .q-cat { font-size: .8rem; padding: 4px 8px 6px; }
   .grid.quests { padding: 18px 10px; gap: 20px; }
 }
+
+/* 🧭 หน้าเริ่มเกม */
+body.ti-open { overflow: hidden; }
+.ti { --px-font: "Pixelify Sans", "Chakra Petch", "Kanit", "Noto Sans Thai", sans-serif; position: fixed; inset: 0; z-index: 2000; overflow: hidden auto; background: #0e1a14; color: #fff; font-family: inherit; }
+.ti-bg { position: fixed; left: 0; top: 0; image-rendering: pixelated; image-rendering: crisp-edges; transform-origin: 50% 60%; transition: transform 1.4s cubic-bezier(.3,.7,.2,1), filter 1.4s; }
+.ti[data-stage="menu"] .ti-bg, .ti[data-stage="cc"] .ti-bg { transform: scale(1.18) translateY(-2%); filter: saturate(1.1) brightness(.92); }
+.ti[data-stage="cc"] .ti-bg { filter: saturate(.9) brightness(.7) blur(1px); }
+.ti-black { position: fixed; inset: 0; background: #050a08; pointer-events: none; animation: ti-in .7s ease-out forwards; }
+.ti.out .ti-black { animation: ti-out .6s ease-in forwards; }
+@keyframes ti-in { to { opacity: 0; } } @keyframes ti-out { from { opacity: 0; } to { opacity: 1; } }
+/* โลโก้ */
+.ti-logo { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); text-align: center; transition: top .9s cubic-bezier(.3,.7,.2,1), transform .9s; width: max-content; max-width: 96vw; pointer-events: none; }
+.ti[data-stage="menu"] .ti-logo { top: 12%; } .ti[data-stage="cc"] .ti-logo { top: -40%; }
+.ti-title { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 0 .28em; font-family: var(--px-font); font-weight: 700; font-size: clamp(2.4rem, 8.6vw, 6.4rem); line-height: 1; letter-spacing: .02em; }
+.ti-title .w { display: inline-flex; }
+.ti-title .l { display: inline-block; color: #f2f8ff; opacity: 0; transform: translateY(-120%) scale(1.4);
+  text-shadow: .045em 0 0 #1a2050, -.045em 0 0 #1a2050, 0 -.045em 0 #1a2050, 0 .045em 0 #1a2050, .045em .045em 0 #1a2050, -.045em .045em 0 #1a2050, .045em -.045em 0 #1a2050, -.045em -.045em 0 #1a2050, 0 .11em 0 #3a4aa0, .045em .11em 0 #1a2050, -.045em .11em 0 #1a2050, 0 .16em 0 #1a2050, 0 .24em 0 rgba(0,0,0,.3); }
+
+.ti.s-logo .ti-title .l { animation: ti-drop .5s cubic-bezier(.3,1.6,.5,1) forwards; animation-delay: calc(var(--i) * 55ms); }
+@keyframes ti-drop { to { opacity: 1; transform: none; } }
+.ti-compass { width: .95em; height: .95em; image-rendering: pixelated; image-rendering: crisp-edges; margin-right: .08em; opacity: 0; transform: scale(0) rotate(-540deg); filter: drop-shadow(0 .08em 0 #1a2050); }
+.ti.s-logo .ti-compass { animation: ti-comp 1s cubic-bezier(.2,.9,.3,1.2) forwards; }
+@keyframes ti-comp { 70% { opacity: 1; transform: scale(1.15) rotate(20deg); } to { opacity: 1; transform: none; } }
+.ti-ribbon { display: inline-block; margin-top: .9em; opacity: 0; transform: scaleX(.2); transition: opacity .5s, transform .6s cubic-bezier(.3,1.4,.5,1); }
+.ti-ribbon span { display: inline-block; padding: .3em 1.4em .4em; font-weight: 800; font-size: clamp(.9rem, 2.2vw, 1.25rem); color: #3a2412; background: linear-gradient(#ffe9a0, #f0c040); box-shadow: inset 0 -3px 0 #c08a1a, inset 0 2px 0 #fff6c8, 0 0 0 3px #1a2050, 0 6px 0 3px rgba(0,0,0,.3);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 50%, 100% 100%, 0 100%, 12px 50%); }
+.ti.s-ribbon .ti-ribbon { opacity: 1; transform: none; }
+/* เมนู */
+.ti-menu { position: absolute; left: 50%; top: 56%; transform: translate(-50%, 30px); display: grid; gap: 14px; width: min(320px, 82vw); opacity: 0; pointer-events: none; transition: opacity .5s .3s, transform .6s .3s cubic-bezier(.3,1.4,.5,1); }
+.ti[data-stage="menu"] .ti-menu { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.ti-menu button, .cc-act button, .ti-skip, .cc-rot button { font-family: var(--px-font); font-weight: 700; cursor: pointer; border: 0; color: #2a2a4a; background: #e8eef8; box-shadow: inset -4px -4px 0 #a8b6d0, inset 4px 4px 0 #fff, 0 0 0 3px #1a2050, 0 6px 0 3px rgba(0,0,0,.3); }
+.ti-menu button { padding: 12px 16px; font-size: 1.2rem; transition: transform .1s; }
+.ti-menu button.on, .ti-menu button:focus-visible { outline: none; color: #3a2412; background: #ffd84a; box-shadow: inset -4px -4px 0 #c8961a, inset 4px 4px 0 #fff3a8, 0 0 0 3px #1a2050, 0 0 0 7px rgba(255,255,255,.55), 0 6px 0 7px rgba(0,0,0,.25); transform: scale(1.05); }
+.ti-menu button:active, .cc-act button:active { transform: translateY(3px); }
+.ti-press { position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-weight: 700; color: #fff; text-shadow: 2px 2px 0 #1a2050; opacity: 0; transition: opacity .4s; animation: ti-blink 1.2s steps(2) infinite; }
+.ti[data-stage="logo"] .ti-press { opacity: 1; }
+@keyframes ti-blink { 50% { visibility: hidden; } }
+.ti-skip { position: absolute; right: 16px; bottom: 16px; padding: 6px 12px; font-size: .9rem; }
+.ti[data-stage="menu"] .ti-skip, .ti[data-stage="cc"] .ti-skip { display: none; }
+/* สร้างตัวละคร */
+.ti-cc { position: relative; z-index: 2; min-height: 100%; display: grid; align-content: center; justify-items: center; padding: 24px 12px 40px; animation: ti-cc .45s cubic-bezier(.3,1.3,.5,1); }
+@keyframes ti-cc { from { opacity: 0; transform: translateY(30px) scale(.96); } }
+.ti-cc-t { font-family: var(--px-font); font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 0 0 14px; color: #f2f8ff; text-shadow: 0 3px 0 #4a62b8, 3px 3px 0 #1a2050, -3px 3px 0 #1a2050, 3px -3px 0 #1a2050, -3px -3px 0 #1a2050, 0 6px 0 #1a2050; }
+.cc-box { display: grid; grid-template-columns: 220px minmax(0, 440px); gap: 18px; padding: 18px; background: rgba(26,32,80,.88); box-shadow: inset 0 0 0 3px #6a7ad8, 0 0 0 4px #1a2050, 0 10px 0 4px rgba(0,0,0,.35); }
+.cc-prev { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 14px 10px; background: radial-gradient(circle at 50% 40%, #e8f0ff, #b8c8e8); box-shadow: inset -4px -4px 0 #8a9ac0, inset 4px 4px 0 #fff, 0 0 0 3px #1a2050; }
+.cc-prev canvas { width: 180px; height: 210px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.cc-rot { display: flex; gap: 8px; } .cc-rot button { width: 42px; height: 38px; font-size: 1.1rem; }
+.cc-rot button[aria-pressed="true"] { background: #ffd84a; }
+.cc-form { display: grid; gap: 7px; align-content: start; }
+.cc-row { display: grid; grid-template-columns: 128px 34px 1fr 34px; gap: 6px; align-items: center; font-weight: 700; color: #e8eeff; }
+label.cc-row { grid-template-columns: 128px 1fr; }
+.cc-row > span { text-shadow: 1px 1px 0 #1a2050; font-size: .95rem; }
+.cc-row input { font: inherit; font-weight: 700; padding: 6px 10px; border: 0; color: #fff; background: #2a3478; box-shadow: inset 2px 2px 0 #141a48, 0 0 0 2px #8a9ae8; }
+.cc-row input::placeholder { color: #9aa6e0; }
+.cc-row output { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 32px; padding: 3px 8px; font-size: .92rem; background: #2a3478; box-shadow: inset 2px 2px 0 #141a48, 0 0 0 2px #8a9ae8; text-align: center; }
+.cc-row output i { width: 14px; height: 14px; box-shadow: 0 0 0 2px #fff, 0 0 0 3px #141a48; }
+.cc-arr { height: 32px; border: 0; cursor: pointer; font-size: .85rem; color: #1a2050; background: #c8d4f0; box-shadow: inset -3px -3px 0 #8a9ac0, inset 3px 3px 0 #fff, 0 0 0 2px #1a2050; }
+.cc-arr:hover { background: #ffd84a; } .cc-arr:active { transform: translateY(2px); }
+.cc-row.off { opacity: .45; }
+.cc-act { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 10px; }
+.cc-act button { padding: 9px 14px; font-size: 1rem; } .cc-act button.pri { color: #fff; background: #4caf3c; text-shadow: 1px 1px 0 rgba(0,0,0,.35); box-shadow: inset -4px -4px 0 #2e7a24, inset 4px 4px 0 #8ee070, 0 0 0 3px #1a2050, 0 6px 0 3px rgba(0,0,0,.3); }
+.w-title-btn { position: absolute; right: 14px; top: 74px; z-index: 6; padding: 6px 12px; font-weight: 800; font-size: .88rem; border: 0; cursor: pointer; color: #1a2050; background: #f4e4bc; box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608, 3px 4px 0 3px rgba(0,0,0,.3); }
+.w-title-btn:hover { background: #ffd84a; }
+@media (max-width: 700px) {
+  .cc-box { grid-template-columns: 1fr; padding: 12px; } .cc-prev { grid-template-columns: auto auto; align-items: center; } .cc-prev canvas { width: 120px; height: 140px; } .cc-rot { flex-direction: column; }
+  .cc-row { grid-template-columns: 96px 32px 1fr 32px; } label.cc-row { grid-template-columns: 96px 1fr; } .cc-row > span { font-size: .82rem; }
+  .w-title-btn { top: 100px; right: 10px; font-size: .8rem; }
+  .ti-menu { top: 54%; } .ti-logo { top: 18%; } .ti-title { font-size: 14vw; } .ti[data-stage="menu"] .ti-logo { top: 9%; }
+}
+@media (prefers-reduced-motion: reduce) { .ti-bg, .ti-logo, .ti-menu { transition: none; } .ti-title .l, .ti-compass { animation-duration: .01s !important; animation-delay: 0s !important; } .ti-press { animation: none; } }

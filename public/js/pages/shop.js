@@ -2,6 +2,7 @@
 import { api, html, raw, state, toast, confetti, confirmBox, fmtDate, avatar, titleTag } from "../core.js";
 import { go, refreshMe, onLeave } from "../app.js";
 import { mountShopScene, chestImg } from "./shopscene.js";
+import { myLook } from "../look.js";
 import { playSound, setPrefs, getPrefs, playTick, reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TYPE_IC = { avatar: "🐱", pfp: "🎭", frame: "🖼️", title: "🏷️", theme: "🎨", sound: "🎵", effect: "🎉", background: "🌌" };
@@ -129,7 +130,7 @@ export async function shop({ main, query }) {
     ...(me && d.freeBox ? ["วันนี้เปิดกล่องสุ่มธรรมดาฟรีได้ 1 ครั้งนะ!"] : []), ...(!me ? ["เข้าสู่ระบบแล้วเล่นเกมสะสมเหรียญ มาแลกของที่ร้านได้นะ"] : []),
     "กล่องสุ่มโปรไฟล์มีรูปให้สะสมตั้ง 16 ร่างเลยนะ", "ของที่ได้แล้วไปเปลี่ยนใส่ได้ที่กระเป๋า"];
   const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
-  const scene = mountShopScene(main.querySelector(".shop-scene"), { shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", reduced: reducedMotion(), greet });
+  const scene = mountShopScene(main.querySelector(".shop-scene"), { shirt: /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", look: myLook(/^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5"), reduced: reducedMotion(), greet });
   onLeave(() => { scene.destroy(); document.body.classList.remove("shop-world"); });
   render();
 }

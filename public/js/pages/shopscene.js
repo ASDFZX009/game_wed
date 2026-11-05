@@ -78,11 +78,11 @@ function bakeRoom(W, L) {
   return pb.canvas();
 }
 
-export function mountShopScene(host, { shirt = "#5b3df5", reduced = false, greet = [] } = {}) {
+export function mountShopScene(host, { shirt = "#5b3df5", look = null, reduced = false, greet = [] } = {}) {
   const view = document.createElement("canvas"); view.className = "ss-canvas"; view.setAttribute("aria-hidden", "true");
   host.prepend(view);
   const bubble = host.querySelector(".ss-bubble");
-  const keeper = charFrame(0, 0, MERCHANT), heroFr = charFrame(3, 0, { shirt, pants: "#2a3550", hair: "#3a2a20" });
+  const keeper = charFrame(0, 0, MERCHANT), heroFr = charFrame(3, 0, look || { shirt, pants: "#2a3550", hair: "#3a2a20" });
   const cry = crystal(7), barrel = PROP.barrel(), crate = PROP.crate(), pot = PROP.pot(0.1);
   const [buf, bx] = canvas(10, 10);
   let S = 1.5, W = 0, dpr = 1, bg = null, L = null, raf = 0, line = 0, lineT = 0, smooth = false;
