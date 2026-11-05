@@ -973,7 +973,7 @@ body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4p
 .bt-hp i { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(#ff7a6a, #d8302a 60%, #a01818); transition: width .35s steps(6); }
 .bt-hp s { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(40,10,10,.55); }
 .bt-hp em { position: absolute; right: 6px; top: -1px; font-style: normal; font-weight: 800; font-size: .72rem; color: #fff; text-shadow: 1px 1px 0 #2a1608; }
-.bt-q { position: absolute; left: 50%; top: 86px; transform: translateX(-50%); width: min(560px, 76%); z-index: 4; text-align: center; padding: 10px 16px 12px; color: #3a2412; background: #f4e4bc;
+.bt-q { position: absolute; left: 64px; top: 86px; width: min(520px, calc(60% - 64px)); z-index: 4; text-align: center; padding: 10px 16px 12px; color: #3a2412; background: #f4e4bc;
   box-shadow: inset -4px -4px 0 #e2c992, inset 4px 4px 0 #fff6dc, 0 0 0 3px #2a1608, 4px 6px 0 3px rgba(0,0,0,.25); }
 .bt-qt { font-weight: 800; font-size: 1.12rem; line-height: 1.4; }
 .bt-q img { max-height: 90px; display: block; margin: 0 auto 6px; border-radius: 6px; }
@@ -1014,10 +1014,11 @@ body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4p
 .bt-fb.ok { box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608, 0 0 0 6px #3caa4a; } .bt-fb.no { box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608, 0 0 0 6px #d8402a; }
 .bt-next { font-family: "Pixelify Sans", "Kanit", sans-serif; }
 @media (max-width: 760px) {
-  .bt-hand { margin-top: 10px; gap: 8px; }
+  .bt-hand { margin-top: 12px; gap: 8px; }
+  .bc.picked, .bc:hover:not([disabled]), .bc:focus-visible { transform: none; } .bc.wrong { animation: none; }
   .bt-heroes { top: auto; bottom: 6px; left: 6px; flex-direction: row; }
   .bc { width: calc(50% - 8px); min-height: 168px; transform: none; } .bc-art { height: 60px; } .bc-ans { padding: 6px 8px; } .bc-ans { font-size: 1rem; }
-  .bt-q { top: 78px; width: 92%; padding: 8px 10px; } .bt-qt { font-size: 1rem; }
+  .bt > .bt-q { position: relative; left: auto; top: auto; width: auto; margin: 0 0 12px; padding: 8px 10px; } .bt-qt { font-size: 1rem; }
   .bt-plate { min-width: 0; padding: 3px 6px; } .bt-plate .nm { font-size: .9rem; } .bt-plate.boss { min-width: 44%; }
   .bt-hero { width: 32px; height: 32px; font-size: 1rem; }
 }

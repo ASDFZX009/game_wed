@@ -17,6 +17,7 @@ import { PB, PAL, hex, ramp, pick, blob, outline, canvas, hash, vnoise, mix, ton
 import { grassRGB } from "./world/ground.js";
 import { plateau, broadTree, bush } from "./world/sprites.js";
 import { charFrame } from "./world/chars.js";
+import { BOSSES } from "./bosses.js";
 
 const PXFX = globalThis.PXFX;
 const EL = {
@@ -45,47 +46,6 @@ export const HEROES = [
 const POOL = (el) => Object.entries(SKILLS).filter(([id, [, e]]) => e === el && PXFX.get(id)).map(([id]) => id);
 const HERO_KEY = "qo:hero";
 
-// ---------- บอส (วาดด้วยโค้ด) ----------
-function slimeKing(color) {
-  const pb = new PB(100, 92), R = ramp(hex(color), 8, -0.78, 0.55);
-  for (let y = 22; y < 88; y++) for (let x = 4; x < 96; x++) { const nx = (x + 0.5 - 50) / 45, ny = (y + 0.5 - 62) / 32; if (nx * nx + ny * ny > 1 || y > 85) continue;
-    pb.set(x, y, pick(R, sphereLight(nx * 0.9, ny * 0.9) * 0.85 + 0.1 - (y > 80 ? 0.2 : 0) + (hash(x >> 1, y >> 1, 3) - 0.5) * 0.05)); }
-  blob(pb, 32, 46, 9, 6, ramp([255, 255, 255], 4, -0.2, 0.2), { bias: 0.3 });
-  for (const ex of [36, 64]) { blob(pb, ex, 60, 8, 9, ramp([250, 250, 255], 4, -0.3, 0.1), { bias: 0.3 }); pb.rect(ex - 2, 60, 5, 6, [30, 20, 40]); pb.set(ex - 1, 61, [255, 255, 255]); }
-  for (let x = 42; x < 59; x++) { const y = 74 + Math.round(Math.sin((x - 42) / 16 * Math.PI) * 3); pb.rect(x, y, 1, 2, tone(R[1], -0.3)); }
-  const G = ramp([236, 186, 56], 6, -0.6, 0.55);
-  for (let y = 22; y < 31; y++) for (let x = 30; x < 71; x++) pb.set(x, y, pick(G, y < 24 ? 0.85 : y > 28 ? 0.3 : 0.6 - (x > 62 ? 0.15 : 0)));
-  for (const cx of [32, 50, 68]) for (let k = 0; k < 12; k++) { const w = Math.max(0, 6 - k * 0.5); for (let x = Math.floor(cx - w); x <= cx + w; x++) pb.set(x, 22 - k, pick(G, 0.75 - (x > cx ? 0.25 : 0))); }
-  for (const [gx, c] of [[38, [220, 50, 70]], [50, [70, 160, 240]], [62, [80, 200, 90]]]) { pb.rect(gx - 2, 24, 4, 4, c); pb.set(gx - 1, 24, [255, 255, 255]); }
-  return outline(pb, 50, 86, -0.8);
-}
-function golem() {
-  const pb = new PB(104, 96), Rk = PAL.rock;
-  for (const [x, y, rx, ry] of [[34, 80, 11, 10], [70, 80, 11, 10]]) blob(pb, x, y, rx, ry, Rk, { jag: 0.25, seed: x, bias: -0.05 });
-  blob(pb, 52, 54, 34, 28, Rk, { jag: 0.2, seed: 2, bias: 0.05 });
-  for (const [x, s] of [[16, 1], [88, -1]]) { blob(pb, x, 48, 12, 14, Rk, { jag: 0.3, seed: x + 3 }); blob(pb, x + s * 2, 68, 10, 9, Rk, { jag: 0.3, seed: x + 9, bias: 0.1 }); }
-  blob(pb, 52, 24, 17, 14, Rk, { jag: 0.2, seed: 5, bias: 0.1 });
-  for (const ex of [45, 59]) { pb.rect(ex - 3, 23, 6, 4, [120, 240, 255]); pb.rect(ex - 2, 24, 4, 2, [230, 255, 255]); }
-  for (let i = 0; i < 26; i++) { const x = 20 + Math.floor(hash(i, 1, 9) * 64), y = 14 + Math.floor(hash(i, 2, 9) * 50); if (pb.alpha(x, y) && pb.alpha(x, y - 2) === 0 || hash(i, 3, 9) < 0.4) if (pb.alpha(x, y)) pb.rect(x, y, 3, 2, PAL.leafB[4 + (i % 3)]); }
-  for (let i = 0; i < 5; i++) { const x = 40 + i * 6; pb.rect(x, 50 + (i % 2) * 6, 2, 8, [90, 200, 230]); }
-  return outline(pb, 52, 90, -0.8);
-}
-function yeti() {
-  const pb = new PB(104, 100), F = ramp([200, 226, 248], 8, -0.7, 0.45), Hn = ramp([236, 222, 190], 5, -0.5, 0.4);
-  for (const [x, s] of [[30, -1], [74, 1]]) for (let k = 0; k < 16; k++) { const w = Math.max(0, 5 - k * 0.3); for (let dx = -w; dx <= w; dx++) pb.set(x + s * k * 0.5 + dx, 18 - k, pick(Hn, 0.6 - dx * 0.05)); }
-  for (const [x, y] of [[36, 88], [68, 88]]) blob(pb, x, y, 11, 8, F, { jag: 0.4, seed: x, bias: -0.1 });
-  blob(pb, 52, 54, 38, 36, F, { jag: 0.35, seed: 7, bias: 0.05 });
-  for (const [x, s] of [[14, 1], [90, -1]]) blob(pb, x, 58, 11, 17, F, { jag: 0.4, seed: x + 1 });
-  blob(pb, 52, 38, 13, 12, ramp([255, 255, 255], 4, -0.2, 0.1), { bias: 0.25 }); blob(pb, 52, 39, 7, 8, ramp([40, 120, 220], 5, -0.5, 0.4), { bias: 0.1 });
-  pb.rect(50, 37, 4, 5, [20, 20, 40]); pb.rect(49, 36, 2, 2, [255, 255, 255]);
-  for (let x = 40; x < 65; x++) pb.rect(x, 60, 1, 6, [70, 40, 70]); for (let x = 42; x < 63; x += 5) { pb.rect(x, 60, 3, 3, [250, 250, 245]); }
-  return outline(pb, 52, 95, -0.8);
-}
-const BOSSES = [
-  { id: "slime", name: "ราชาสไลม์", make: (c) => slimeKing(c) },
-  { id: "golem", name: "โกเลมผาหิน", make: () => golem() },
-  { id: "yeti", name: "เยติตาเดียว", make: () => yeti() },
-];
 const CAT_COLOR = { math: "#4a7ad8", science: "#2fa88a", thai: "#d0503a", english: "#8a5ac8", social: "#d87a2a", health: "#3caa4a", early: "#e870a0", brain: "#b04a8a", general: "#d8a830" };
 
 // ---------- ฉากหลัง ----------
@@ -104,7 +64,8 @@ function bakeStage(W, H, gy) {
 }
 
 export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml }) {
-  const r0 = hash(String(lesson || "x").length * 7 + (lesson || "").charCodeAt(0) || 1, total, 5);
+  let hs = 7; for (const ch of String(lesson || "x")) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
+  const r0 = hash(hs % 100003, 3, 5);
   const B = BOSSES[Math.floor(r0 * BOSSES.length)], bossColor = CAT_COLOR[category] || "#4a9ae0";
   const bossLv = 5 + Math.floor(hash(total, (lesson || "").length, 9) * 30);
   let heroI = Math.max(0, HEROES.findIndex((h) => h.id === (localStorage.getItem(HERO_KEY) || "fire")));
@@ -130,7 +91,9 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
   const pos = () => ({ hx: Math.round(W * 0.2), bx: Math.round(W * 0.76), fy: H - 26 });
 
   function layout() {
-    const w = stage.clientWidth || 800; S = w < 560 ? 1 : w < 900 ? 1.5 : 2; W = Math.ceil(w / S); H = Math.round((w < 560 ? 230 : 190)); GY = Math.round(H * 0.5);
+    const w = stage.clientWidth || 800; S = w < 560 ? 1 : w < 900 ? 1.5 : 2;
+    // จอแคบ: ย้ายป้ายคำถามออกไปไว้เหนือฉาก จะได้ไม่บังบอส
+    const qEl = host.querySelector("#btQ"); if (w < 560) { if (qEl.parentNode === stage) stage.before(qEl); } else if (qEl.parentNode !== stage) stage.appendChild(qEl); W = Math.ceil(w / S); H = Math.round((w < 560 ? 262 : 190)); GY = Math.round(H * 0.5);
     bgc = bakeStage(W, H, GY); bg.width = W; bg.height = H; bg.style.width = w + "px"; bg.style.height = Math.round(H * S) + "px"; stage.style.height = Math.round(H * S) + "px";
   }
   // ---------- วาดฉาก (ตัวละคร บอส) ----------
@@ -138,12 +101,17 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     const x = bg.getContext("2d"), t = now / 1000, { hx, bx, fy } = pos(); x.imageSmoothingEnabled = false;
     x.drawImage(bgc, 0, 0);
     const sh = (cx, cy, w) => { x.fillStyle = "rgba(20,24,50,.32)"; x.beginPath(); x.ellipse(cx + 6, cy, w, w * 0.22, 0, 0, 7); x.fill(); };
-    // บอส
-    const bob = reduced ? 0 : Math.round(Math.sin(t * 2.2) * 2), knock = state.bossHurt > now ? 6 : 0, fade = state.dead ? Math.max(0, 1 - (now - state.dead) / 900) : 1;
-    sh(bx, fy, 40);
-    x.globalAlpha = fade; x.drawImage(boss.c, bx - boss.ax + knock, fy - boss.ay + bob + (state.dead ? (1 - fade) * 20 : 0));
-    if (state.bossHurt > now && Math.floor(now / 60) % 2 === 0) { x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.6; x.drawImage(boss.c, bx - boss.ax + knock, fy - boss.ay + bob); x.globalCompositeOperation = "source-over"; }
-    x.globalAlpha = 1;
+    // บอส (3 เฟรมผ้าพลิ้ว + แสงเรืองซ้อน)
+    const bob = reduced ? 0 : Math.round(Math.sin(t * 2.2) * (boss.float ? 3 : 1.4)), knock = state.bossHurt > now ? 6 : 0, fade = state.dead ? Math.max(0, 1 - (now - state.dead) / 900) : 1;
+    const fr = boss.frames[reduced ? 0 : Math.floor(t * 5) % boss.frames.length], ox = bx - boss.ax + knock, oy = fy - boss.ay - boss.float + bob + (state.dead ? (1 - fade) * 20 : 0);
+    x.globalAlpha = fade; sh(bx, fy, boss.shw * (boss.float ? 0.8 + 0.1 * Math.sin(t * 2.2) : 1)); x.drawImage(fr, ox, oy);
+    if (state.bossHurt > now && Math.floor(now / 60) % 2 === 0) { x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.6; x.drawImage(fr, ox, oy); x.globalCompositeOperation = "source-over"; }
+    x.globalCompositeOperation = "lighter"; const [gr, gg, gb] = boss.color;
+    for (const [gx, gy, r] of boss.glow) { const a = (0.32 + (reduced ? 0 : 0.12 * Math.sin(t * 3 + gx))) * fade, g = x.createRadialGradient(ox + gx, oy + gy, 0, ox + gx, oy + gy, r);
+      g.addColorStop(0, `rgba(${gr},${gg},${gb},${a})`); g.addColorStop(1, `rgba(${gr},${gg},${gb},0)`); x.fillStyle = g; x.fillRect(ox + gx - r, oy + gy - r, r * 2, r * 2); }
+    if (!reduced) for (let i = 0; i < 7; i++) { const ph = (t * 0.35 + hash(i, 4, 7)) % 1, px = bx - 40 + hash(i, 5, 7) * 80 + Math.sin(t + i) * 4, py = fy - 10 - ph * 110;
+      x.fillStyle = `rgba(${gr},${gg},${gb},${0.8 * Math.sin(ph * Math.PI) * fade})`; x.fillRect(Math.round(px), Math.round(py), 2, 2); }
+    x.globalCompositeOperation = "source-over"; x.globalAlpha = 1;
     // ตัวละคร
     const casting = state.cast > now, hurt = state.hurt > now, step = casting ? 1 + (Math.floor(now / 120) % 2) * 2 : (reduced ? 0 : Math.floor(t * 1.5) % 2 ? 0 : 0);
     const f = hf(hurt ? 1 : 2, step), hxo = hurt ? -5 : casting ? 4 : 0;
@@ -209,7 +177,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     hand.querySelectorAll(".bc").forEach((b) => (b.disabled = true)); btn.classList.add("picked");
     const r = await onAnswer(a);
     if (!r) { state.busy = false; hand.querySelectorAll(".bc").forEach((b) => (b.disabled = false)); btn.classList.remove("picked"); return; }
-    const { hx, bx, fy } = pos(), from = [hx * S + 14 * S, (fy - 24) * S], to = [bx * S, (fy - 40) * S, fy * S];
+    const { hx, bx, fy } = pos(), from = [hx * S + 14 * S, (fy - 24) * S], to = [bx * S, (fy - boss.hit) * S, fy * S];
     if (r.correct) {
       state.combo++; state.right++; btn.classList.add("right"); state.cast = performance.now() + 900;
       await playFx(btn.dataset.skill, { from, to, onHit: () => { state.hp = Math.max(0, state.hp - 1); setHp(); state.bossHurt = performance.now() + 420; stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
