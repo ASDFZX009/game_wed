@@ -43,6 +43,8 @@ function pathToHash(path) {
   return "full";
 }
 function hashToPath(h) {
+  // รองรับลิงก์ที่มีตัวกรอง เช่น #games?category=math
+  const [base, q] = h.split("?"); if (q) { const p = hashToPath(base); return p === "/" && base ? "/" : p + "?" + q; }
   for (const [re, p] of HASH) if (re.test(h)) return h.replace(re, p);
   return h === "full" ? "/full" : "/";
 }
@@ -96,13 +98,13 @@ function renderNav(cur = "/") {
   document.getElementById("nav").innerHTML = html`<div class="wrap topbar">
     <a href="/" class="logo" aria-label="QUIZ ODYSSEY หน้าแรก"><span aria-hidden="true">🧭</span> QUIZ ODYSSEY</a>
     <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
-    <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "คลังเกม", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "📖 สมุดผจญภัย", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
+    <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "🗺️ บ้านวิชา", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "📖 สมุดผจญภัย", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
       <div class="nav-right">${state.config?.cloud && !u.cloud ? html`<a href="/login" class="btn btn-sm nav-login">🔐 เข้าสู่ระบบ</a>` : ""}${u.admin ? html`<a href="/admin" class="${cur === "/admin" ? "active" : ""}" title="ผู้ดูแลระบบ">🛡️ แอดมิน</a>` : ""}<a href="/shop" class="coins" title="เหรียญของฉัน">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a>
         <a href="/profile" class="me">${avatar(u.equipped)} <span class="ellipsis">${u.displayName || ""}</span>${u.cloud ? html`<span title="บันทึกในบัญชีออนไลน์" aria-label="บันทึกในบัญชีออนไลน์">☁️</span>` : ""}</a><a href="/settings">⚙️ ตั้งค่า</a>
         <button class="theme" id="themeBtn" aria-label="สลับโหมดมืด/สว่าง" title="สลับโหมดมืด/สว่าง">🌓</button></div></div></div>`.s;
   document.getElementById("menuBtn").onclick = () => { const o = document.body.classList.toggle("menu-open"); document.getElementById("menuBtn").setAttribute("aria-expanded", o); };
   document.getElementById("themeBtn").onclick = () => { setPrefs({ mode: isDark() ? "light" : "dark" }); };
-  const items = [["/", "🏠", "หน้าแรก"], ["/games", "🎮", "คลังเกม"], ["/quizzes", "📝", "แบบทดสอบ"], ["/bag", "🎒", "กระเป๋า"], ["/shop", "🛒", "ร้านค้า"]];
+  const items = [["/", "🏠", "หน้าแรก"], ["/games", "🗺️", "บ้านวิชา"], ["/quizzes", "📝", "แบบทดสอบ"], ["/bag", "🎒", "กระเป๋า"], ["/shop", "🛒", "ร้านค้า"]];
   document.getElementById("bnav").innerHTML = items.map(([href, i, t]) => {
     const on = href === "/" ? cur === "/" : cur === href || cur.startsWith(href + "/");
     return html`<a href="${href}" class="${on ? "active" : ""}"><span class="i" aria-hidden="true">${i}</span>${t}</a>`.s;

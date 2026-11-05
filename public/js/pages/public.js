@@ -8,6 +8,7 @@ import { mountQuestScene } from "./questscene.js";
 import { openTitle, titleSeen } from "./title.js";
 import { myLook, loadProfile } from "../look.js";
 import { pxPage } from "../pxpage.js";
+import { openHouse, openPicker } from "./house.js";
 import { rankOf } from "../journey.js";
 import { reducedMotion, loadSkinFont } from "../prefs.js";
 
@@ -46,7 +47,7 @@ export async function home({ main }) {
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
-      <div class="w-hud">${hudPlate()}<button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button></div>
+      <div class="w-hud">${hudPlate()}<button type="button" class="w-title-btn" id="wPick">🗺️ เลือกบ้านวิชา</button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button></div>
       <div class="world" id="world"></div>
       <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
         ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
@@ -55,11 +56,19 @@ export async function home({ main }) {
   const shirt = /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", nameOf = (p) => p?.name || state.me?.displayName || "นักผจญภัย";
   const rt = state.realtime?.() || null;
   const net = rt ? { rt, profile: () => { const p = loadProfile(); return { name: nameOf(p), parts: p?.parts || null }; } } : null;
-  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net });
+  // บ้านวิชา/ตัวเลือกบ้าน เปิดซ้อนบนหมู่บ้าน (ไม่ต้องเปลี่ยนหน้า)
+  let overlay = null;
+  const house = (cat) => { overlay?.close(); w.pause(true); overlay = openHouse({ cat, onClose: () => { overlay = null; w.pause(false); refreshMe().then(() => refreshHud()).catch(() => {}); } }); };
+  const picker = () => { overlay?.close(); w.pause(true); overlay = openPicker({ onPick: house, onClose: (picked) => { overlay = null; if (!picked) w.pause(false); } }); };
+  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net, onHouse: house });
   // หน้าเริ่มเกม: เปิดครั้งแรกของแต่ละรอบการใช้งาน หรือกด "เมนูหลัก"
   let title = null;
   const showTitle = (startAt) => { title = openTitle({ go, me: state.me, reduced: reducedMotion(), startAt, onEnter: (p) => { title = null; w.setLook(myLook(shirt), nameOf(p)); main.querySelector(".world-canvas")?.focus({ preventScroll: true }); } }); };
   main.querySelector("#wTitle").addEventListener("click", () => showTitle("menu"));
+  main.querySelector("#wPick").addEventListener("click", picker);
+  const refreshHud = () => { const h = main.querySelector(".w-plate"); if (h) h.outerHTML = hudPlate().s || hudPlate(); };
+  onLeave(() => overlay?.close());
+  { let op = null; try { op = sessionStorage.getItem("qo:openHouse"); sessionStorage.removeItem("qo:openHouse"); } catch { /* ignore */ } if (op) setTimeout(() => (op === "*" ? picker() : house(op)), 50); }
   const want = (() => { try { const v = sessionStorage.getItem("qo:titleOpen"); sessionStorage.removeItem("qo:titleOpen"); return v; } catch { return null; } })();
   if (want) showTitle(want); else if (!titleSeen()) showTitle("intro");
   onLeave(() => title?.close());
@@ -68,6 +77,8 @@ export async function home({ main }) {
 }
 
 export async function library({ main, query }) {
+  // เวอร์ชันเว็บ: เลือกบทเรียนในหน้าหลัก (หมู่บ้าน) แทนหน้าแยก
+  if (state.config?.local) { try { sessionStorage.setItem("qo:openHouse", query.get("category") || "*"); sessionStorage.setItem("qo:titleSeen", "1"); } catch { /* ignore */ } return go("/", true); }
   const { categories } = await api("/api/categories");
   const f = { q: query.get("q") || "", category: query.get("category") || "", difficulty: query.get("difficulty") || "", age: query.get("age") || "", sort: query.get("sort") || "new", page: query.get("page") || "1" };
   const data = await api("/api/games?" + new URLSearchParams(f));
@@ -118,6 +129,8 @@ export async function playGame({ main, params, query }) {
     const qs = new URLSearchParams(Object.entries(setup).filter(([, v]) => v !== undefined && v !== null && v !== ""));
     const data = await api(`/api/games/${params.id}/play${qs.toString() ? "?" + qs : ""}`);
     const aid = query.get("assignment");
+    // เวอร์ชันเว็บ: บทเรียนเล่นผ่านโหมดเรื่องราวในบ้านวิชา (หน้าหลัก) แทนการเลือกระดับเอง
+    if (state.config?.local && !aid && data.setup && data.game.category?.slug) { try { sessionStorage.setItem("qo:openHouse", data.game.category.slug); sessionStorage.setItem("qo:titleSeen", "1"); } catch { /* ignore */ } return go("/", true); }
     const stop = startGame(main, data, {
       assignmentId: aid, restart: () => load(setup.set === 0 || setup.set === "0" ? { set: 0 } : null), reconfigure: (c) => load(c),
       backHref: aid ? `/classes/${query.get("class") || ""}` : data.preview ? "/teacher/games" : "/games",

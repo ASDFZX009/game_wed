@@ -96,6 +96,17 @@ function distractors(item, P, r, n = 3) {
 function pickLevel(pool, level, n, set, base, r) {
   const tiers = [];
   for (const it of pool) { const d = Math.abs((it.lv || 3) - level); (tiers[d] ||= []).push(it); }
+  // โหมดเรื่องราว (ชุด > 4): หน้าต่างเลื่อนบนคลังรอบระดับนั้น (ระดับตรงก่อน แล้วระดับใกล้เคียง) → เล่นซ้ำได้ข้อใหม่จนกว่าจะครบคลัง
+  if (set > SETS) {
+    // ระดับตรง + ระดับติดกันเสมอ (±1) · ระดับห่างกว่านั้นเติมเฉพาะเมื่อคลังเล็ก · ตัดโจทย์ข้อความซ้ำออก
+    const list = [], seenQ = new Set();
+    for (let d = 0; d < tiers.length; d++) { if (!tiers[d]) continue; if (d >= 2 && list.length >= n * 4) break;
+      for (const it of shuffle(tiers[d], rng(hashStr(base + "|w" + d)))) { const k = it.q || it.s || it.mq || ""; if (seenQ.has(k)) continue; seenQ.add(k); list.push(it); } }
+    if (!list.length) return [];
+    const off = ((set - SETS - 1) * n) % list.length, out = [];
+    for (let i = 0; i < Math.min(n, list.length); i++) out.push(list[(off + i) % list.length]);
+    return shuffle(out, r);
+  }
   const out = [];
   for (const tier of tiers) { if (!tier) continue; let t = shuffle(tier, set === 0 ? r : rng(hashStr(base + "|" + tier.length)));
     if (set > 0 && t.length > 0) { const off = ((set - 1) * n) % t.length; t = t.slice(off).concat(t.slice(0, off)); }
@@ -113,7 +124,7 @@ function normOpts(L, o = {}) {
   const level = Math.min(5, Math.max(1, parseInt(o.level) || L.defaultLevel || 2));
   const mode = P.modes.includes(o.mode) ? o.mode : P.modes[0];
   const count = COUNTS.includes(+o.count) ? +o.count : 10;
-  const set = Math.min(SETS, Math.max(0, parseInt(o.set ?? 1) || 0));
+  const set = Math.min(99999, Math.max(0, parseInt(o.set ?? 1) || 0)); // 1–4 = ชุดคำถามคงที่ · >4 = หน้าต่างหมุนเวียนของโหมดเรื่องราว (ไม่ซ้ำจนกว่าจะครบคลัง)
   const seed = set === 0 ? (parseInt(o.seed) || Math.floor(Math.random() * 1e9)) : 0;
   return { level, mode, count, set, seed };
 }

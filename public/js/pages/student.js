@@ -70,7 +70,7 @@ function journey(ctx, d, P, lv) {
     </section>
 
     <h2 class="px-tab" id="journey">🎁 เส้นทางสะสมดาว</h2>
-    <p class="small jr-note">ได้ดาวจากการเล่นบทเรียน: ผ่าน 60% = ★ · 80% = ★★ · เต็ม = ★★★ (เก็บผลที่ดีที่สุดของแต่ละระดับ) · ระดับ “ยาก” และ “ยากมาก” ปลดล็อกเมื่อได้ดาวที่ระดับก่อนหน้า</p>
+    <p class="small jr-note">ได้ดาวจากการเล่นบทเรียน: ผ่าน 60% = ★ · 80% = ★★ · เต็ม = ★★★ (เก็บผลที่ดีที่สุดของแต่ละระดับ) · ในบ้านวิชา ด่านถัดไปเปิดเมื่อได้อย่างน้อย ★ ในด่านก่อนหน้า</p>
     <div class="jr-track" role="list" style="--p:${Math.min(100, (P.stars / lastAt) * 100)}%"><div class="jr-line" aria-hidden="true"><i></i></div>
       ${P.milestones.map((m) => html`<div class="jr-ms ${m.claimed ? "done" : m.reached ? "ready" : ""}" role="listitem" style="--x:${(m.at / lastAt) * 100}%">
         <span class="ic" aria-hidden="true">${m.claimed ? "✅" : m.icon}</span><b>★ ${m.at}</b><span class="nm">${m.name}</span><span class="rw">🪙 ${m.coins}${m.elite ? " + 👑" : ""}</span>

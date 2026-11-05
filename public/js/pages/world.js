@@ -204,7 +204,7 @@ function castShadow(x, sil, dx, dy, footY, mode, lift, ox = 0, oy = 0) {
 const SHADOW = "#16163a", SHADOW_A = 0.55;
 
 // ---------- ติดตั้งบนหน้า ----------
-export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false, net = null }) {
+export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false, net = null, onHouse = null }) {
   const M = buildMap();
   const cache = new Map(), spr = (key, make) => cache.get(key) || (cache.set(key, make()), cache.get(key));
   const silCache = new Map(), sil = (s) => silCache.get(s.c) || (silCache.set(s.c, tint(silhouette(s.c))), silCache.get(s.c));
@@ -377,8 +377,11 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   const blocked = (px, py) => { const [tx, ty] = tileAt(px, py); return !M.inb(tx, ty) || M.block[M.at(tx, ty)]; };
   const solid = (x, y) => blocked(x - 8, y - 4) || blocked(x + 8, y - 4) || blocked(x - 8, y) || blocked(x + 8, y);
   function walkTo(tx, ty, place) { const [sx, sy] = tileAt(hero.x, hero.y - 1); const p = findPath(M, sx, sy, tx, ty); if (p) { hero.path = p; hero.target = place || null; } else if (place) hero.target = null; }
+  let paused = false;
   function enter(p) {
-    if (leaving) return; leaving = true;
+    if (leaving || paused) return;
+    if (onHouse && SIGN_FX[p.id]) { keys.clear(); hero.path = null; try { sessionStorage.setItem(POS_KEY, p.id); } catch { /* ignore */ } onHouse(p.id); return; } // บ้านวิชา: เปิดในหน้าเดียวกัน
+    leaving = true;
     try { sessionStorage.setItem(POS_KEY, p.id); } catch { /* ignore */ }
     fade.classList.add("on"); setTimeout(() => go(p.href), reduced ? 0 : 320);
   }
@@ -571,13 +574,14 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   let raf = 0, last = performance.now(), visible = true;
   const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting; }); io.observe(view);
   let perfN = 0, perfT = 0;
-  const loop = (now) => { raf = requestAnimationFrame(loop); if (!visible || document.hidden) { last = now; return; } const raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
+  const loop = (now) => { raf = requestAnimationFrame(loop); if (!visible || document.hidden || paused) { last = now; return; } const raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
     if (perfN < 120) { if (perfN > 20) perfT += raw; if (++perfN === 120 && perfT / 99 > 1 / 38) host.classList.add("w-lite"); }
     update(dt); render(now); };
   raf = requestAnimationFrame(loop);
   mpStart();
   return {
     get online() { return online; },
+    pause(v) { paused = !!v; keys.clear(); if (!v) view.focus({ preventScroll: true }); },
     places: PLACES,
     destroy() { mpStop(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
     reachable() { const [sx, sy] = tileAt(hero.x, hero.y - 1); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) || (sx === p.ex && sy === p.ey) })); },

@@ -5,6 +5,7 @@ import DATA from "./data.json";
 import G from "../server/grading.js";
 import Lessons from "../server/lessons/index.js";
 import * as J from "../public/js/journey.js";
+import { storyPlan } from "../public/js/story.js";
 
 const TZ = "Asia/Bangkok";
 const KEY = "eduplay-web:v1";
@@ -31,7 +32,7 @@ const ITEM = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
 
 // ---------- ที่เก็บความคืบหน้า ----------
 const fresh = () => ({ v: 1, name: "นักผจญภัย", grade: "", xp: 0, coins: WELCOME_COINS, createdAt: now(), updatedAt: now(), seq: 1,
-  plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {}, stars: {}, bosses: {}, claimed: {} });
+  plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {}, stars: {}, bosses: {}, claimed: {}, rot: {}, seen: {} });
 let S = fresh();
 let adminFlag = false; // ตรวจสิทธิ์จริงที่ Supabase (is_admin) แล้วจึงเปิด
 let remote = null; // ที่เก็บในบัญชี Claude (artifact) ถ้ามี
@@ -305,7 +306,7 @@ on("POST", "/api/games/:id/finish", ({ id }, b) => {
   save();
   return { score, max, correct, total, passed: (score / Math.max(1, max)) * 100 >= 60, passPct: 60, perfect, review, saved: true, xp, coins: xp, newBadges, preview: false,
     stars: set ? { got, best: Math.max(got, prevBest), prevBest, level: lvl, levelName: Lessons.setupOf(Lessons.lessonById(g0.lesson)).levels[lvl - 1] } : null,
-    unlockedLevel: unlockedNow.length ? { level: unlockedNow[0], name: ["ง่ายมาก", "ง่าย", "ปานกลาง", "ยาก", "ยากมาก"][unlockedNow[0] - 1] } : null,
+    unlockedLevel: !b.story && unlockedNow.length ? { level: unlockedNow[0], name: ["ง่ายมาก", "ง่าย", "ปานกลาง", "ยาก", "ยากมาก"][unlockedNow[0] - 1] } : null,
     levelUp: lvAfter > lvBefore ? { from: lvBefore, to: lvAfter, rank: J.rankOf(lvAfter) } : null,
     eliteNow: !eliteBefore && eliteUnlocked(), boss, totalStars: totalStars(), rewardsReady: rewardsReady() };
 });
@@ -323,6 +324,36 @@ on("POST", "/api/progress/claim", (_p, b) => {
   if (totalStars() < m.at) throw err(400, `ต้องสะสมให้ครบ ${m.at} ดาวก่อน`); if (S.claimed[m.at]) throw err(400, "รับรางวัลนี้ไปแล้ว");
   S.claimed[m.at] = now(); addCoins(m.coins, "stars", `รางวัลสะสม ${m.at} ดาว`); S.activity.unshift({ kind: "reward", title: `รับรางวัล “${m.name}” (+${m.coins} เหรียญ)`, xp: 0, created_at: now() }); save();
   return { coins: S.coins, got: m.coins, rewardsReady: rewardsReady() };
+});
+// ---------- โหมดเรื่องราว ----------
+function planOf(cat) {
+  const lessons = GAMES.filter((g) => g.template === "lesson" && g.category === cat).map((g) => { const L = Lessons.lessonById(g.lesson); return { gid: g.id, title: g.title, icon: L.icon }; });
+  const P = storyPlan(cat, lessons); if (!P) throw err(404, "ไม่พบบ้านวิชานี้");
+  let prevOk = true, cur = null; const unlockAll = adminFlag && cloudUser;
+  for (const ch of P.chapters) for (const st of ch.stages) { st.stars = (S.stars[st.gid] || {})[st.level] || 0; st.unlocked = prevOk || !!unlockAll; if (st.unlocked && !st.stars && !cur) cur = st.n; prevOk = st.stars > 0; }
+  P.current = cur || P.total; P.got = P.chapters.reduce((a, c) => a + c.stages.reduce((b, x) => b + x.stars, 0), 0); P.max = P.total * 3;
+  const c = catBy[cat]; P.house = c ? { slug: c.slug, name: c.name, icon: c.icon } : null;
+  return P;
+}
+const stageOf = (P, n) => { for (const ch of P.chapters) for (const st of ch.stages) if (st.n === +n) return { ch, st }; throw err(404, "ไม่พบด่านนี้"); };
+const qKey = (q) => { const t = String(q.prompt || q.a || "") + "|" + String(q.b || ""); let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h.toString(36); };
+on("GET", "/api/story/:cat", ({ cat }) => planOf(cat));
+on("GET", "/api/story/:cat/:n/play", ({ cat, n }) => {
+  const P = planOf(cat), { ch, st } = stageOf(P, n);
+  if (!st.unlocked) throw err(403, "ด่านนี้ยังล็อกอยู่ ผ่านด่านก่อนหน้าก่อนนะ");
+  const g = gameById(st.gid), L = Lessons.lessonById(g.lesson), rk = `${g.id}:${st.mode}`, seen = new Set(S.seen[g.lesson] || []);
+  // เลือกหน้าต่างคำถามที่ "ยังไม่เคยเห็น" มากที่สุด (ลองหลายหน้าต่างถัดไป) → ไม่ซ้ำวนจนกว่าจะเล่นครบคลัง
+  let best = null, bestNew = -1; const base = (S.rot[rk] || 0) + 1;
+  for (let k = 0; k < 14; k++) { const b = Lessons.build(L, { level: st.level, mode: st.mode, count: st.count, set: Lessons.SETS + base + k });
+    const fresh = b.questions.filter((q) => !seen.has(qKey(q))).length; if (fresh > bestNew) { best = b; bestNew = fresh; S.rot[rk] = base + k; } if (fresh === b.questions.length) break; }
+  if (bestNew === 0) S.seen[g.lesson] = []; // เห็นครบคลังแล้ว → เริ่มรอบใหม่
+  const arr = (S.seen[g.lesson] = S.seen[g.lesson] || []); for (const q of best.questions) arr.push(qKey(q)); if (arr.length > 600) arr.splice(0, arr.length - 600);
+  save();
+  const next = (() => { try { return stageOf(P, st.n + 1).st; } catch { return null; } })();
+  return { game: { ...gameRow(g), template: best.template, templateName: best.templateName, howTo: best.howTo, timeLimitSec: best.timeLimitSec, questionCount: best.questions.length },
+    questions: playableQs(best.template, best.questions), preview: false, key: best.key,
+    boss: J.pickBoss(g.lesson + (st.boss ? "|boss" : ""), st.level, st.boss && ch.n >= 4 && eliteUnlocked()),
+    story: { cat, n: st.n, total: P.total, chapter: ch.n, chapterTitle: ch.title, chapterIntro: ch.intro, levelName: ch.levelName, line: st.line, boss: st.boss, villain: P.villain, house: P.house, prevStars: st.stars, next: next ? { n: next.n, lesson: next.lesson } : null } };
 });
 on("GET", "/api/quizzes", (_p, _b, q) => {
   const t = (q.get("q") || "").toLowerCase();

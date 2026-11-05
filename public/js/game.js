@@ -199,7 +199,11 @@ export function startGame(root, data, opts = {}) {
     finishPayload.getMemory = () => ({ moves, found, completed: found === pairs });
   }
 
+  const story = data.story || null;
   function introHead(isBattle) {
+    if (story) return html`<div class="st-head"><span class="st-ch">${story.house?.icon || "📖"} ${story.chapterTitle} · ด่าน ${story.n}/${story.total}</span>
+      <h1>${story.boss ? "👑 " : ""}${game.title}</h1><p class="st-line">${story.line}</p>
+      ${isBattle ? "" : html`<p class="small muted">ความยาก: ${story.levelName} · ${game.templateName} · ${questions.length} ข้อ${game.timeLimitSec ? ` · ⏱ ${Math.floor(game.timeLimitSec / 60)}:${String(game.timeLimitSec % 60).padStart(2, "0")}` : ""}</p>`}</div>`;
     const how = isBattle ? "⚔️ เลือกการ์ดคำตอบที่ถูก การ์ดจะปล่อยสกิลโจมตีบอส — ตอบถูกครบทุกข้อเพื่อล้มบอส (กดเลข 1–4 ได้)" : game.howTo;
     return html`<h1>${game.title}</h1><p class="muted" style="margin:-.3em 0 .2em">${game.description}</p>
       <p class="small muted">วิธีเล่น: ${how}${game.template === "match" ? "" : ` · ข้อละ ${game.pointsPerQ} คะแนน`}</p>
@@ -209,7 +213,7 @@ export function startGame(root, data, opts = {}) {
   let t0 = 0;
   async function finish(extra) {
     if (done) return; done = true; stop(); battle?.destroy(); battle = null;
-    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite } } : {}) };
+    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite } } : {}), ...(story ? { story: story.n } : {}) };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
@@ -246,10 +250,13 @@ export function startGame(root, data, opts = {}) {
         <div class="rs-actions">
           <button class="vs-btn" id="g-again">🔁 เล่นอีกครั้ง</button>
           <button class="vs-btn alt" id="g-replay">🎬 ดูฉากสรุปผลอีกครั้ง</button>
-          <a class="vs-btn alt" href="${opts.backHref || "/games"}">${opts.backText || "กลับคลังเกม"}</a>
+          ${story && opts.next && (r.stars?.got > 0 || story.prevStars > 0) && story.next ? html`<button class="vs-btn" id="g-nextstage">ด่านต่อไป ▶</button>` : ""}
+          ${opts.onBack ? html`<button class="vs-btn alt" id="g-back">${opts.backText || "กลับ"}</button>` : html`<a class="vs-btn alt" href="${opts.backHref || "/games"}">${opts.backText || "กลับคลังเกม"}</a>`}
         </div>
       </section></div>`.s;
     root.querySelector("#g-again").onclick = () => opts.restart?.();
+    root.querySelector("#g-back")?.addEventListener("click", () => opts.onBack());
+    root.querySelector("#g-nextstage")?.addEventListener("click", () => opts.next());
     root.querySelector("#g-replay").onclick = splash;
     splash();
     if (r.perfect) setTimeout(() => confetti(), 1500);
@@ -287,6 +294,15 @@ export function startGame(root, data, opts = {}) {
       <p class="small muted" style="margin:6px 0 0">${su.generated ? "บทเรียนนี้สร้างโจทย์ใหม่ตามระดับ ชุดที่ 1–4 จะได้โจทย์เดิมทุกครั้ง เหมาะกับการฝึกซ้ำ" : `คลังคำถาม ${su.size} ข้อ ชุดที่ 1–4 เป็นชุดตายตัว ถ้าระดับนั้นมีคำถามไม่พอจะเติมจากระดับใกล้เคียง`}</p></div>`;
   }
   // หน้าเริ่ม
+  if (story) {
+    root.innerHTML = html`<div class="play play-story">${introHead()}
+      <div class="card st-start"><div class="st-vs"><span class="st-me">🧙 คุณ</span><b>VS</b><span class="st-boss">${story.boss ? "👑 " : "👾 "}${boss.name}<small>Lv ${boss.lv || "?"}</small></span></div>
+        <p class="small muted" style="margin:8px 0 0">${story.boss ? `ตอบถูกครบทุกข้อเพื่อปราบบอสประจำบท · ` : ""}ผ่าน 60% ได้ ★ · 80% ★★ · เต็ม ★★★ · ได้อย่างน้อย ★ เพื่อเปิดด่านถัดไป${story.prevStars ? ` · ดีที่สุดตอนนี้ ${"★".repeat(story.prevStars)}` : ""}</p>
+        <button class="btn btn-lg btn-block" id="g-start" style="margin-top:12px">⚔️ เริ่มสู้!</button></div></div>`.s;
+    root.querySelector("#g-start").onclick = () => { t0 = Date.now(); startTimer(); game.template === "match" ? renderMemory() : renderQ(); };
+    root.querySelector("#g-start").focus({ preventScroll: true });
+    return () => { stop(); battle?.destroy(); };
+  }
   root.innerHTML = html`<div class="play">${introHead()}${setupPanel()}
     <div class="card"><div class="row" style="gap:16px">
       <span class="badge badge-brand">${game.templateName}</span>
