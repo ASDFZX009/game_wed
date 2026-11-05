@@ -32,7 +32,7 @@ export function storyPlan(cat, lessons) {
       // ด่านบอส: ปรนัย (บท 4–5 จับเวลา) 10–15 ข้อ · ด่านปกติ: สลับปรนัย / ถูกผิด 6–10 ข้อ
       const mode = boss ? (c >= 3 ? "timed" : "mcq") : i % 3 === 1 ? "truefalse" : "mcq";
       const count = boss ? (c >= 2 ? 15 : 10) : c >= 2 ? 10 : 6;
-      stages.push({ n, chapter: c + 1, level, gid: le.gid, lesson: le.title, icon: le.icon, mode, count, boss,
+      stages.push({ n, chapter: c + 1, level, gid: le.gid, lesson: le.title, icon: le.icon, grade: le.grade, gr: le.gr, mode, count, boss,
         line: boss ? `ด่านบอสประจำบท! เผชิญหน้าผู้คุม${S.ch[c]}ด้วยวิชา “${le.title}”` : `ฝึกวิชา “${le.title}” เพื่อเดินทางต่อ` });
     });
     chapters.push({ n: c + 1, level, levelName: LEVEL_NAMES[c], title: `บทที่ ${c + 1} · ${S.ch[c]}`, intro: INTRO[c](S.villain, S.ch[c]), stages });

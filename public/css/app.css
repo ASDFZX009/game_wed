@@ -1567,3 +1567,11 @@ body.has-hud.immersive:not(.home-world) { background: #07060a; }
 .jr-trait { display: grid; gap: 1px; margin: 6px 0; font-size: .8rem; text-align: left; } .jr-trait b { font-size: .86rem; }
 .jr-skills { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; } .jr-skills i { font-style: normal; padding: 1px 6px; font-size: .72rem; font-weight: 700; background: rgba(0,0,0,.1); box-shadow: inset 0 0 0 1px rgba(0,0,0,.2); }
 .jr-odds { margin: 4px 0 6px; font-size: .76rem; }
+
+/* 🎓 สายชั้นในบ้านวิชา */
+.hz-track { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 14px; padding: 8px 10px; background: rgba(0,0,0,.25); box-shadow: inset 0 0 0 2px rgba(255,216,74,.25); }
+.hz-track span { font-weight: 800; font-size: .85rem; color: #ffe9a8; margin-right: 2px; }
+.hz-track button { font: inherit; font-size: .8rem; font-weight: 800; cursor: pointer; border: 0; padding: 4px 10px; color: #2a1608; background: #f4e4bc; box-shadow: inset -2px -2px 0 #e2c992, 0 0 0 2px #2a1608; }
+.hz-track button.on { background: #ffd84a; box-shadow: inset 0 -3px 0 #c8961a, 0 0 0 2px #2a1608, 0 0 10px rgba(255,216,74,.5); }
+.hz-gr { display: inline-block; padding: 0 6px; font-size: .66rem; font-weight: 800; line-height: 1.5; color: #2a1608; background: #cfe8f8; box-shadow: 0 0 0 1px #2a1608; white-space: nowrap; }
+.hz-node.off { opacity: .38; filter: saturate(.4); } .hz-node.off:hover { opacity: .75; }

@@ -166,7 +166,7 @@ function gameRow(g) {
   const c = catBy[g.category];
   if (g.template === "lesson") { const L = Lessons.lessonById(g.lesson), su = Lessons.setupOf(L);
     return { id: g.id, title: g.title, description: g.description, template: "lesson", templateName: "บทเรียน", icon: L.icon,
-      category: c ? { slug: c.slug, name: c.name, icon: c.icon } : null, ageMin: g.age[0], ageMax: g.age[1], difficulty: "all",
+      category: c ? { slug: c.slug, name: c.name, icon: c.icon } : null, ageMin: g.age[0], ageMax: g.age[1], grade: Lessons.gradeLabel(L.grade), difficulty: "all",
       visibility: "public", status: "published", timeLimitSec: null, pointsPerQ: 100, passPct: 60, plays: S.gamePlays[g.id] || 0,
       questionCount: su.size, generated: su.generated, modeCount: su.modes.length, modeNames: su.modes.map((m) => m.icon + " " + m.name), sets: su.sets, stars: { got: starSum(starsOf(g.id)), max: 15, byLevel: starsOf(g.id) }, version: 1, createdAt: g.createdAt, howTo: "เลือกระดับ รูปแบบการเล่น จำนวนข้อ และชุดคำถามได้ก่อนเริ่ม" }; }
   return { id: g.id, title: g.title, description: g.description, template: g.template, templateName: TEMPLATE_TH[g.template],
@@ -328,20 +328,25 @@ on("POST", "/api/progress/claim", (_p, b) => {
   return { coins: S.coins, got: m.coins, rewardsReady: rewardsReady() };
 });
 // ---------- โหมดเรื่องราว ----------
-function planOf(cat) {
-  const lessons = GAMES.filter((g) => g.template === "lesson" && g.category === cat).map((g) => { const L = Lessons.lessonById(g.lesson); return { gid: g.id, title: g.title, icon: L.icon }; });
+const TRACK_RANGE = { all: [0, 12], k: [0, 0], p1: [1, 3], p4: [4, 6], m1: [7, 9], m4: [10, 12] };
+function planOf(cat, track = "all") {
+  const [ta, tb] = TRACK_RANGE[track] || TRACK_RANGE.all, inTrack = (gr) => gr[0] <= tb && gr[1] >= ta;
+  // เรียงบทเรียนในบ้านตามช่วงชั้น (ป.ต้น → ม.ปลาย) ให้เส้นทางค่อย ๆ ยากขึ้นตามสายชั้น
+  const lessons = GAMES.filter((g) => g.template === "lesson" && g.category === cat).map((g, i) => { const L = Lessons.lessonById(g.lesson); return { gid: g.id, title: g.title, icon: L.icon, gr: L.grade, grade: Lessons.gradeLabel(L.grade), i }; })
+    .sort((a, b) => a.gr[0] - b.gr[0] || a.gr[1] - b.gr[1] || a.i - b.i);
   const P = storyPlan(cat, lessons); if (!P) throw err(404, "ไม่พบบ้านวิชานี้");
   let prevOk = true, cur = null; const unlockAll = adminFlag && cloudUser;
-  for (const ch of P.chapters) for (const st of ch.stages) { st.stars = (S.stars[st.gid] || {})[st.level] || 0; st.unlocked = prevOk || !!unlockAll; if (st.unlocked && !st.stars && !cur) cur = st.n; prevOk = st.stars > 0; }
-  P.current = cur || P.total; P.got = P.chapters.reduce((a, c) => a + c.stages.reduce((b, x) => b + x.stars, 0), 0); P.max = P.total * 3;
+  // สายชั้น: ด่านนอกสายไม่ขวางทาง (เล่นข้ามได้) · ด่านในสายต้องได้อย่างน้อย ★ เพื่อเปิดด่านถัดไป
+  for (const ch of P.chapters) for (const st of ch.stages) { st.stars = (S.stars[st.gid] || {})[st.level] || 0; st.unlocked = prevOk || st.stars > 0 || !!unlockAll; st.inTrack = inTrack(st.gr); if (st.unlocked && !st.stars && !cur && st.inTrack) cur = st.n; if (st.inTrack) prevOk = st.stars > 0; }
+  P.current = cur || P.total; P.gradeSpan = Lessons.gradeLabel([Math.min(...lessons.map((l) => l.gr[0])), Math.max(...lessons.map((l) => l.gr[1]))]); P.got = P.chapters.reduce((a, c) => a + c.stages.reduce((b, x) => b + x.stars, 0), 0); P.max = P.total * 3;
   const c = catBy[cat]; P.house = c ? { slug: c.slug, name: c.name, icon: c.icon } : null;
   return P;
 }
 const stageOf = (P, n) => { for (const ch of P.chapters) for (const st of ch.stages) if (st.n === +n) return { ch, st }; throw err(404, "ไม่พบด่านนี้"); };
-const qKey = (q) => { const t = String(q.prompt || q.a || "") + "|" + String(q.b || ""); let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h.toString(36); };
-on("GET", "/api/story/:cat", ({ cat }) => planOf(cat));
-on("GET", "/api/story/:cat/:n/play", ({ cat, n }) => {
-  const P = planOf(cat), { ch, st } = stageOf(P, n);
+const qKey = (q) => { const t = String(q.prompt || q.a || "") + "|" + String(q.b || "") + "|" + String(q.options ? q.options[q.answer] : q.word ?? q.answer ?? ""); let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h.toString(36); };
+on("GET", "/api/story/:cat", ({ cat }, _b, q) => planOf(cat, q.get("track") || "all"));
+on("GET", "/api/story/:cat/:n/play", ({ cat, n }, _b, q) => {
+  const P = planOf(cat, q.get("track") || "all"), { ch, st } = stageOf(P, n);
   if (!st.unlocked) throw err(403, "ด่านนี้ยังล็อกอยู่ ผ่านด่านก่อนหน้าก่อนนะ");
   const g = gameById(st.gid), L = Lessons.lessonById(g.lesson), rk = `${g.id}:${st.mode}`, seen = new Set(S.seen[g.lesson] || []);
   // เลือกหน้าต่างคำถามที่ "ยังไม่เคยเห็น" มากที่สุด (ลองหลายหน้าต่างถัดไป) → ไม่ซ้ำวนจนกว่าจะเล่นครบคลัง

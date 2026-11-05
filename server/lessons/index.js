@@ -21,9 +21,32 @@ const shuffle = (arr, r) => { const a = arr.slice(); for (let i = a.length - 1; 
 const graphemes = (s) => { try { return [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(s)].map((x) => x.segment); } catch { return [...s]; } };
 
 // ---------- รวมคลังคำถามจากทุกหมวด ----------
-const BANKS = [require("./math"), require("./science"), require("./thai"), require("./english"), require("./social"), require("./health"), require("./early"), require("./brain"), require("./general")];
+// บทเรียนใหม่ต่อท้ายไว้ในไฟล์ extra.js เสมอ (ลำดับบทเรียน = รหัสเกม → ความคืบหน้าเดิมของผู้เล่นไม่เลื่อน)
+const EXTRA = require("./extra");
+const BANKS = [require("./math"), require("./science"), require("./thai"), require("./english"), require("./social"), require("./health"), require("./early"), require("./brain"), require("./general"), EXTRA];
 const LESSONS = BANKS.flat();
 const BY_ID = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
+// คำถามเพิ่มเติมของบทเรียนเดิม
+for (const [id, add] of Object.entries(EXTRA.ADD || {})) { const L = BY_ID[id]; if (!L) throw new Error("ADD: ไม่พบบทเรียน " + id); for (const k of ["qa", "tf", "seq"]) if (add[k]) L[k] = (L[k] || []).concat(add[k]); }
+// ช่วงชั้นของแต่ละบทเรียน: 0 = อนุบาล · 1–6 = ป.1–ป.6 · 7–12 = ม.1–ม.6
+const GRADE = {
+  "math-addsub": [1, 4], "math-muldiv": [2, 6], "math-frac": [4, 7], "math-geo": [3, 9], "math-word": [3, 9], "math-number": [4, 8], "math-algebra": [6, 9], "math-adv": [10, 12],
+  "sci-life": [1, 6], "sci-body": [3, 9], "sci-space": [2, 9], "sci-matter": [3, 9], "sci-cell": [7, 12], "sci-chem": [7, 12], "sci-physics": [8, 12],
+  "th-words": [1, 6], "th-sound": [1, 6], "th-spell": [2, 9], "th-royal": [4, 9], "th-idiom": [4, 9], "th-wordtype": [4, 9], "th-lit": [6, 12],
+  "en-vocab": [1, 9], "en-opposite": [2, 7], "en-grammar": [4, 9], "en-verbs": [5, 9], "en-idiom": [7, 12], "en-adv": [9, 12],
+  "soc-civic": [3, 9], "soc-geo": [4, 9], "soc-history": [4, 9], "soc-asean": [5, 9], "soc-econ": [5, 12], "soc-world": [6, 12],
+  "hl-food": [1, 9], "hl-body": [1, 9], "hl-safety": [1, 9], "hl-sport": [3, 9],
+  "early-count": [0, 1], "early-colors": [0, 1], "early-animals": [0, 1], "early-letters": [0, 1],
+  "brain-odd": [1, 6], "brain-quick": [2, 9], "brain-logic": [2, 9], "brain-seq": [3, 9],
+  "gen-animals": [1, 6], "gen-thailand": [2, 9], "gen-tech": [3, 9], "gen-world": [5, 12],
+};
+for (const L of LESSONS) L.grade = L.grade || GRADE[L.id] || [1, 12];
+const G1 = (g) => (g === 0 ? "อนุบาล" : g <= 6 ? `ป.${g}` : `ม.${g - 6}`);
+const gradeLabel = ([a, b]) => (a === b ? G1(a) : `${G1(a)}–${G1(b)}`);
+// คำถามที่เคยอยู่ในบทเรียน "คลังรวม" ส่งไปบทเรียนหัวข้อที่ตรงเรื่องตามตาราง routes.js
+const ROUTE = require("./routes");
+const ROUTED_FISH = ["คณิต", "วิทย์", "ไทย", "อังกฤษ", "สังคม", "สุขศึกษา"];
+const ROUTED_LEGACY = ["บวกเลขง่าย ๆ", "สูตรคูณแม่ 2–12", "เศษส่วนและทศนิยม", "วิทย์ถูกหรือผิด", "เรียงลำดับวิทยาศาสตร์"];
 const FISH = require("./fishing");
 const { LEGACY_GAMES } = require("./legacy");
 const LEVEL_OF = { easy: 2, medium: 3, hard: 4 };
@@ -45,20 +68,23 @@ function prep(L) {
   }
   for (const [lv, s, t, ex] of L.tf || []) tf.push({ lv, s, t, ex });
   for (const [lv, q, items] of L.seq || []) seq.push({ lv, q, items });
-  for (const key of L.fish || []) for (const row of FISH[key] || []) {
-    if (typeof row[2] === "boolean") tf.push({ lv: row[0], s: row[1], t: row[2], ex: row[3] || undefined }); else qa.push(qaRow(row));
-  }
-  for (const title of L.legacy || []) { const g = LEGACY_GAMES.find((x) => x.title === title); if (!g) continue; const lv = LEVEL_OF[g.difficulty] || 3;
-    for (const q of g.questions) {
+  const fishRow = (row) => { if (typeof row[2] === "boolean") tf.push({ lv: row[0], s: row[1], t: row[2], ex: row[3] || undefined }); else qa.push(qaRow(row)); };
+  for (const key of L.fish || []) for (const row of FISH[key] || []) fishRow(row);
+  for (const key of ROUTED_FISH) for (const row of FISH[key] || []) if (ROUTE[row[1]] === L.id) fishRow(row);
+  const legacyList = [...(L.legacy || []).map((t) => [t, null]), ...ROUTED_LEGACY.map((t) => [t, L.id])];
+  for (const [title, only] of legacyList) { const g = LEGACY_GAMES.find((x) => x.title === title); if (!g) continue; const lv = LEVEL_OF[g.difficulty] || 3;
+    for (const q of g.questions) { if (only && ROUTE[q.prompt] !== only) continue;
       if (g.template === "mcq") qa.push({ lv, q: q.prompt, a: q.options[q.answer], w: q.options.filter((_, i) => i !== q.answer), ex: q.explain, hint: q.hint, img: q.image });
       else if (g.template === "truefalse") tf.push({ lv, s: q.prompt, t: q.answer, ex: q.explain });
       else if (g.template === "order") seq.push({ lv, q: q.prompt, items: q.items });
       else if (g.template === "scramble") qa.push({ lv, q: q.prompt, a: q.word, w: [], hint: q.hint });
       else if (g.template === "match" && L.legacyPair) qa.push({ lv, q: L.legacyPair.replace("{x}", q.a), a: q.b, w: [], mq: q.a });
     } }
-  const P = { qa, tf, seq };
-  P.matchable = qa.filter((i) => (i.mq || i.q).length <= 32 && (i.ma || i.a).length <= 26);
-  P.scramble = qa.filter((i) => !/\s/.test(i.a) && graphemes(i.a).length >= 2 && graphemes(i.a).length <= 14 && !/^\d+$/.test(i.a) && /[A-Za-z฀-๿]/.test(i.a));
+  // ตัดข้อซ้ำ (คำถาม + คำตอบเดียวกันจากหลายแหล่ง)
+  const uniq = (arr, key) => { const seen = new Set(); return arr.filter((x) => { const k = key(x); if (seen.has(k)) return false; seen.add(k); return true; }); };
+  const P = { qa: uniq(qa, (x) => x.q + "|" + x.a), tf: uniq(tf, (x) => x.s), seq: uniq(seq, (x) => x.q) };
+  P.matchable = P.qa.filter((i) => (i.mq || i.q).length <= 32 && (i.ma || i.a).length <= 26);
+  P.scramble = P.qa.filter((i) => !/\s/.test(i.a) && graphemes(i.a).length >= 2 && graphemes(i.a).length <= 14 && !/^\d+$/.test(i.a) && /[A-Za-z฀-๿]/.test(i.a));
   P.modes = Object.keys(MODES).filter((m) => {
     if (L.modes && !L.modes.includes(m)) return false;
     if (m === "mcq" || m === "timed") return !!(L.gen || qa.length);
@@ -68,7 +94,7 @@ function prep(L) {
     if (m === "order") return seq.length >= 3;
     return false;
   });
-  P.size = L.gen ? 0 : qa.length + tf.length + seq.length;
+  P.size = L.gen ? 0 : P.qa.length + P.tf.length + P.seq.length;
   prepared.set(L.id, P); return P;
 }
 
@@ -101,7 +127,7 @@ function pickLevel(pool, level, n, set, base, r) {
     // ระดับตรง + ระดับติดกันเสมอ (±1) · ระดับห่างกว่านั้นเติมเฉพาะเมื่อคลังเล็ก · ตัดโจทย์ข้อความซ้ำออก
     const list = [], seenQ = new Set();
     for (let d = 0; d < tiers.length; d++) { if (!tiers[d]) continue; if (d >= 2 && list.length >= n * 4) break;
-      for (const it of shuffle(tiers[d], rng(hashStr(base + "|w" + d)))) { const k = it.q || it.s || it.mq || ""; if (seenQ.has(k)) continue; seenQ.add(k); list.push(it); } }
+      for (const it of shuffle(tiers[d], rng(hashStr(base + "|w" + d)))) { const k = (it.q || it.s || it.mq || "") + "|" + (it.a ?? it.t ?? ""); if (seenQ.has(k)) continue; seenQ.add(k); list.push(it); } }
     if (!list.length) return [];
     const off = ((set - SETS - 1) * n) % list.length, out = [];
     for (let i = 0; i < Math.min(n, list.length); i++) out.push(list[(off + i) % list.length]);
@@ -145,13 +171,17 @@ function build(L, opts) {
         if (seenQ.has(it.q) || (o.mode === "match" && (cards.has(ca) || cards.has(cq) || ca === cq))) continue; seenQ.add(it.q); cards.add(ca); cards.add(cq); items.push(it); }
       if (items.length >= n) break;
     }
+    // บทเรียนสร้างโจทย์อัตโนมัติ: แทรกคำถามจากคลังที่ส่งมาจากบทเรียนคลังรวม (~ 1 ใน 4 ข้อ) ให้หลากหลายขึ้น
+    const stat = o.mode === "truefalse" ? P.tf.map((x) => ({ ...x, kind: "tf" })).concat(P.qa) : o.mode === "mcq" || o.mode === "timed" ? P.qa : [];
+    if (stat.length >= 4 && items.length) { const k = Math.min(Math.round(n / 4), stat.length), extra = pickLevel(stat, o.level, k, o.set, `${L.id}|${o.level}|${o.mode}|s`, r);
+      items = shuffle(items.slice(0, n - extra.length).concat(extra), r); }
   } else {
     const pool = o.mode === "truefalse" ? P.tf.map((x) => ({ ...x, kind: "tf" })).concat(P.qa) : o.mode === "match" ? P.matchable : o.mode === "scramble" ? P.scramble : o.mode === "order" ? P.seq : P.qa;
     let src = pool;
     if (o.mode === "match") { const seen = new Set(); src = shuffle(pool, rng(hashStr(L.id + "m"))).filter((x) => { const k = x.ma || x.a, k2 = x.mq || x.q; if (seen.has(k) || seen.has(k2)) return false; seen.add(k); seen.add(k2); return true; }); }
     items = pickLevel(src, o.level, n, o.set, `${L.id}|${o.level}|${o.mode}`, r);
   }
-  const genP = L.gen ? { qa: items } : P;
+  const genP = L.gen ? { qa: items.concat(P.qa) } : P;
   const questions = items.map((it) => {
     if (o.mode === "mcq" || o.mode === "timed") {
       const opts2 = shuffle([it.a, ...distractors(it, genP, r)], r);
@@ -172,4 +202,4 @@ function build(L, opts) {
 }
 
 const lessonById = (id) => BY_ID[id] || null;
-module.exports = { LESSONS, LEVELS, MODES, COUNTS, SETS, build, parseKey, setupOf, lessonById, prep, graphemes };
+module.exports = { LESSONS, LEVELS, MODES, COUNTS, SETS, build, parseKey, setupOf, lessonById, prep, graphemes, gradeLabel, ROUTE, ROUTED_FISH, ROUTED_LEGACY };

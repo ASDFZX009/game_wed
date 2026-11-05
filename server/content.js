@@ -18,7 +18,7 @@ const tf = (prompt, answer, explain) => ({ prompt, answer, ...(explain ? { expla
 const { LESSONS } = require("./lessons");
 
 // เกมในคลัง = บทเรียน (เลือกระดับ 5 ระดับ รูปแบบการเล่น จำนวนข้อ และชุดคำถามได้ตอนเล่น)
-const GAMES = LESSONS.map((l) => ({ title: l.title, description: l.desc, template: "lesson", category: l.cat, age: l.age, difficulty: "all", lesson: l.id, questions: [] }));
+const GAMES = LESSONS.map((l) => ({ title: l.title, description: l.desc, template: "lesson", category: l.cat, age: l.age, grade: l.grade, difficulty: "all", lesson: l.id, questions: [] }));
 
 const Q = {
   mcq: (prompt, options, answer, points = 1, explain) => ({ type: "mcq", prompt, options, answer, points, ...(explain ? { explain } : {}) }),
