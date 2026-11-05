@@ -1086,9 +1086,10 @@ body.ti-open { overflow: hidden; }
 .ti-bg { position: fixed; left: 0; top: 0; image-rendering: pixelated; image-rendering: crisp-edges; transform-origin: 50% 60%; transition: transform 1.4s cubic-bezier(.3,.7,.2,1), filter 1.4s; }
 .ti[data-stage="menu"] .ti-bg, .ti[data-stage="cc"] .ti-bg { transform: scale(1.18) translateY(-2%); filter: saturate(1.1) brightness(.92); }
 .ti[data-stage="cc"] .ti-bg { filter: saturate(.9) brightness(.7) blur(1px); }
-.ti-black { position: fixed; inset: 0; background: #050a08; pointer-events: none; animation: ti-in .7s ease-out forwards; }
+/* ม่านดำตอนเปิดเกม: ค่าเริ่มต้นโปร่งใส แล้วค่อยจางจากดำด้วยแอนิเมชัน — ถ้าเครื่องปิดแอนิเมชัน (Reduce motion) ม่านจะไม่ค้างเป็นจอดำ */
+.ti-black { position: fixed; inset: 0; background: #050a08; pointer-events: none; opacity: 0; animation: ti-in .7s ease-out; }
 .ti.out .ti-black { animation: ti-out .6s ease-in forwards; }
-@keyframes ti-in { to { opacity: 0; } } @keyframes ti-out { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ti-in { from { opacity: 1; } to { opacity: 0; } } @keyframes ti-out { from { opacity: 0; } to { opacity: 1; } }
 /* โลโก้ */
 .ti-logo { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); text-align: center; transition: top .9s cubic-bezier(.3,.7,.2,1), transform .9s; width: max-content; max-width: 96vw; pointer-events: none; }
 .ti[data-stage="menu"] .ti-logo { top: 12%; } .ti[data-stage="cc"] .ti-logo { top: -40%; }
