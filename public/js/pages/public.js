@@ -42,7 +42,7 @@ export async function home({ main }) {
   const { categories } = await api("/api/categories");
   const local = state.config?.local;
   // หน้าแรก = หมู่บ้านเต็มจอ (ลิงก์ลัดซ่อนไว้ให้โปรแกรมอ่านหน้าจอ/คีย์บอร์ด)
-  document.body.classList.add("immersive", "home-world");
+  document.body.classList.add("immersive", "home-world"); loadSkinFont("pixel");
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>

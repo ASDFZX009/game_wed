@@ -1,13 +1,15 @@
 // หมู่บ้านแห่งการเรียนรู้: แผนที่พิกเซลอาร์ต 2.5D ความละเอียดสูงแนว HD-2D (แดดเย็นสีทอง เงาทอดยาว เบลอใกล้-ไกล)
 // วาดด้วยโค้ดทั้งหมด (ไม่มีไฟล์ภาพ) · คีย์บอร์ด: ลูกศร/WASD เดิน, Shift วิ่ง, E/Enter เข้าบ้าน · เมาส์/นิ้ว: แตะที่บ้านหรือพื้นเพื่อเดินไป
 // ชั้นภาพ: พื้น + เงานิ่ง (วาดครั้งเดียว) → เงาตัวละคร → วัตถุเรียงตามความลึก → แสง/ประกาย → (CSS) ลำแสง หมอกอุ่น เบลอ tilt-shift → ป้ายตัวหนังสือคมชัด
-import { T, rng, hash, canvas, css } from "../world/art.js";
-import { bakeGround } from "../world/ground.js";
+import { T, rng, hash, fbm, canvas, css } from "../world/art.js";
+import { groundTypes, groundBaker } from "../world/ground.js";
+import { windmill, windmillSails, gazebo, greatTree, ruinArch, scarecrow, hayBale, stoneLantern } from "../world/landmarks.js";
 import { broadTree, pineTree, bush, flowerPatch, lavender, plateau, fence, PROP, HOUSE, house, dockSign, pillar, crystal } from "../world/sprites.js";
 import { subjectSign, drawSignFx, SIGN_FX } from "../world/signs.js";
 import { charFrame, foxFrame, silhouette } from "../world/chars.js";
 
-const MW = 48, MH = 34; // ขนาดแผนที่ (ช่อง)
+const MW = 80, MH = 58; // ขนาดแผนที่ (ช่อง) — หมู่บ้านเดิมอยู่กลาง ล้อมด้วยทุ่ง ป่า ทะเลสาบ และซากโบราณ
+const OX = 16, OY = 11; // ตำแหน่งหมู่บ้านเดิมในแผนที่ใหม่
 const POS_KEY = "eduplay:worldPos";
 const SUN = { kx: 0.78, ky: 0.36 }; // ทิศเงา: ยืดไปทางขวาบน
 
@@ -24,7 +26,23 @@ const PLACES = [
   { id: "shop", name: "ร้านค้า", ic: "🛒", x: 21, y: 26, roof: "#a83030", href: "/shop", shop: true },
   { id: "dock", name: "ท่าเรือ · เกมตอบคำถาม", ic: "🎣", dock: true, x: 43, y: 26, href: "/quiz-game" },
 ];
-const PLAZA = { x: 24, y: 15.5 };
+for (const p of PLACES) { p.x += OX; p.y += OY; }
+const PLAZA = { x: 24 + OX, y: 15.5 + OY };
+// ทะเลสาบ: บ่อเดิมข้างท่าเรือ + ทะเลสาบใหญ่ฝั่งตะวันออก มีเกาะศาลาและสะพาน
+const LAKES = [{ x: 44.5 + OX, y: 31 + OY, rx: 5.6, ry: 3.6 }, { x: 71, y: 40, rx: 8.6, ry: 7.4 }];
+const ISLAND = { x: 72.5, y: 41, r: 2.7 }, BRIDGE = { x: 72, y0: 32, y1: 38 };
+// จุดชมวิว (ช่องที่วาง + ช่องที่กันไว้ไม่ให้มีต้นไม้/ของรก)
+const SPOTS = {
+  farm: { x: 2, y: 22, w: 11, h: 12 }, mill: { x: 5, y: 14, w: 3, h: 3 },
+  grove: { x: 47.5, y: 9.5, r: 5.2 }, tree: { x: 46, y: 9, w: 3, h: 2 },
+  ruins: { x: 28, y: 48, w: 17, h: 7 }, arch: { x: 35, y: 50 },
+};
+const LANDMARKS = [
+  { id: "mill", name: "🌾 ทุ่งดอกไม้และกังหันลม", x: 6.5, y: 10.2 },
+  { id: "tree", name: "🌳 ต้นไม้ยักษ์พันปี", x: 47.5, y: 2.2 },
+  { id: "gazebo", name: "🏮 ศาลากลางทะเลสาบ", x: 72.5, y: 36.6 },
+  { id: "ruins", name: "🏛️ ซุ้มประตูโบราณ", x: 36.5, y: 46.6 },
+];
 
 // ชาวบ้าน: ยืนข้างทาง มีฟอง "…" เดินเข้าใกล้แล้วจะพูด
 export const VILLAGERS = [
@@ -36,29 +54,50 @@ export const VILLAGERS = [
   { at: [33, 11], look: { dress: "#d8608a", shirt: "#f0a6c0", hair: "#6a2e1a", long: true }, tip: "แต่ละบทเรียนมีชุดคำถาม 4 ชุด ลองเล่นให้ครบทุกชุดดูสิ" },
 ];
 
+for (const v of VILLAGERS) { v.at = [v.at[0] + OX, v.at[1] + OY]; }
+VILLAGERS.push(
+  { at: [11, 19], look: { shirt: "#c88a3a", pants: "#4a5a2a", hat: "#e0c060", band: "#5a8a3a", hair: "#3a2a1a" }, tip: "ทุ่งดอกไม้นี้ปลูกเรียงตามสีรุ้ง ลมพัดกังหันทั้งวัน ลองเดินชมรอบ ๆ ได้เลย" },
+  { at: [50, 12], look: { shirt: "#5a7a4a", hair: "#e8e4dc", beard: "#e8e4dc", pants: "#3a3a2a" }, tip: "ต้นไม้ยักษ์ต้นนี้อายุนับพันปี ผ้าสามสีที่พันไว้คือคำอธิษฐานของคนในหมู่บ้าน" },
+  { at: [74, 31], look: { shirt: "#3a8ab8", cap: "#e8e0d0", pants: "#2a3a5a", hair: "#2a2020" }, tip: "เดินข้ามสะพานไปศาลากลางทะเลสาบสิ ตอนเย็นโคมไฟสวยมาก" },
+  { at: [32, 47], look: { shirt: "#8a6a4a", hat: "#a87a40", band: "#5a3a20", pants: "#4a3a2a", hair: "#4a2a1a" }, tip: "ซุ้มประตูหินนี้เป็นของเมืองโบราณ คริสตัลบนเสายังเรืองแสงอยู่เลยนะ" },
+);
+
 // ---------- สร้างแผนที่ ----------
 // พื้น: 0 หญ้า 1 ทางดิน 2 น้ำ 3 ท่าไม้ · block: เดินผ่านไม่ได้
 function buildMap() {
   const ground = new Uint8Array(MW * MH), block = new Uint8Array(MW * MH);
   const at = (x, y) => y * MW + x, inb = (x, y) => x >= 0 && y >= 0 && x < MW && y < MH;
-  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const dx = (x - 44.5) / 5.6, dy = (y - 31) / 3.6; if (dx * dx + dy * dy < 1 + (hash(x, y, 3) - 0.5) * 0.25) { ground[at(x, y)] = 2; block[at(x, y)] = 1; } }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) for (const L of LAKES) { const dx = (x - L.x) / L.rx, dy = (y - L.y) / L.ry; if (dx * dx + dy * dy < 1 + (hash(x, y, 3) - 0.5) * 0.25) { ground[at(x, y)] = 2; block[at(x, y)] = 1; } }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (Math.hypot(x + 0.5 - ISLAND.x, (y + 0.5 - ISLAND.y) * 1.2) < ISLAND.r) { ground[at(x, y)] = 0; block[at(x, y)] = 0; }
+  for (let y = BRIDGE.y0; y <= BRIDGE.y1; y++) for (let x = BRIDGE.x; x < BRIDGE.x + 2; x++) if (ground[at(x, y)] === 2) { ground[at(x, y)] = 3; block[at(x, y)] = 0; }
+  // พื้นที่พิเศษ: ไร่ดอกไม้ (4) ลานหินโบราณ (5)
+  const reserved = new Uint8Array(MW * MH), resv = (x0, y0, w, h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (inb(x, y)) reserved[at(x, y)] = 1; };
+  { const F = SPOTS.farm; for (let y = F.y; y < F.y + F.h; y++) for (let x = F.x; x < F.x + F.w; x++) ground[at(x, y)] = 4; resv(F.x - 1, F.y - 1, F.w + 2, F.h + 2); resv(SPOTS.mill.x - 2, SPOTS.mill.y - 1, 9, 6); }
+  { const R2 = SPOTS.ruins; for (let y = R2.y; y < R2.y + R2.h; y++) for (let x = R2.x; x < R2.x + R2.w; x++) if (Math.hypot((x + 0.5 - R2.x - R2.w / 2) / (R2.w / 2), (y + 0.5 - R2.y - R2.h / 2) / (R2.h / 2)) < 1.05) ground[at(x, y)] = 5; resv(R2.x - 1, R2.y - 1, R2.w + 2, R2.h + 2); }
+  { const G2 = SPOTS.grove; for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (Math.hypot(x + 0.5 - G2.x, (y + 0.5 - G2.y) * 1.1) < G2.r) reserved[at(x, y)] = 1; }
+  for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) if (Math.hypot(x + 0.5 - ISLAND.x, (y + 0.5 - ISLAND.y) * 1.2) < ISLAND.r + 0.5) reserved[at(x, y)] = 1;
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const d = Math.hypot(x + 0.5 - PLAZA.x, (y + 0.5 - PLAZA.y) * 1.15); if (d > 3.4 && d < 4.9) ground[at(x, y)] = 1; }
   const house = new Uint8Array(MW * MH);
   for (const p of PLACES) { p.ex = p.dock ? p.x + 1 : p.x + 2; p.ey = p.dock ? p.y : p.y + 4;
     if (!p.dock) for (let y = p.y - 1; y < p.y + 4; y++) for (let x = p.x - 1; x < p.x + 6; x++) if (inb(x, y)) house[at(x, y)] = 1; }
   const ringMask = ground.slice(), ring = (k) => ringMask[k] === 1;
-  const paint = (x, y) => { if (inb(x, y) && !house[at(x, y)] && ground[at(x, y)] !== 2) ground[at(x, y)] = 1; };
+  const paint = (x, y) => { if (inb(x, y) && !house[at(x, y)] && (ground[at(x, y)] === 0 || ground[at(x, y)] === 1)) ground[at(x, y)] = 1; };
   const carve = (sx, sy, goal) => {
     const prev = new Int32Array(MW * MH).fill(-1), q = [at(sx, sy)]; prev[q[0]] = q[0]; let end = -1;
-    while (q.length) { const k = q.shift(); if (goal(k)) { end = k; break; } const x = k % MW, y = (k / MW) | 0;
+    for (let h = 0; h < q.length; h++) { const k = q[h]; if (goal(k)) { end = k; break; } const x = k % MW, y = (k / MW) | 0;
       for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) { const nx = x + dx, ny = y + dy; if (!inb(nx, ny)) continue; const nk = at(nx, ny);
-        if (prev[nk] !== -1 || house[nk] || ground[nk] === 2) continue; prev[nk] = k; q.push(nk); } }
-    for (let k = end; k >= 0 && k !== prev[k]; k = prev[k]) { const x = k % MW, y = (k / MW) | 0; ground[k] = 1; paint(x + 1, y); paint(x, y + 1); paint(x + 1, y + 1); }
+        if (prev[nk] !== -1 || house[nk] || ground[nk] >= 2 || block[nk]) continue; prev[nk] = k; q.push(nk); } }
+    for (let k = end; k >= 0 && k !== prev[k]; k = prev[k]) { const x = k % MW, y = (k / MW) | 0; if (ground[k] === 0) ground[k] = 1; paint(x + 1, y); paint(x, y + 1); paint(x + 1, y + 1); }
     ground[at(sx, sy)] = 1;
   };
-  carve(Math.floor(PLAZA.x) - 1, MH - 1, ring);
   for (const p of PLACES) carve(p.ex, p.ey, ring);
+  const net = (k) => ground[k] === 1;
+  carve(36, SPOTS.ruins.y - 1, net); carve(47, SPOTS.tree.y + SPOTS.tree.h + 1, net); carve(BRIDGE.x, BRIDGE.y0 - 1, net); carve(BRIDGE.x + 1, BRIDGE.y0 - 1, net);
+  carve(SPOTS.mill.x + 1, SPOTS.mill.y + SPOTS.mill.h, net); carve(SPOTS.farm.x + SPOTS.farm.w, SPOTS.farm.y + 5, net);
   for (const p of PLACES) { if (p.dock) continue; for (let y = p.y; y < p.y + 4; y++) for (let x = p.x; x < p.x + 5; x++) { block[at(x, y)] = 1; ground[at(x, y)] = 0; } }
+  const blk = (x0, y0, w, h) => { for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (inb(x, y)) block[at(x, y)] = 1; };
+  blk(SPOTS.mill.x, SPOTS.mill.y, SPOTS.mill.w, SPOTS.mill.h); blk(SPOTS.tree.x, SPOTS.tree.y, SPOTS.tree.w, SPOTS.tree.h); blk(71, 40, 3, 2);
+  blk(SPOTS.arch.x, SPOTS.arch.y + 1, 1, 1); blk(SPOTS.arch.x + 3, SPOTS.arch.y + 1, 1, 1);
   const d = PLACES.find((p) => p.dock);
   for (let y = d.y + 1; y < d.y + 6; y++) for (let x = d.x + 1; x < d.x + 3; x++) if (inb(x, y)) { ground[at(x, y)] = 3; block[at(x, y)] = 0; }
   const stones = [];
@@ -69,7 +108,7 @@ function buildMap() {
 
   // ---------- ของประกอบฉาก (วางบนหญ้าเท่านั้น จึงไม่ทับทางเดิน) ----------
   const props = [], plats = [], fences = [], npcs = [];
-  const grassFree = (x, y) => inb(x, y) && ground[at(x, y)] === 0 && !block[at(x, y)];
+  const grassFree = (x, y) => inb(x, y) && ground[at(x, y)] === 0 && !block[at(x, y)] && !reserved[at(x, y)];
   const nearPath = (x, y) => [[0, 1], [0, -1], [1, 0], [-1, 0]].some(([dx, dy]) => inb(x + dx, y + dy) && ground[at(x + dx, y + dy)] === 1);
   const plazaD = (x, y) => Math.hypot(x + 0.5 - PLAZA.x, (y + 0.5 - PLAZA.y) * 1.15);
   const rectFree = (x, y, w, h) => { for (let j = -1; j <= h; j++) for (let i = -1; i <= w; i++) { const X = x + i, Y = y + j, core = i >= 0 && j >= 0 && i < w && j < h;
@@ -91,13 +130,13 @@ function buildMap() {
   { const s = spot(26, 23, (x, y) => grassFree(x, y) && nearPath(x, y)); if (s) put("sign", s[0], s[1]); }
   const hr = rng(77);
   // เนินหญ้ายกสูงหน้าผาหิน
-  for (let n = 0, tries = 0; n < 9 && tries < 900; tries++) {
+  for (let n = 0, tries = 0; n < 16 && tries < 2400; tries++) {
     const w = [2, 3, 3, 4, 5][Math.floor(hr() * 5)], h = 2, x = 3 + Math.floor(hr() * (MW - 6 - w)), y = 3 + Math.floor(hr() * (MH - 6 - h));
-    if (plazaD(x + w / 2, y + h / 2) < 8.5 || Math.hypot(x + w / 2 - 44.5, y + h / 2 - 31) < 7.5 || !rectFree(x, y, w, h)) continue;
+    if (plazaD(x + w / 2, y + h / 2) < 8.5 || LAKES.some((L) => Math.hypot((x + w / 2 - L.x) / (L.rx + 2), (y + h / 2 - L.y) / (L.ry + 2)) < 1) || !rectFree(x, y, w, h) || reserved[at(x, y)] || reserved[at(x + w - 1, y + h - 1)]) continue;
     mark(x, y, w, h); plats.push({ x, y, w, h, seed: n + 1 }); n++;
   }
   // รั้วไม้ตามขอบทาง
-  for (let n = 0, tries = 0; n < 7 && tries < 1200; tries++) {
+  for (let n = 0, tries = 0; n < 14 && tries < 3000; tries++) {
     const len = 2 + Math.floor(hr() * 3), x = 2 + Math.floor(hr() * (MW - 4 - len)), y = 2 + Math.floor(hr() * (MH - 4));
     if (plazaD(x + len / 2, y) < 8) continue; let ok = true, path = 0;
     for (let i = 0; i < len; i++) { if (!grassFree(x + i, y)) { ok = false; break; } if (nearPath(x + i, y)) path++; }
@@ -106,20 +145,35 @@ function buildMap() {
   }
   // พุ่มไม้ กอดอกไม้ ลาเวนเดอร์ เรียงข้างทาง
   const FL = ["#d83a3a", "#e8603a", "#e870a0", "#f2c040", "#f4f0ea"];
-  for (let n = 0, tries = 0; n < 34 && tries < 1600; tries++) { const x = 2 + Math.floor(hr() * (MW - 4)), y = 2 + Math.floor(hr() * (MH - 4));
+  for (let n = 0, tries = 0; n < 80 && tries < 5000; tries++) { const x = 2 + Math.floor(hr() * (MW - 4)), y = 2 + Math.floor(hr() * (MH - 4));
     if (!(grassFree(x, y) && nearPath(x, y) && plazaD(x, y) > 7 && rectFree(x, y, 1, 1))) continue;
     const k = hr(); put(k < 0.38 ? "bush" : k < 0.78 ? "flowers" : "lavender", x, y, 1, 1, { color: FL[Math.floor(hr() * FL.length)] }); n++; }
+  // ของประกอบจุดชมวิว
+  const extras = { lanterns: [], pillars: [], scare: [], hay: [] };
+  { const F = SPOTS.farm; for (let x = F.x; x < F.x + F.w; x += 4) { const len = Math.min(3, F.x + F.w - x); fences.push({ x, y: F.y - 1, len }); fences.push({ x, y: F.y + F.h, len }); }
+    extras.scare.push([F.x + 5, F.y + 5]); block[at(F.x + 5, F.y + 5)] = 1;
+    for (const [x, y] of [[SPOTS.mill.x + 4, SPOTS.mill.y + 1], [SPOTS.mill.x + 4, SPOTS.mill.y + 2], [SPOTS.mill.x - 2, SPOTS.mill.y + 2]]) if (inb(x, y) && !block[at(x, y)] && ground[at(x, y)] === 0) { extras.hay.push([x, y]); block[at(x, y)] = 1; } }
+  for (const [x, y] of [[SPOTS.tree.x - 2, SPOTS.tree.y + 2], [SPOTS.tree.x + SPOTS.tree.w + 1, SPOTS.tree.y + 2], [ISLAND.x - 3, ISLAND.y + 1], [ISLAND.x + 2, ISLAND.y + 1]]) { const X = Math.floor(x), Y = Math.floor(y); if (inb(X, Y) && ground[at(X, Y)] === 0 && !block[at(X, Y)]) { extras.lanterns.push([X, Y]); block[at(X, Y)] = 1; } }
+  { const R2 = SPOTS.ruins; for (const [x, y, h] of [[R2.x + 1, R2.y + 1, 40], [R2.x + R2.w - 2, R2.y + 1, 52], [R2.x + 3, R2.y + R2.h - 2, 30], [R2.x + R2.w - 4, R2.y + R2.h - 2, 46]]) { extras.pillars.push({ x, y, h }); block[at(x, y)] = 1; } }
   for (const v of VILLAGERS) { const s = spot(v.at[0], v.at[1], (x, y) => grassFree(x, y) && nearPath(x, y) && rectFree(x, y, 1, 1)); if (s) { mark(s[0], s[1], 1, 1); npcs.push({ ...v, x: s[0], y: s[1], dir: 0 }); } }
   // ต้นไม้: ขอบป่า + กลุ่มต้นไม้
   const trees = [], free = (x, y, m) => { for (let j = -m; j <= m; j++) for (let i = -m; i <= m; i++) { if (!inb(x + i, y + j)) continue; const k = at(x + i, y + j); if (block[k] || ground[k]) return false; } return true; };
   const r = rng(20261105);
   for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
     const edge = Math.min(x, y, MW - 1 - x, MH - 1 - y);
-    const pPlace = edge < 2 ? 0.86 : edge < 3 ? 0.5 : 0.05;
-    if (r() < pPlace && free(x, y, edge < 2 ? 0 : 1) && plazaD(x, y) > 7.5) {
-      const k = r(); trees.push({ x, y, kind: k < 0.36 ? "pine" : k < 0.56 ? "apple" : k < 0.86 ? "green" : "autumn", v: 1 + Math.floor(r() * 3) }); block[at(x, y)] = 1; }
+    const clump = fbm(x / 7, y / 7, 41), north = y < 11 ? 0.42 : 0;
+    const pPlace = edge < 2 ? 0.86 : edge < 3 ? 0.5 : Math.max(north, clump > 0.6 ? 0.42 : 0.04);
+    if (r() < pPlace && !reserved[at(x, y)] && free(x, y, edge < 2 ? 0 : 1) && plazaD(x, y) > 7.5) {
+      const k = r(); trees.push({ x, y, kind: north && k < 0.7 ? "pine" : k < 0.36 ? "pine" : k < 0.56 ? "apple" : k < 0.86 ? "green" : "autumn", v: 1 + Math.floor(r() * 3) }); block[at(x, y)] = 1; }
   }
-  return { ground, block, stones, mono, trees, props, plats, fences, npcs, at, inb, MW, MH };
+  // ระยะจากตลิ่ง (ช่อง) ใช้ไล่สีน้ำตื้น-ลึก
+  const wdist = new Float32Array(MW * MH).fill(99), q = [];
+  for (let k = 0; k < MW * MH; k++) if (ground[k] !== 2) { wdist[k] = 0; q.push(k); }
+  for (let h = 0; h < q.length; h++) { const k = q[h], x = k % MW, y = (k / MW) | 0; for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy; if (!inb(nx, ny)) continue; const nk = at(nx, ny); if (wdist[nk] > wdist[k] + 1) { wdist[nk] = wdist[k] + 1; q.push(nk); } } }
+  // ช่องที่มีของทับ (ท่าเรือ สะพาน) ไม่ต้องคำนวณขอบน้ำรายพิกเซล
+  const block2 = new Uint8Array(MW * MH); for (let k = 0; k < MW * MH; k++) if (ground[k] === 3 || ground[k] === 1) block2[k] = 1;
+  const R2 = SPOTS.ruins, shapes = { lakes: LAKES, island: ISLAND, flag: { x: R2.x + R2.w / 2, y: R2.y + R2.h / 2, rx: R2.w / 2, ry: R2.h / 2 } };
+  return { ground, block, stones, mono, trees, props, plats, fences, npcs, at, inb, MW, MH, wdist, extras, shapes, block2 };
 }
 
 // ---------- หาเส้นทาง (BFS 4 ทิศ) ----------
@@ -170,7 +224,19 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   }
   for (const h of M.plats) add(spr(`plat${h.w}x${h.h}s${h.seed}`, () => plateau(h.w, h.h, h.seed)), h.x * T, (h.y + h.h) * T, (h.y + h.h) * T, null, "shift", 26);
   for (const f of M.fences) add(spr("fence" + f.len, () => fence(f.len)), f.x * T, f.y * T + 30, f.y * T + 30);
-  const lamps = [];
+  // ---------- จุดชมวิว ----------
+  const lamps = [], glows = []; // [x, y, r, สี, เฟส] แสงเรืองที่วาดซ้อนตอนท้าย
+  { const MI = spr("mill", windmill), sails = windmillSails(8), mx = (SPOTS.mill.x + 1.5) * T, my = (SPOTS.mill.y + SPOTS.mill.h) * T - 2;
+    add(MI.s, mx, my, my, (x, now) => { const f = sails[reduced ? 0 : Math.floor(now / 140) % sails.length], hx = mx - MI.s.ax + MI.hub[0], hy = my - MI.s.ay + MI.hub[1]; x.drawImage(f.c, hx - f.ax, hy - f.ay); }); }
+  { const TR = spr("gtree", greatTree), tx = (SPOTS.tree.x + 1.5) * T, ty = (SPOTS.tree.y + SPOTS.tree.h) * T - 2;
+    add(TR.s, tx, ty, ty, null, "shear"); for (const [gx, gy] of TR.glow) glows.push([tx - TR.s.ax + gx, ty - TR.s.ay + gy, 18, "255,240,170", gx]); }
+  { const GZ = spr("gazebo", gazebo), gx = ISLAND.x * T, gy = 42 * T - 2;
+    add(GZ.s, gx, gy, gy, null, "shift", 40); for (const [lx, ly] of GZ.lamps) glows.push([gx - GZ.s.ax + lx, gy - GZ.s.ay + ly, 26, "255,170,80", lx]); }
+  { const AR = spr("arch", ruinArch), ax = (SPOTS.arch.x + 2) * T, ay = (SPOTS.arch.y + 2) * T - 2;
+    add(AR.s, ax, ay, ay, null, "shear"); glows.push([ax - AR.s.ax + AR.rune[0], ay - AR.s.ay + AR.rune[1], 22, "120,230,255", 3]); }
+  for (const [x0, y0] of M.extras.lanterns) { const L = spr("slan", stoneLantern), bx2 = x0 * T + 16, by2 = y0 * T + 28; add(L.s, bx2, by2); lamps.push([bx2 - L.s.ax + L.light[0], by2 - L.s.ay + L.light[1]]); }
+  for (const [x0, y0] of M.extras.scare) add(spr("scare", scarecrow), x0 * T + 16, y0 * T + 28);
+  for (const [x0, y0] of M.extras.hay) add(spr("hay", hayBale), x0 * T + 16, y0 * T + 28);
   for (const p of M.props) {
     const key = p.kind + (p.kind === "flowers" ? p.color : p.kind === "bush" ? (p.v < 0.5 ? p.color : "plain") + (p.v * 9 | 0) % 3 : p.v < 0.5 ? 0 : 1);
     const make = () => p.kind === "bush" ? bush((p.v * 9 | 0) % 3, p.v < 0.5 ? p.color : null) : p.kind === "flowers" ? flowerPatch(Math.floor(p.v * 9), p.color) : p.kind === "lavender" ? lavender(3) : PROP[p.kind](p.v);
@@ -192,19 +258,37 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   M.stones.forEach((s, i) => addPillar({ bx: s.x * T + 16, by: s.y * T + T - 2, W: 30, H: s.h + 20, seed: (s.x * 7 + s.y) % 5, big: false, owl: s.owl, i }));
   addPillar({ bx: M.mono.x * T + 32, by: M.mono.y * T + T - 4, W: 50, H: 130, seed: 3, big: true, i: 99 });
   const bigP = pillars[pillars.length - 1];
+  M.extras.pillars.forEach((q, i) => addPillar({ bx: q.x * T + 16, by: q.y * T + T - 2, W: 30, H: q.h + 20, seed: (q.x + q.y) % 5, big: false, i: 60 + i }));
 
   // ---------- พื้น + เงานิ่ง (วาดครั้งเดียว) ----------
-  const G = bakeGround(M, PLAZA), [ground, gx] = canvas(G.W, G.H);
-  gx.putImageData(G.img, 0, 0);
-  { const [sl, sx] = canvas(G.W, G.H);
-    for (const o of shadows) castShadow(sx, sil(o.s), o.dx, o.dy, o.foot, o.mode, o.lift);
-    sx.fillStyle = SHADOW; for (const o of shadows) { const w = o.s.c.width * (o.mode === "shift" ? 0.9 : 0.5); sx.globalAlpha = 0.5; sx.beginPath(); sx.ellipse(o.dx + o.s.ax, o.foot - 2, w / 2, Math.min(10, w / 6), 0, 0, 7); sx.fill(); } sx.globalAlpha = 1;
-    gx.globalAlpha = SHADOW_A; if ("filter" in gx) gx.filter = "blur(1px)"; gx.drawImage(sl, 0, 0); gx.filter = "none"; gx.globalAlpha = 1; }
+  // พื้นแบ่งเป็นชิ้น 256×256 อบเมื่อใกล้จะเห็น (ทีละนิดต่อเฟรม ไม่กระตุก) — แผนที่ใหญ่ขึ้นแต่โหลดเร็วเท่าเดิม
+  const G = groundTypes(M, PLAZA), CH = 256, NCX = Math.ceil(G.W / CH), NCY = Math.ceil(G.H / CH), chunks = new Map(), pending = new Map();
+  for (const o of shadows) { const w = o.s.c.width, h = o.s.c.height; o.bb = o.mode === "shift" ? [o.dx - 4, o.dy - o.lift * SUN.ky - 4, o.dx + w + o.lift * SUN.kx + 4, o.dy + h + 4] : [o.dx - h * SUN.kx - 12, o.foot - h * SUN.ky - 12, o.dx + w + 12, o.foot + 14]; }
+  function finishChunk(cx2, cy2, B) {
+    const X0 = cx2 * CH, Y0 = cy2 * CH, [c, g] = canvas(B.w, B.h); g.putImageData(B.img, 0, 0);
+    const M2 = 4, [sl, sx] = canvas(B.w + M2 * 2, B.h + M2 * 2), ox = X0 - M2, oy = Y0 - M2;
+    const hit = shadows.filter((o) => o.bb[2] > ox && o.bb[0] < ox + B.w + M2 * 2 && o.bb[3] > oy && o.bb[1] < oy + B.h + M2 * 2);
+    for (const o of hit) castShadow(sx, sil(o.s), o.dx, o.dy, o.foot, o.mode, o.lift, ox, oy);
+    sx.fillStyle = SHADOW; sx.globalAlpha = 0.5; for (const o of hit) { const w = o.s.c.width * (o.mode === "shift" ? 0.9 : 0.5); sx.beginPath(); sx.ellipse(o.dx + o.s.ax - ox, o.foot - 2 - oy, w / 2, Math.min(10, w / 6), 0, 0, 7); sx.fill(); } sx.globalAlpha = 1;
+    g.globalAlpha = SHADOW_A; if ("filter" in g) g.filter = "blur(1px)"; g.drawImage(sl, -M2, -M2); g.filter = "none"; g.globalAlpha = 1;
+    chunks.set(cy2 * NCX + cx2, c); pending.delete(cy2 * NCX + cx2);
+  }
+  function chunkJob(cx2, cy2) { const k = cy2 * NCX + cx2; if (chunks.has(k)) return null; let B = pending.get(k);
+    if (!B) { const X0 = cx2 * CH, Y0 = cy2 * CH; B = groundBaker(M, PLAZA, G, X0, Y0, Math.min(CH, G.W - X0), Math.min(CH, G.H - Y0)); pending.set(k, B); } return B; }
+  // อบชิ้นที่มองเห็นให้เสร็จทันที แล้วค่อยอบชิ้นรอบ ๆ ทีละนิด
+  function bakeAround(cx, cy, w, h, budget) {
+    const a0 = Math.max(0, Math.floor(cx / CH)), a1 = Math.min(NCX - 1, Math.floor((cx + w) / CH)), b0 = Math.max(0, Math.floor(cy / CH)), b1 = Math.min(NCY - 1, Math.floor((cy + h) / CH));
+    for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) { const B = chunkJob(a, b); if (B) { B.step(); finishChunk(a, b, B); } }
+    if (budget <= 0) return; const t0 = performance.now();
+    for (let ring = 1; ring <= 1 && performance.now() - t0 < budget; ring++) for (let b = b0 - ring; b <= b1 + ring; b++) for (let a = a0 - ring; a <= a1 + ring; a++) {
+      if (a < 0 || b < 0 || a >= NCX || b >= NCY) continue; const B = chunkJob(a, b); if (!B) continue; const left = budget - (performance.now() - t0); if (left <= 0) return;
+      if (B.step(left)) finishChunk(a, b, B); else return; }
+  }
 
   // ---------- ตัวละคร ----------
   const saved = (() => { try { return sessionStorage.getItem(POS_KEY); } catch { return null; } })();
   const start = PLACES.find((p) => p.id === saved);
-  const home = (() => { let b = [24, 20], bd = 1e9; for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const k = M.at(x, y); if (M.ground[k] !== 1 || M.block[k]) continue; const d = Math.hypot(x - 26.5, y - 22.5); if (d < bd) { bd = d; b = [x, y]; } } return b; })();
+  const home = (() => { let b = [24 + OX, 20 + OY], bd = 1e9; for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) { const k = M.at(x, y); if (M.ground[k] !== 1 || M.block[k]) continue; const d = Math.hypot(x - 26.5 - OX, y - 22.5 - OY); if (d < bd) { bd = d; b = [x, y]; } } return b; })();
   const hero = { x: (start ? start.ex : home[0]) * T + 16, y: ((start ? start.ey : home[1]) + 0.6) * T, dir: 0, step: 0, stepT: 0, path: null, target: null };
   const fox = { x: (PLAZA.x + 2) * T, y: (PLAZA.y + 2) * T, tx: 0, ty: 0, face: 1, step: 0, wait: 1 };
   const heroLook = look ? { ...look } : { shirt, pants: "#2a3550", hair: "#3a2a20" };
@@ -346,7 +430,9 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   function render(now) {
     const x = bx, cx = Math.round(cam.x), cy = Math.round(cam.y), t = reduced ? 1.3 : now / 1000;
     x.fillStyle = "#1c2a12"; x.fillRect(0, 0, vw, vh);
-    x.drawImage(ground, -cx, -cy);
+    bakeAround(cx, cy, vw, vh, 3);
+    { const a0 = Math.floor(cx / CH), a1 = Math.floor((cx + vw) / CH), b0 = Math.floor(cy / CH), b1 = Math.floor((cy + vh) / CH);
+      for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) { const c = chunks.get(b * NCX + a); if (c) x.drawImage(c, a * CH - cx, b * CH - cy); } }
     // เงาตัวละคร (ยืดตามแดด)
     x.globalAlpha = SHADOW_A;
     const hf = heroF(hero.dir, hero.step), ff = spr(`fox${fox.face}${fox.step % 2}`, () => foxFrame(fox.face, fox.step % 2));
@@ -354,7 +440,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     for (const n of npcs) if (n.fx > cx - 80 && n.fx < cx + vw + 80 && n.fy > cy - 20 && n.fy < cy + vh + 80) dynShadow(x, n.F(n.dir, 0), n.fx, n.fy, cx, cy);
     x.globalAlpha = 1;
     x.save(); x.translate(-cx, -cy);
-    if (!reduced) for (let i = 0; i < 40; i++) { const wx = 39 * T + ((i * 53) % (9 * T)), wy = 28 * T + ((i * 37) % (6 * T)) + Math.sin(now / 600 + i) * 3; const [tx, ty] = tileAt(wx, wy);
+    if (!reduced) for (let i = 0; i < 90; i++) { const wx = 54 * T + ((i * 53) % (26 * T)), wy = 32 * T + ((i * 37) % (17 * T)) + Math.sin(now / 600 + i) * 3; const [tx, ty] = tileAt(wx, wy);
       if (M.inb(tx, ty) && M.ground[M.at(tx, ty)] === 2) { x.globalAlpha = 0.35 + 0.35 * Math.sin(now / 400 + i * 1.7); x.fillStyle = "#f0f8ff"; x.fillRect(Math.round(wx), Math.round(wy), 4 + (i % 4) * 2, 2); } }
     x.globalAlpha = 1;
     const vb = [cx, cx + vw, cy, cy + vh];
@@ -368,6 +454,9 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     magicFront(x, t, vb);
     x.globalCompositeOperation = "lighter";
     for (const [lx, ly] of lamps) { if (lx < cx - 60 || lx > cx + vw + 60 || ly < cy - 60 || ly > cy + vh + 60) continue; x.globalAlpha = reduced ? 0.5 : 0.42 + 0.08 * Math.sin(now / 300 + lx); x.drawImage(LAMPGLOW, lx - 40, ly - 40, 80, 80); }
+    for (const [gx2, gy2, r, col, ph] of glows) { if (gx2 < cx - 60 || gx2 > cx + vw + 60 || gy2 < cy - 60 || gy2 > cy + vh + 60) continue;
+      x.globalAlpha = reduced ? 0.45 : 0.35 + 0.2 * Math.sin(now / 420 + ph); x.drawImage(LAMPGLOW, gx2 - r, gy2 - r, r * 2, r * 2);
+      if (!reduced) { x.fillStyle = `rgba(${col},.9)`; for (let i = 0; i < 3; i++) { const t2 = now / 1000 + i * 2.1 + ph, fx = gx2 + Math.sin(t2 * 0.9 + i) * 22, fy = gy2 + Math.cos(t2 * 0.7 + i * 2) * 14; x.globalAlpha = 0.5 + 0.5 * Math.sin(t2 * 3); x.fillRect(Math.round(fx), Math.round(fy), 2, 2); } } }
     x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
     if (!reduced) {
       x.fillStyle = "rgba(16,24,60,.10)"; // เงาเมฆเคลื่อนผ่าน
@@ -395,9 +484,17 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     for (const p of PLACES) {
       if (p.dock) { tag(`${p.ic} ${p.name}`, p.x * T, p.y * T - 70, near === p ? "#ffcf3a" : "rgba(20,40,24,.88)", near === p ? "#1a1420" : "#fff"); continue; }
       const ex = p.x * T - HOUSE.ax + HOUSE.emblem[0], ey = (p.y + 4) * T - HOUSE.ay + HOUSE.emblem[1];
-      if (p.shop) { g.font = `${Math.round(18 * k)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.fillText(p.ic, sx(ex), sy(ey + 1)); g.font = F; }
-      tag(p.name, p.x * T + 80, (p.y + 4) * T - HOUSE.ay - 10, near === p ? "#ffcf3a" : "rgba(24,18,30,.82)", near === p ? "#1a1420" : "#fff");
+      if (p.shop || !SIGN_FX[p.id]) { if (p.shop) { g.font = `${Math.round(18 * k)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.fillText(p.ic, sx(ex), sy(ey + 1)); g.font = F; }
+        tag(p.name, p.x * T + 80, (p.y + 4) * T - HOUSE.ay - 10, near === p ? "#ffcf3a" : "rgba(24,18,30,.82)", near === p ? "#1a1420" : "#fff"); continue; }
+      // ชื่อบ้านเขียนลงบนแผ่นป้ายไม้ (ตามตำแหน่งป้ายที่ลอยขึ้นลง)
+      const bob = reduced ? 0 : Math.round(Math.sin((now / 1000) * 1.8 + p.x) * 1.2), PX = sx(ex), PY = sy(ey + 21 + bob);
+      if (PX < -120 || PY < -40 || PX > labels.width + 120 || PY > labels.height + 40) continue;
+      let size = Math.max(10.5 * k, 11 * dpr); g.font = `700 ${size}px "Chakra Petch", "Kanit", "Noto Sans Thai", system-ui, sans-serif`;
+      const maxW = 66 * k, tw = g.measureText(p.name).width; if (tw > maxW) { size *= maxW / tw; g.font = `700 ${size}px "Chakra Petch", "Kanit", "Noto Sans Thai", system-ui, sans-serif`; }
+      g.lineJoin = "round"; g.lineWidth = Math.max(2, size * 0.24); g.strokeStyle = "#2a1406"; g.fillStyle = "rgba(0,0,0,.35)"; g.fillText(p.name, PX + dpr, PY + 2 * dpr);
+      g.strokeText(p.name, PX, PY + dpr); g.fillStyle = near === p ? "#ffe066" : "#fff3d6"; g.fillText(p.name, PX, PY + dpr); g.font = F;
     }
+    for (const L of LANDMARKS) tag(L.name, L.x * T, L.y * T, "rgba(20,40,24,.82)", "#fff6dc");
     const bubble = (X, Y, lines) => { const pad = 8 * dpr, lh = fs * 1.4, w = Math.max(...lines.map((l) => g.measureText(l).width)) + pad * 2, h = lines.length * lh + pad * 1.4, Lx = Math.round(X - w / 2), Tp = Math.round(Y - h - 8 * dpr);
       g.fillStyle = "rgba(0,0,0,.3)"; g.fillRect(Lx + 3 * dpr, Tp + 3 * dpr, w, h); g.fillStyle = "#1a1420"; g.fillRect(Lx - 2 * dpr, Tp - 2 * dpr, w + 4 * dpr, h + 4 * dpr); g.fillStyle = "#fffdf6"; g.fillRect(Lx, Tp, w, h);
       g.beginPath(); g.moveTo(X - 6 * dpr, Tp + h); g.lineTo(X, Tp + h + 8 * dpr); g.lineTo(X + 6 * dpr, Tp + h); g.fill();
@@ -437,7 +534,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   let raf = 0, last = performance.now(), visible = true;
   const io = new IntersectionObserver(([en]) => { visible = en.isIntersecting; }); io.observe(view);
   let perfN = 0, perfT = 0;
-  const loop = (now) => { raf = requestAnimationFrame(loop); if (!visible || document.hidden) { last = now; return; } const raw = (now - last) / 1000, dt = Math.min(0.05, raw); last = now;
+  const loop = (now) => { raf = requestAnimationFrame(loop); if (!visible || document.hidden) { last = now; return; } const raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
     if (perfN < 120) { if (perfN > 20) perfT += raw; if (++perfN === 120 && perfT / 99 > 1 / 38) host.classList.add("w-lite"); }
     update(dt); render(now); };
   raf = requestAnimationFrame(loop);
@@ -448,6 +545,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     _hero: hero,
     _npcs: npcs,
     setLook(l, name) { for (const k of Object.keys(heroLook)) delete heroLook[k]; Object.assign(heroLook, l); for (const k of [...cache.keys()]) if (k.startsWith("hero")) cache.delete(k); if (name) playerName = name; },
+    _walk(tx, ty) { walkTo(tx, ty); },
     walkToPlace(id) { const p = PLACES.find((x) => x.id === id); if (p) walkTo(p.ex, p.ey, p); },
   };
 }

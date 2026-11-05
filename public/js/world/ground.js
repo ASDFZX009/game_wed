@@ -39,67 +39,114 @@ export function waterRGB(X, Y, depth) {
 }
 
 // ประกอบทั้งแผนที่ → canvas
-export function bakeGround(M, PLAZA) {
+// ทุ่งดอกไม้เป็นแถว (ร่องดิน + กอดอกไม้สีต่างกันทีละแถว)
+const F_COL = [[226, 64, 74], [246, 196, 60], [168, 98, 220], [240, 130, 180], [250, 246, 236], [240, 140, 50]];
+export function farmRGB(X, Y) {
+  const RH = 18, ry = Y % RH, row = Math.floor(Y / RH), col = F_COL[(row * 5 + 2) % 6];
+  if (ry < 4) { const c = mix([70, 44, 26], [104, 68, 38], vnoise(X / 5, Y, 62)); return ry === 0 ? tone(c, 0.18) : ry === 3 ? mul(c, 0.78) : c; }
+  let c = mix([34, 62, 22], [74, 108, 38], clamp(vnoise(X / 3, Y / 2, 63) * 0.7 + (ry - 4) / 26, 0, 1));
+  if (hash(X >> 1, Y >> 1, 66) < 0.12) c = mix(c, [110, 150, 50], 0.5); // ใบ
+  const i = Math.floor(X / 9), cx = i * 9 + 4.5 + (hash(i, row, 64) - 0.5) * 2, cy = row * RH + 10 + (hash(i, row, 65) - 0.5) * 3;
+  const dx = X + 0.5 - cx, dy = Y + 0.5 - cy, d = Math.hypot(dx, dy), a = Math.atan2(dy, dx), petal = 2.6 + Math.cos(a * 5 + i) * 0.9;
+  if (d < 1.2) c = [255, 222, 90];
+  else if (d < petal) c = dx + dy < -1 ? tone(col, 0.32) : dx + dy > 1.6 ? tone(col, -0.28) : col;
+  else if (d < petal + 1.6 && dy > 0.5) c = mul(c, 0.68);
+  return c;
+}
+// ลานหินโบราณ (แผ่นหินแบนวางเหลื่อม มีรอยร้าวและมอส)
+export function flagRGB(X, Y) {
+  const ry = Math.floor(Y / 14), off = (ry & 1) * 11, cx = Math.floor((X + off) / 22), lx = (X + off) % 22, ly = Y % 14, h = hash(cx, ry, 71);
+  if (lx === 0 || ly === 0) return hash(X, Y, 75) < 0.5 ? [52, 70, 34] : [40, 52, 28];
+  let c = mix([92, 98, 102], [146, 148, 142], h * 0.7 + vnoise(X / 7, Y / 7, 72) * 0.3);
+  if (ly === 1 || lx === 1) c = tone(c, 0.2); else if (ly === 13 || lx === 21) c = tone(c, -0.3);
+  if (vnoise(X / 4, Y / 4, 73) > 0.78) c = mix(c, [70, 98, 40], 0.65);
+  if (hash(cx, ry, 74) < 0.3 && Math.abs(lx - 6 - (ly * 0.8 | 0)) < 1) c = tone(c, -0.45);
+  return c;
+}
+
+// ชนิดพื้นรายพิกเซลทั้งแผนที่ (เร็ว: นอยส์เฉพาะใกล้ลานกลางและขอบทาง)
+export function groundTypes(M, PLAZA) {
   const W = M.MW * T, H = M.MH * T, type = new Uint8Array(W * H);
-  // ชนิดพื้นรายพิกเซล (ขอบทางโค้งมนด้วยนอยส์ วงแหวนลานกลางเป็นวงกลมจริง)
-  for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) {
-    const tx = (X / T) | 0, ty = (Y / T) | 0, px = X % T, py = Y % T, g = M.ground[M.at(tx, ty)];
-    let gg = g;
-    if (g <= 1) {
-      const pd = Math.hypot(X / T - PLAZA.x, (Y / T - PLAZA.y) * 1.15) + (vnoise(X / 5, Y / 5, 4) - 0.5) * 0.16;
-      const inRing = pd > 3.5 && pd < 4.8, nearRing = pd > 3.1 && pd < 5.2;
-      if (g === 1 && nearRing && !inRing) gg = 0;
-      else if (g === 0 && inRing) gg = 1;
-      else if (g === 1 && !nearRing) {
-        const edge = (dx, dy) => M.ground[M.at(clamp(tx + dx, 0, M.MW - 1), clamp(ty + dy, 0, M.MH - 1))] === 0;
-        const e = Math.min(edge(-1, 0) ? px : 99, edge(1, 0) ? T - 1 - px : 99, edge(0, -1) ? py : 99, edge(0, 1) ? T - 1 - py : 99);
-        if (e < 7 && vnoise(X / 4, Y / 4, 5) * 7 > e + 1.5) gg = 0;
-      }
+  const SH = M.shapes || { lakes: [], island: null, flag: null };
+  const lakeV = (X, Y) => { let v = 9; for (const L of SH.lakes) v = Math.min(v, Math.hypot((X / T - L.x) / L.rx, (Y / T - L.y) / L.ry)); return v; };
+  const nearLake = (tx, ty) => SH.lakes.some((L) => Math.abs(tx + 0.5 - L.x) < L.rx + 2 && Math.abs(ty + 0.5 - L.y) < L.ry + 2);
+  for (let ty = 0; ty < M.MH; ty++) for (let tx = 0; tx < M.MW; tx++) {
+    const g0 = M.ground[M.at(tx, ty)];
+    // ขอบทะเลสาบ / เกาะ / ลานหิน: คำนวณรายพิกเซลให้โค้งมน (แทนขอบเหลี่ยมตามช่อง)
+    if ((g0 === 0 || g0 === 2) && nearLake(tx, ty) && !M.block2?.[M.at(tx, ty)]) {
+      for (let py = 0; py < T; py++) for (let px = 0; px < T; px++) { const X = tx * T + px, Y = ty * T + py, n = (vnoise(X / 9, Y / 9, 51) - 0.5) * 0.12;
+        let water = lakeV(X, Y) + n < 1; const I = SH.island; if (I && Math.hypot(X / T - I.x, (Y / T - I.y) * 1.2) + n * 2 < I.r) water = false;
+        type[Y * W + X] = water ? 2 : g0 === 2 ? 0 : 0; }
+      continue; }
+    if (g0 === 5 && SH.flag) { const F = SH.flag;
+      for (let py = 0; py < T; py++) for (let px = 0; px < T; px++) { const X = tx * T + px, Y = ty * T + py; type[Y * W + X] = Math.hypot((X / T - F.x) / F.rx, (Y / T - F.y) / F.ry) + (vnoise(X / 7, Y / 7, 52) - 0.5) * 0.18 < 1 ? 5 : 0; }
+      continue; }
+    const g = g0, nearPlaza = Math.abs(tx + 0.5 - PLAZA.x) < 6.5 && Math.abs(ty + 0.5 - PLAZA.y) < 6;
+    const edgeOf = (dx, dy) => M.ground[M.at(clamp(tx + dx, 0, M.MW - 1), clamp(ty + dy, 0, M.MH - 1))] === 0;
+    const pathEdge = g === 1 && (edgeOf(-1, 0) || edgeOf(1, 0) || edgeOf(0, -1) || edgeOf(0, 1));
+    for (let py = 0; py < T; py++) for (let px = 0; px < T; px++) {
+      const X = tx * T + px, Y = ty * T + py; let gg = g;
+      if (g <= 1 && nearPlaza) {
+        const pd = Math.hypot(X / T - PLAZA.x, (Y / T - PLAZA.y) * 1.15) + (vnoise(X / 5, Y / 5, 4) - 0.5) * 0.16, inRing = pd > 3.5 && pd < 4.8, nearRing = pd > 3.1 && pd < 5.2;
+        if (g === 1 && nearRing && !inRing) gg = 0; else if (g === 0 && inRing) gg = 1;
+        else if (g === 1 && !nearRing && pathEdge) { const e = Math.min(edgeOf(-1, 0) ? px : 99, edgeOf(1, 0) ? T - 1 - px : 99, edgeOf(0, -1) ? py : 99, edgeOf(0, 1) ? T - 1 - py : 99); if (e < 7 && vnoise(X / 4, Y / 4, 5) * 7 > e + 1.5) gg = 0; }
+      } else if (pathEdge) { const e = Math.min(edgeOf(-1, 0) ? px : 99, edgeOf(1, 0) ? T - 1 - px : 99, edgeOf(0, -1) ? py : 99, edgeOf(0, 1) ? T - 1 - py : 99); if (e < 7 && vnoise(X / 4, Y / 4, 5) * 7 > e + 1.5) gg = 0; }
+      type[Y * W + X] = gg;
     }
-    type[Y * W + X] = gg;
   }
+  return { type, W, H };
+}
+
+// ระบายสีพื้นทีละแถวในสี่เหลี่ยมหนึ่ง (เรียกซ้ำได้จนครบ เพื่อแบ่งงานข้ามเฟรม)
+export function groundBaker(M, PLAZA, G, X0, Y0, w, h) {
+  const { type, W, H } = G, img = new ImageData(w, h), D = img.data;
   const tp = (X, Y) => (X < 0 || Y < 0 || X >= W || Y >= H ? 0 : type[Y * W + X]);
-  const img = new ImageData(W, H), D = img.data;
-  const pc = { x: 44.5 * T, y: 31 * T };
-  for (let Y = 0; Y < H; Y++) for (let X = 0; X < W; X++) {
+  const wd = (X, Y) => { const fx = X / T - 0.5, fy = Y / T - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), u = fx - x0, v = fy - y0, s = (x, y) => (M.inb(x, y) ? M.wdist[M.at(x, y)] : 0);
+    return s(x0, y0) * (1 - u) * (1 - v) + s(x0 + 1, y0) * u * (1 - v) + s(x0, y0 + 1) * (1 - u) * v + s(x0 + 1, y0 + 1) * u * v; };
+  let row = 0;
+  function px(X, Y) {
     const t = type[Y * W + X]; let c;
     if (t === 0) {
       c = grassRGB(X, Y);
-      // ขอบหญ้าที่ติดทางดินด้านล่าง: ปลายหญ้ารับแสง
       if (tp(X, Y + 1) === 1 || tp(X, Y + 2) === 1) c = tone(c, 0.2);
       else if (tp(X - 1, Y) === 1 || tp(X + 1, Y) === 1) c = mul(c, 0.85);
     } else if (t === 1) {
       const pd = Math.hypot(X / T - PLAZA.x, (Y / T - PLAZA.y) * 1.15);
       c = dirtRGB(X, Y, pd < 5.4 ? 0.62 : 0.3);
       let k = 1; while (k <= 14 && tp(X, Y - k) === 1) k++;
-      if (k <= 14 && tp(X, Y - k) === 0) { // หญ้าห้อยลงขอบทาง + เงาใต้ขอบ
-        const lip = 2 + Math.floor(vnoise(X / 2.5, 7, 32) * 4);
+      if (k <= 14 && tp(X, Y - k) === 0) { const lip = 2 + Math.floor(vnoise(X / 2.5, 7, 32) * 4);
         if (k <= lip) c = mix(G_MID, G_DARK, k / (lip + 1)), c = (X + k) % 3 === 0 ? tone(c, 0.15) : c;
-        else { const s = k - lip; if (s <= 8) c = mul(c, 0.66 + s * 0.042); }
-      }
+        else { const s = k - lip; if (s <= 8) c = mul(c, 0.66 + s * 0.042); } }
       if (tp(X, Y + 1) === 0 && hash(X, Y, 34) < 0.5) c = mix(G_MID, G_LIT, hash(X, Y, 35));
       else if (tp(X, Y + 2) === 0 && hash(X, Y, 36) < 0.25) c = G_MID;
       if (tp(X - 1, Y) === 0) c = mul(c, 0.74); else if (tp(X - 3, Y) === 0) c = mul(c, 0.86); else if (tp(X - 5, Y) === 0) c = mul(c, 0.94);
       if (tp(X + 1, Y) === 0 && hash(X, Y, 37) < 0.5) c = G_MID;
     } else if (t === 2) {
-      const dp = clamp(Math.hypot((X - pc.x) / (5.6 * T), (Y - pc.y) / (3.6 * T)), 0, 1);
-      c = waterRGB(X, Y, 1 - dp * dp);
+      const dp = clamp(wd(X, Y) / 3.6, 0, 1);
+      c = waterRGB(X, Y, dp * (2 - dp));
       let k = 1; while (k <= 22 && tp(X, Y - k) === 2) k++;
       const ab = tp(X, Y - k);
-      if (k <= 22 && (ab === 0 || ab === 1)) { // ตลิ่งหิน
-        const lip = ab === 0 ? 3 : 0, s = k - lip;
+      if (k <= 22 && ab !== 2 && ab !== 3) { const lip = ab === 0 ? 3 : 0, s = k - lip;
         if (k <= lip) c = G_MID;
-        else if (s <= 10) { const row = s > 5 ? 1 : 0, sx = Math.floor((X + row * 6) / 12), ly = (s - 1) % 5, lx = (X + row * 6) % 12;
-          const base = mix([96, 78, 60], [150, 128, 100], hash(sx, row, 41)); c = lx === 0 || ly === 4 ? [40, 32, 26] : ly === 0 ? tone(base, 0.25) : lx > 9 ? tone(base, -0.3) : base; }
+        else if (s <= 10) { const r2 = s > 5 ? 1 : 0, sx = Math.floor((X + r2 * 6) / 12), ly = (s - 1) % 5, lx = (X + r2 * 6) % 12;
+          const base = mix([96, 78, 60], [150, 128, 100], hash(sx, r2, 41)); c = lx === 0 || ly === 4 ? [40, 32, 26] : ly === 0 ? tone(base, 0.25) : lx > 9 ? tone(base, -0.3) : base; }
         else if (s <= 18) c = mul(c, 0.6 + (s - 10) * 0.05);
       } else if (ab === 3 && k <= 10) c = mul(c, 0.6);
-      if ((tp(X, Y + 1) === 0 || tp(X - 1, Y) === 0 || tp(X + 1, Y) === 0) && hash(X, Y, 42) < 0.7) c = [200, 226, 220];
-    } else { // ท่าไม้
+      const sideG = (q) => q !== 2 && q !== 3;
+      if ((sideG(tp(X, Y + 1)) || sideG(tp(X - 1, Y)) || sideG(tp(X + 1, Y))) && hash(X, Y, 42) < 0.7) c = [200, 226, 220];
+    } else if (t === 3) { // ท่าไม้/สะพาน
       const py = Y % 8, h = hash(X >> 3, Y >> 3, 1), base = mix([120, 80, 44], [160, 112, 62], h);
       c = py === 7 ? [52, 32, 18] : py === 0 ? tone(base, 0.2) : (X % 64 === 0) ? mul(base, 0.6) : mul(base, 0.92 + vnoise(X / 6, Y, 3) * 0.16);
       if ((X & 31) === 2 && (py === 3 || py === 4)) c = [60, 60, 66];
-    }
-    const i = (Y * W + X) * 4; D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; D[i + 3] = 255;
+    } else c = t === 4 ? farmRGB(X, Y) : flagRGB(X, Y);
+    if (t >= 4) { let k = 1; while (k <= 3 && tp(X, Y - k) === t) k++; if (k <= 3 && tp(X, Y - k) === 0) c = mix(G_MID, G_DARK, k / 4); else if (tp(X, Y + 1) === 0) c = mul(c, 0.7); }
+    return c;
   }
-  return { img, type, W, H };
+  return {
+    img, done: false, x: X0, y: Y0, w, h,
+    step(budgetMs = 1e9) { const t0 = performance.now();
+      while (row < h) { const Y = Y0 + row; for (let i = 0; i < w; i++) { const c = px(X0 + i, Y), k = (row * w + i) * 4; D[k] = c[0]; D[k + 1] = c[1]; D[k + 2] = c[2]; D[k + 3] = 255; }
+        row++; if ((row & 3) === 0 && performance.now() - t0 > budgetMs) break; }
+      this.done = row >= h; return this.done; },
+  };
 }
