@@ -136,7 +136,7 @@ export function playBoxOpening({ kind = "basic", title = "", results, renderCard
   }
   const skip = () => { const t = (performance.now() - t0) / 1000 + skipTo; if (t < T.burst - 0.05) skipTo += T.burst - 0.05 - t; else if (t < T.end) skipTo += T.end - t; };
   el.addEventListener("pointerdown", (e) => { if (!e.target.closest(".bx-actions, .bx-card button")) skip(); });
-  const onKey = (e) => { if (phase === 0 && (e.key === " " || e.key === "Enter")) { e.preventDefault(); skip(); } else if (phase === 1 && e.key === "Escape") close(); };
+  const onKey = (e) => { if (phase === 0 && (e.key === " " || e.key === "Enter" || e.key === "Escape")) { e.preventDefault(); skip(); } else if (phase === 1 && e.key === "Escape") close(); };
   addEventListener("keydown", onKey);
   function close() { if (done) return; done = true; cancelAnimationFrame(raf); removeEventListener("resize", resize); removeEventListener("keydown", onKey); el.classList.add("out"); document.body.classList.remove("bx-open"); setTimeout(() => el.remove(), 220); resolveFn?.(); }
   if (reduced) skipTo = T.end;

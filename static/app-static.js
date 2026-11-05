@@ -90,7 +90,9 @@ function privacyLocal({ main }) {
 }
 
 // ---------- เมนู ----------
-function renderNav(cur = "/") {
+let navPath = "/"; // หน้าปัจจุบัน (ให้ refreshMe วาดเมนูใหม่โดยไฟช่องลัดไม่กระโดดไปที่ "หมู่บ้าน")
+function renderNav(cur = navPath) {
+  navPath = cur;
   const u = state.me || {}, nav = document.getElementById("nav");
   nav.className = "gamehud"; nav.setAttribute("aria-label", "เมนูเกม");
   nav.innerHTML = hudHtml({ me: u, cur, cloud: !!state.config?.cloud, admin: !!u.admin }).s;

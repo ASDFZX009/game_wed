@@ -58,7 +58,7 @@ const CATALOG = [
   I("pf-blindking", "pfp", "ร่างราชาตาบอด", "blindking", "epic"),
   I("pf-toilet", "pfp", "ร่างห้องน้ำมรณะ", "toilet", "epic"),
   I("pf-ompra", "pfp", "ร่างอมพระมาพูดก็ไม่เชื่อ", "ompra", "rare"),
-  I("pf-magicprince", "pfp", "ร่างเจ้าชายเวทมนต์", "magicprince", "epic"),
+  I("pf-magicprince", "pfp", "ร่างเจ้าชายเวทมนตร์", "magicprince", "epic"),
   I("pf-richboss", "pfp", "ร่างเสี่ยคนรวย2067", "richboss", "epic"),
   I("pf-blocky", "pfp", "ร่างเหลี่ยมจริงๆ", "blocky", "rare"),
   I("pf-coconat", "pfp", "ร่างโคโค่นัด", "coconat", "common"),

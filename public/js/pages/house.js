@@ -12,6 +12,7 @@ const signURL = (id) => { if (!signCache.has(id)) { const s = subjectSign(id), c
 const TRACKS = [["all", "ทุกสาย"], ["k", "อนุบาล"], ["p1", "ป.1–3"], ["p4", "ป.4–6"], ["m1", "ม.1–3"], ["m4", "ม.4–6"]];
 const TRACK_RANGE = { all: [0, 12], k: [0, 0], p1: [1, 3], p4: [4, 6], m1: [7, 9], m4: [10, 12] };
 let track = (() => { try { return localStorage.getItem("qo:track") || "all"; } catch { return "all"; } })();
+const trackPicked = () => { try { return !!localStorage.getItem("qo:track"); } catch { return true; } };
 const inTrack = (gr) => { const [a, b] = TRACK_RANGE[track] || TRACK_RANGE.all; return !gr || (gr[0] <= b && gr[1] >= a); };
 const stars = (n) => html`<span class="hz-st" aria-label="${n} ดาว">${[1, 2, 3].map((i) => html`<i class="${i <= n ? "on" : ""}">★</i>`)}</span>`;
 
@@ -34,7 +35,7 @@ export function openHouse({ cat, onClose, onPlayState }) {
     titleEl.innerHTML = html`<img src="${signURL(cat)}" alt=""><b>${plan.house?.name || ""}</b>`.s;
     progEl.innerHTML = html`<span>★ ${plan.got}<small>/${plan.max}</small></span><span>ด่าน ${Math.min(plan.current, plan.total)}/${plan.total}</span>`.s;
     body.innerHTML = html`<div class="hz-intro"><span class="hz-villain">${{ math: "🧙‍♂️", science: "☁️", thai: "👻", english: "👸", social: "🦹", health: "👹", early: "🐱", brain: "🌑", general: "🦉" }[cat] || "👾"}</span><p>${plan.intro}</p></div>
-      <div class="hz-track" role="group" aria-label="เลือกสายชั้นของฉัน"><span>🎓 สายชั้นของฉัน:</span>${TRACKS.map(([k, t]) => html`<button type="button" class="${track === k ? "on" : ""}" data-track="${k}" aria-pressed="${track === k}">${t}</button>`)}</div>
+      <div class="hz-track ${trackPicked() ? "" : "ask"}" role="group" aria-label="เลือกสายชั้นของฉัน">${trackPicked() ? "" : html`<p class="hz-ask">👋 เลือกสายชั้นของคุณก่อนเริ่ม — ด่านที่ตรงชั้นจะเด่นขึ้น และข้ามด่านของชั้นอื่นได้</p>`}<span>🎓 สายชั้นของฉัน:</span>${TRACKS.map(([k, t]) => html`<button type="button" class="${track === k ? "on" : ""}" data-track="${k}" aria-pressed="${track === k}">${t}</button>`)}</div>
       ${plan.chapters.map((ch) => { const open = ch.stages.some((s) => s.unlocked); return html`<section class="hz-ch lv${ch.level} ${open ? "" : "locked"}">
         <header><h2>${ch.title}</h2><span class="hz-lv">${"●".repeat(ch.level)}${"○".repeat(5 - ch.level)} ${ch.levelName}</span></header>
         <p class="hz-chi">${open ? ch.intro : "🔒 ผ่านบทก่อนหน้าเพื่อเปิดบทนี้"}</p>

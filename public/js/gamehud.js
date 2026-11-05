@@ -8,7 +8,9 @@ export const DOCK = [
   ["/", "🏡", "หมู่บ้าน"], ["/games", "🗺️", "บ้านวิชา"], ["/quizzes", "📝", "แบบทดสอบ"], ["/quiz-game", "🎣", "ตกปลา"],
   ["/dashboard", "📖", "สมุด"], ["/shop", "🛒", "ร้านค้า"], ["/bag", "🎒", "กระเป๋า"],
 ];
-const isOn = (href, cur) => (href === "/" ? cur === "/" : cur === href || cur.startsWith(href + "/"));
+// หน้าย่อยที่อยู่ใต้ช่องลัดเดียวกัน (เช่น ผลแบบทดสอบ → แบบทดสอบ · ตั้งค่า/โปรไฟล์ → สมุด)
+const ALIAS = { "/attempts": "/quizzes", "/profile": "/dashboard" };
+const isOn = (href, cur) => { const c = Object.entries(ALIAS).reduce((x, [k, v]) => (x === k || x.startsWith(k + "/") ? v : x), cur); return href === "/" ? c === "/" : c === href || c.startsWith(href + "/"); };
 
 // รูปหน้าตัวละคร (ครอปหัว-ไหล่จากโมเดลตัวละครจริง)
 let portraitKey = "", portraitUrl = "";
