@@ -7,6 +7,8 @@ import { windmill, windmillSails, gazebo, greatTree, ruinArch, scarecrow, hayBal
 import { broadTree, pineTree, bush, flowerPatch, lavender, plateau, fence, PROP, HOUSE, house, dockSign, pillar, crystal } from "../world/sprites.js";
 import { subjectSign, drawSignFx, SIGN_FX } from "../world/signs.js";
 import { charFrame, foxFrame, silhouette } from "../world/chars.js";
+import { joinVillage, EMOTES } from "../net/village.js";
+import { toLook, ROWS, OPT } from "../look.js";
 
 const MW = 80, MH = 58; // ขนาดแผนที่ (ช่อง) — หมู่บ้านเดิมอยู่กลาง ล้อมด้วยทุ่ง ป่า ทะเลสาบ และซากโบราณ
 const OX = 16, OY = 11; // ตำแหน่งหมู่บ้านเดิมในแผนที่ใหม่
@@ -202,7 +204,7 @@ function castShadow(x, sil, dx, dy, footY, mode, lift, ox = 0, oy = 0) {
 const SHADOW = "#16163a", SHADOW_A = 0.55;
 
 // ---------- ติดตั้งบนหน้า ----------
-export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false }) {
+export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false, net = null }) {
   const M = buildMap();
   const cache = new Map(), spr = (key, make) => cache.get(key) || (cache.set(key, make()), cache.get(key));
   const silCache = new Map(), sil = (s) => silCache.get(s.c) || (silCache.set(s.c, tint(silhouette(s.c))), silCache.get(s.c));
@@ -306,6 +308,34 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   ui.innerHTML = `<div class="w-fx w-tilt top"></div><div class="w-fx w-tilt bot"></div><canvas class="world-labels" aria-hidden="true"></canvas>`
     + `<div class="world-hint"><span class="wh-long">⌨️ ลูกศร / WASD เดิน · Shift วิ่ง · E เข้าบ้าน · 👆 แตะที่บ้านเพื่อเดินไปเข้า</span><span class="wh-short">👆 แตะพื้นเพื่อเดิน · แตะบ้านเพื่อเข้า</span></div><button type="button" class="world-enter" hidden></button><div class="world-fade"></div>`;
   const enterBtn = ui.querySelector(".world-enter"), fade = ui.querySelector(".world-fade"), labels = ui.querySelector(".world-labels");
+  // แผงผู้เล่นออนไลน์ (มุมซ้ายล่าง): จำนวนคน · อีโมต · เปิด/ปิดการเจอผู้เล่น
+  const mp = document.createElement("div"); mp.className = "w-online"; mp.hidden = !net; ui.appendChild(mp);
+  mp.innerHTML = `<div class="wo-row"><span class="wo-pill" role="status" aria-live="polite"></span><button type="button" class="wo-btn" data-mp="emote" aria-expanded="false" title="ส่งอีโมต">😀</button><button type="button" class="wo-btn" data-mp="toggle"></button></div>`
+    + `<div class="wo-emotes" hidden role="group" aria-label="ส่งอีโมตให้ผู้เล่นรอบ ๆ">${EMOTES.map(([ic, tx], i) => `<button type="button" data-e="${i}" title="${tx}"><span>${ic}</span>${tx}</button>`).join("")}</div>`;
+  // ---------- ผู้เล่นคนอื่น ----------
+  const PEER_SHIRTS = ["#c8402e", "#3a78c8", "#3c8a3c", "#d8a828", "#8a5ae0", "#e870a0", "#2fa88a", "#b8602a"];
+  const lookOf = (p) => { if (p.parts) { const q = {}; for (const [k] of ROWS) { const v = p.parts[k]; q[k] = Number.isInteger(v) && v >= 0 && v < OPT[k].length ? v : 0; } return [JSON.stringify(q), toLook(q)]; }
+    let h = 0; for (const ch of p.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ["d" + (h % 8), { shirt: PEER_SHIRTS[h % 8], pants: "#2a3550", hair: ["#3a2a20", "#1e1a18", "#8a5a2a", "#e0b860"][h % 4] }]; };
+  const peerF = (p, dir, step) => { const [k, L] = p._look && p._lk === JSON.stringify(p.parts) ? p._look : (p._lk = JSON.stringify(p.parts), p._look = lookOf(p)); return spr(`peer${k}:${dir}${step}`, () => charFrame(dir, step, L)); };
+  const emotes = new Map(); // id → { e, until } (id "me" = ตัวเรา)
+  let online = null, mpOn = (() => { try { return localStorage.getItem("qo:mp") !== "off"; } catch { return true; } })();
+  const mpPill = mp.querySelector(".wo-pill"), mpEm = mp.querySelector(".wo-emotes"), mpTog = mp.querySelector('[data-mp="toggle"]'), mpEmBtn = mp.querySelector('[data-mp="emote"]');
+  function mpStatus() {
+    const n = online ? online.peers.size : 0, st = online?.status;
+    mpPill.textContent = !mpOn ? "🙈 ปิดการเจอผู้เล่นอยู่" : st === "online" ? (n ? `👥 เพื่อนในหมู่บ้าน ${n} คน` : "👥 ออนไลน์ · ยังไม่มีใครอยู่") : st === "connecting" ? "⏳ กำลังเชื่อมต่อ…" : "📡 ออฟไลน์ · กำลังลองใหม่";
+    mpPill.classList.toggle("on", mpOn && st === "online"); mpTog.textContent = mpOn ? "🙈 ซ่อน" : "👥 เปิด"; mpTog.title = mpOn ? "ปิดการเจอผู้เล่น (คนอื่นจะไม่เห็นคุณ)" : "เปิดการเจอผู้เล่น"; mpEmBtn.hidden = !mpOn;
+  }
+  function mpStart() {
+    if (!net || online || !mpOn) return mpStatus();
+    if (!net.rt?.url || !net.rt?.key) return mpStatus();
+    online = joinVillage(net.rt, { bounds: { w: MW * T, h: MH * T }, me: () => ({ x: hero.x, y: hero.y, dir: hero.dir, moving: !!(hero.path || keys.size) }), profile: () => net.profile(),
+      onPeers: mpStatus, onStatus: mpStatus, onEmote: (id, e) => emotes.set(id, { e, until: performance.now() + 4500 }) });
+    mpStatus();
+  }
+  function mpStop() { online?.close(); online = null; emotes.clear(); mpStatus(); }
+  mpTog.onclick = () => { mpOn = !mpOn; try { localStorage.setItem("qo:mp", mpOn ? "on" : "off"); } catch { /* ignore */ } mpOn ? mpStart() : mpStop(); mpEm.hidden = true; mpEmBtn.setAttribute("aria-expanded", "false"); view.focus({ preventScroll: true }); };
+  mpEmBtn.onclick = () => { mpEm.hidden = !mpEm.hidden; mpEmBtn.setAttribute("aria-expanded", String(!mpEm.hidden)); };
+  mpEm.onclick = (e) => { const b = e.target.closest("[data-e]"); if (!b) return; const i = +b.dataset.e; online?.emote(i); emotes.set("me", { e: i, until: performance.now() + 4500 }); mpEm.hidden = true; mpEmBtn.setAttribute("aria-expanded", "false"); view.focus({ preventScroll: true }); };
   let S = 2, vw = 0, vh = 0, dpr = 1, cam = { x: 0, y: 0 }, near = null, talk = null, leaving = false, smooth = false;
 
   function resize() {
@@ -354,6 +384,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   }
 
   function update(dt) {
+    if (online) { online.step(dt); for (const p of online.peers.values()) { if (p.walking) { p.stepT = (p.stepT || 0) + dt; if (p.stepT > 0.13) { p.stepT = 0; p.step = ((p.step || 0) + 1) % 4; } } else p.step = 0; } }
     let mx = 0, my = 0;
     if (keys.has("ArrowLeft") || keys.has("a")) mx -= 1; if (keys.has("ArrowRight") || keys.has("d")) mx += 1;
     if (keys.has("ArrowUp") || keys.has("w")) my -= 1; if (keys.has("ArrowDown") || keys.has("s")) my += 1;
@@ -437,6 +468,8 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     x.globalAlpha = SHADOW_A;
     const hf = heroF(hero.dir, hero.step), ff = spr(`fox${fox.face}${fox.step % 2}`, () => foxFrame(fox.face, fox.step % 2));
     dynShadow(x, hf, hero.x, hero.y, cx, cy); dynShadow(x, ff, fox.x, fox.y, cx, cy);
+    const peersIn = online ? [...online.peers.values()].filter((p) => p.rx > cx - 60 && p.rx < cx + vw + 60 && p.ry > cy - 20 && p.ry < cy + vh + 80) : [];
+    for (const p of peersIn) dynShadow(x, peerF(p, p.dir, p.step || 0), p.rx, p.ry, cx, cy);
     for (const n of npcs) if (n.fx > cx - 80 && n.fx < cx + vw + 80 && n.fy > cy - 20 && n.fy < cy + vh + 80) dynShadow(x, n.F(n.dir, 0), n.fx, n.fy, cx, cy);
     x.globalAlpha = 1;
     x.save(); x.translate(-cx, -cy);
@@ -448,6 +481,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     const list = objects.filter((o) => o.x1 >= cx && o.x0 <= cx + vw && o.bot >= cy && o.top <= cy + vh);
     list.push({ y: fox.y, draw: (c) => c.drawImage(ff.c, Math.round(fox.x) - ff.ax, Math.round(fox.y) - ff.ay) });
     list.push({ y: hero.y, draw: (c) => c.drawImage(hf.c, Math.round(hero.x) - hf.ax, Math.round(hero.y) - hf.ay) });
+    for (const p of peersIn) list.push({ y: p.ry, draw: (c) => { const f = peerF(p, p.dir, p.step || 0); c.drawImage(f.c, Math.round(p.rx) - f.ax, Math.round(p.ry) - f.ay); } });
     for (const n of npcs) list.push({ y: n.fy, draw: (c) => { const f = n.F(n.dir, 0), b = !reduced && Math.sin(now / 700 + n.phase) > 0.6 ? 1 : 0; c.drawImage(f.c, n.fx - f.ax, n.fy - f.ay + b); } });
     list.sort((a, b) => a.y - b.y);
     for (const o of list) o.draw(x, now);
@@ -505,7 +539,10 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
         g.fillStyle = "rgba(0,0,0,.3)"; g.fillRect(Lx + b, Tp + b, w, h); g.fillStyle = "#1a1420"; g.fillRect(Lx - b, Tp - b, w + 2 * b, h + 2 * b); g.fillStyle = "#fffdf6"; g.fillRect(Lx, Tp, w, h);
         g.beginPath(); g.moveTo(X - 4 * dpr, Tp + h); g.lineTo(X, Tp + h + 5 * dpr); g.lineTo(X + 4 * dpr, Tp + h); g.fill();
         for (let d = 0; d < 3; d++) { g.fillStyle = d < lit ? "#1a1420" : "#c8c0c8"; g.fillRect(Math.round(Lx + 6 * dpr + d * 6.5 * dpr), Math.round(Tp + 6 * dpr), Math.round(3.5 * dpr), Math.round(3.5 * dpr)); } } }
-    if (!talk) tag(playerName, hero.x, hero.y - 58, "rgba(91,61,245,.92)");
+    const nowE = performance.now(), emoteOf = (id) => { const e = emotes.get(id); if (!e) return null; if (e.until < nowE) { emotes.delete(id); return null; } return EMOTES[e.e]; };
+    const emoteBubble = (wx, wy, em) => { const X = sx(wx), Y = sy(wy); if (X < -100 || Y < -60 || X > labels.width + 100 || Y > labels.height + 60) return; g.font = `700 ${fs}px "Noto Sans Thai", system-ui, sans-serif`; bubble(X, Y, [`${em[0]} ${em[1]}`]); g.font = F; };
+    if (online) for (const p of online.peers.values()) { const em = emoteOf(p.id); if (em) emoteBubble(p.rx, p.ry - 64, em); else tag(p.name, p.rx, p.ry - 58, "rgba(26,120,70,.92)"); }
+    { const em = emoteOf("me"); if (em) emoteBubble(hero.x, hero.y - 64, em); else if (!talk) tag(playerName, hero.x, hero.y - 58, "rgba(91,61,245,.92)"); }
     if (near) tag(`กด E หรือแตะปุ่มด้านล่าง เพื่อเข้า`, near.dock ? near.x * T + 32 : near.x * T + 80, (near.dock ? near.y * T - 100 : (near.y + 4) * T - HOUSE.ay - 36), "rgba(255,255,255,.95)", "#1a1420");
   }
 
@@ -538,12 +575,15 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     if (perfN < 120) { if (perfN > 20) perfT += raw; if (++perfN === 120 && perfT / 99 > 1 / 38) host.classList.add("w-lite"); }
     update(dt); render(now); };
   raf = requestAnimationFrame(loop);
+  mpStart();
   return {
+    get online() { return online; },
     places: PLACES,
-    destroy() { cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
+    destroy() { mpStop(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
     reachable() { const [sx, sy] = tileAt(hero.x, hero.y - 1); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) || (sx === p.ex && sy === p.ey) })); },
     _hero: hero,
     _npcs: npcs,
+    netRefresh() { if (online) { mpStop(); mpStart(); } },
     setLook(l, name) { for (const k of Object.keys(heroLook)) delete heroLook[k]; Object.assign(heroLook, l); for (const k of [...cache.keys()]) if (k.startsWith("hero")) cache.delete(k); if (name) playerName = name; },
     _walk(tx, ty) { walkTo(tx, ty); },
     walkToPlace(id) { const p = PLACES.find((x) => x.id === id); if (p) walkTo(p.ex, p.ey, p); },

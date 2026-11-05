@@ -53,7 +53,9 @@ export async function home({ main }) {
     </section>`.s;
   const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim() || "#5b3df5";
   const shirt = /^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5", nameOf = (p) => p?.name || state.me?.displayName || "นักผจญภัย";
-  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion() });
+  const rt = state.realtime?.() || null;
+  const net = rt ? { rt, profile: () => { const p = loadProfile(); return { name: nameOf(p), parts: p?.parts || null }; } } : null;
+  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net });
   // หน้าเริ่มเกม: เปิดครั้งแรกของแต่ละรอบการใช้งาน หรือกด "เมนูหลัก"
   let title = null;
   const showTitle = (startAt) => { title = openTitle({ go, me: state.me, reduced: reducedMotion(), startAt, onEnter: (p) => { title = null; w.setLook(myLook(shirt), nameOf(p)); main.querySelector(".world-canvas")?.focus({ preventScroll: true }); } }); };

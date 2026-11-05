@@ -42,6 +42,8 @@ function setSession(s) {
 }
 export const onAuthChange = (fn) => listeners.add(fn);
 export const cloudEnabled = () => !!CFG;
+// สำหรับ Realtime (เจอผู้เล่นในหมู่บ้าน): ใช้ publishable key เดียวกัน + โทเค็นผู้ใช้ถ้าเข้าสู่ระบบ
+export const realtimeInfo = () => (CFG ? { url: CFG.url, key: CFG.key, token: () => session?.access_token || null } : null);
 export const currentUser = () => session?.user || null;
 export const displayNameOf = (u) => u?.user_metadata?.display_name || (u?.email || "").split("@")[0] || "ผู้เล่น";
 export const redirectUrl = () => location.origin + location.pathname;

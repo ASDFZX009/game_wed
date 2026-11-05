@@ -1293,3 +1293,16 @@ body.meadow-page .auth-wrap .card input:not([type=checkbox]) { background: rgba(
 body.meadow-page .auth-wrap > p, body.meadow-page .foot { color: #fff6dc; text-shadow: 1px 1px 0 rgba(0,0,0,.6); }
 body.meadow-page .auth-wrap > p { padding: 6px 12px; background: rgba(20,30,20,.45); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
 body.meadow-page .foot { background: rgba(20,30,20,.4); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); border-top-color: rgba(255,255,255,.3); }
+
+/* 👥 ผู้เล่นออนไลน์ในหมู่บ้าน */
+.w-online { position: absolute; left: 12px; bottom: 14px; z-index: 6; display: grid; gap: 8px; justify-items: start; max-width: calc(100% - 24px); }
+.wo-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.wo-pill { padding: 6px 12px; font-weight: 800; font-size: .86rem; color: #fff3d6; background: rgba(30,18,8,.86); box-shadow: 0 0 0 2px #8a6a3a, 0 0 0 4px #2a1608; }
+.wo-pill.on { box-shadow: 0 0 0 2px #4caf3c, 0 0 0 4px #2a1608, 0 0 12px rgba(120,255,120,.35); }
+.wo-btn { padding: 6px 10px; font: inherit; font-weight: 800; font-size: .86rem; cursor: pointer; border: 0; color: #2a1608; background: #f4e4bc; box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 2px #2a1608, 2px 3px 0 2px rgba(0,0,0,.3); }
+.wo-btn:hover, .wo-btn[aria-expanded="true"] { background: #ffd84a; }
+.wo-emotes { display: grid; grid-template-columns: repeat(4, auto); gap: 6px; padding: 8px; background: rgba(30,18,8,.9); box-shadow: 0 0 0 2px #f0c040, 0 0 0 4px #2a1608; }
+.wo-emotes button { display: grid; justify-items: center; gap: 2px; padding: 6px 8px; font: inherit; font-size: .74rem; font-weight: 700; cursor: pointer; border: 0; color: #2a1608; background: #f4e4bc; box-shadow: inset -2px -2px 0 #e2c992, 0 0 0 2px #2a1608; }
+.wo-emotes button span { font-size: 1.3rem; line-height: 1; } .wo-emotes button:hover { background: #ffd84a; transform: translateY(-2px); }
+@media (max-width: 640px) { .w-online { left: 8px; bottom: 10px; } .wo-pill, .wo-btn { font-size: .76rem; padding: 5px 8px; } .wo-emotes { grid-template-columns: repeat(4, 1fr); } .wo-emotes button { font-size: .66rem; padding: 5px 4px; } }
+.w-online, .w-online * { pointer-events: auto; }

@@ -321,6 +321,7 @@ window.addEventListener("hashchange", () => {
 (async () => {
   const ci = await C.initCloud();
   state.config = { ...(await api("/api/config")), cloud: ci.enabled };
+  state.realtime = () => C.realtimeInfo();
   if (ci.enabled && C.currentUser()) {
     try { await connectAccount(C.currentUser()); }
     catch (e) { if (!e.expired) toast("โหลดความคืบหน้าจากบัญชีไม่ได้: " + e.message, "bad"); }
