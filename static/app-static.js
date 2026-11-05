@@ -5,6 +5,8 @@ import { adminPage } from "./admin-static.js";
 import * as C from "./cloud.js";
 import { state, api, html, raw, toast, avatar, confirmBox, formData, busy, fmtDate } from "../public/js/core.js";
 import { loadPrefs, setPrefs, isDark } from "../public/js/prefs.js";
+import { loadProfile } from "../public/js/look.js";
+import { pxPage } from "../public/js/pxpage.js";
 import * as P from "../public/js/pages/public.js";
 import * as S from "../public/js/pages/student.js";
 import * as SH from "../public/js/pages/shop.js";
@@ -113,8 +115,9 @@ async function connectAccount(u) { const r = await useCloud(store, u, C.displayN
 const pwOk = (p) => p.length >= 8;
 async function withBusy(btn, fn) { busy(btn, true); try { await fn(); } finally { if (btn.isConnected) busy(btn, false); } }
 function authCard(main, title, body, foot = "") {
-  main.innerHTML = html`<div class="narrower auth-wrap"><div class="card">
-    <h1 style="margin-top:0">${title}</h1>${raw(body.s || body)}</div>${raw(foot.s || foot)}</div>`.s;
+  pxPage(onLeave);
+  main.innerHTML = html`<div class="narrower auth-wrap"><h1 class="px-sign">🧭 ${title}</h1><div class="card">
+    ${raw(body.s || body)}</div>${raw(foot.s || foot)}</div>`.s;
 }
 function needCloud(main) {
   if (state.config.cloud) return false;
@@ -122,12 +125,17 @@ function needCloud(main) {
     <p class="small muted">สำหรับเจ้าของเว็บ: เปิดระบบบัญชีได้โดยเชื่อม Supabase ตามขั้นตอนใน README หัวข้อ “บัญชีผู้ใช้ (Supabase)”</p><a class="btn" href="/games">ไปเล่นเกม</a>`);
   return true;
 }
+// หลังเข้าสู่ระบบ/สร้างบัญชี: ยังไม่มีตัวละคร (หรือบัญชีใหม่) → หน้าสร้างตัวละคร แล้วเข้าหมู่บ้าน
+function enterAfterAuth(isNew) {
+  try { if (isNew || !loadProfile()) sessionStorage.setItem("qo:titleOpen", "custom"); sessionStorage.setItem("qo:titleSeen", "1"); } catch { /* ignore */ }
+  go("/");
+}
 async function afterLogin(main) {
   const u = C.currentUser();
   const { isNew } = await connectAccount(u);
   await refreshMe();
   toast(isNew ? `สร้างบัญชีแล้ว ยินดีต้อนรับ ${state.me.displayName}! รับ 150 🪙 ต้อนรับ ☁️` : `ยินดีต้อนรับกลับ ${state.me.displayName} 👋`);
-  go("/dashboard");
+  enterAfterAuth(isNew);
 }
 function emailSent(main, email, kind) {
   authCard(main, kind === "reset" ? "ตรวจอีเมลของคุณ 📬" : "ยืนยันอีเมลอีกขั้นเดียว 📬", html`
@@ -319,7 +327,7 @@ window.addEventListener("hashchange", () => {
   loadPrefs();
   if (ci.link?.error) { toast(ci.link.error, "bad"); location.hash = "login"; }
   else if (ci.link?.type === "recovery") location.hash = "reset-password";
-  else if (ci.link) { toast(`ยืนยันอีเมลเรียบร้อย ยินดีต้อนรับ ${state.me.displayName}! ☁️`); location.hash = "dashboard"; }
+  else if (ci.link) { toast(`ยืนยันอีเมลเรียบร้อย ยินดีต้อนรับ ${state.me.displayName}! ☁️`); enterAfterAuth(ci.link.type === "signup"); }
   render();
   if (!ci.enabled) connectRemote(async () => { await refreshMe(); render(); toast("โหลดความคืบหน้าจากบัญชีของคุณแล้ว"); });
 })();

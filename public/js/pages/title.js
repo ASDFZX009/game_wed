@@ -1,6 +1,6 @@
 // 🧭 หน้าเริ่มเกม (Title screen) — ฉากทุ่งหญ้าพิกเซล ขนนกเวทบินเขียนเส้นแสง → โลโก้ QUIZ ODYSSEY หล่นทีละตัว → เมนู → สร้างตัวละคร
 // ได้แรงบันดาลใจจากหน้าเริ่มเกมแนวพิกเซลทั่วไป แต่ฉาก โลโก้ และลำดับทั้งหมดออกแบบใหม่เอง
-import { html, raw } from "../core.js";
+import { html, raw, state } from "../core.js";
 import { PB, PAL, hex, ramp, pick, blob, outline, canvas, hash, rng, vnoise, fbm, mix, tone, clamp } from "../world/art.js";
 import { grassRGB, dirtRGB } from "../world/ground.js";
 import { broadTree, pineTree, bush, flowerPatch, lavender } from "../world/sprites.js";
@@ -64,9 +64,23 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
     <div class="ti-logo"><div class="ti-title" role="heading" aria-level="1" aria-label="QUIZ ODYSSEY"><canvas class="ti-compass" aria-hidden="true"></canvas><span class="w" aria-hidden="true">${raw(letters("QUIZ", 0))}</span><span class="w" aria-hidden="true">${raw(letters("ODYSSEY", 4))}</span></div>
       <div class="ti-ribbon"><span>✦ ผจญภัยแห่งความรู้ ✦</span></div></div>
     <nav class="ti-menu" aria-label="เมนูหลัก">
-      <button type="button" data-a="play">▶ เริ่มผจญภัย</button><button type="button" data-a="custom">🎨 แต่งตัวละคร</button><button type="button" data-a="settings">⚙️ ตั้งค่า</button></nav>
+      <button type="button" data-a="play">▶ เริ่มผจญภัย</button><button type="button" data-a="goal">📜 เป้าหมายของเกม</button><button type="button" data-a="settings">⚙️ ตั้งค่า</button></nav>
     <p class="ti-press" aria-hidden="true">แตะหน้าจอหรือกดปุ่มใดก็ได้</p>
     <button type="button" class="ti-skip">ข้าม ⏭</button>
+    <section class="ti-cc ti-goal" aria-labelledby="goalT" hidden>
+      <h2 id="goalT" class="ti-cc-t">เป้าหมายของเกม</h2>
+      <div class="cc-box goal-box">
+        <p class="goal-lead">🧭 ดินแดนแห่งโอดิสซีย์ถูก <b>บอสแห่งความไม่รู้</b> ยึดไว้ ภารกิจของคุณคือออกผจญภัยตอบคำถามให้ถูก ปราบบอสในทุกบ้านวิชา และสะสมดาวจนได้ยศ <b>“ตำนานแห่งโอดิสซีย์”</b></p>
+        <ol class="goal-steps">
+          <li><span>🏘️</span><div><b>เดินสำรวจหมู่บ้าน</b>เข้าบ้านวิชา 9 หมวด (คณิต วิทย์ ไทย อังกฤษ ฯลฯ) แล้วเลือกบทเรียนจากกระดานภารกิจ</div></li>
+          <li><span>🃏</span><div><b>ตอบด้วยการ์ดสกิล</b>คำตอบแต่ละใบมีสกิลโจมตี ตอบถูกตัวละครร่ายเวทใส่บอส ตอบผิดบอสโจมตีสวน — ตอบถูกครบทุกข้อเพื่อปราบบอส</div></li>
+          <li><span>⭐</span><div><b>เก็บดาว 1–3 ดวง</b>ทุกบทเรียนมี 5 ระดับ ผ่าน 60% ได้ ★ · 80% ได้ ★★ · เต็มได้ ★★★ และได้ดาวแล้วจะปลดล็อกระดับยากขึ้น</div></li>
+          <li><span>🎁</span><div><b>สะสมดาวแลกรางวัล</b>ครบตามเป้ารับเหรียญ ครบ 20 ดาวปลดล็อก <b>บอสร่างจ้าว</b> สุดโหด</div></li>
+          <li><span>🛒</span><div><b>ใช้เหรียญที่ร้านค้า</b>ซื้อกล่องสุ่ม ชุด กรอบรูป ธีม แล้วแต่งตัวในกระเป๋า</div></li>
+          <li><span>🆙</span><div><b>เลเวลอัปรับยศใหม่</b>จากนักผจญภัยฝึกหัด → นักสำรวจ → อัศวินความรู้ → … → ตำนานแห่งโอดิสซีย์</div></li>
+        </ol>
+        <div class="cc-act"><button type="button" data-goal="back">⬅ กลับเมนู</button><button type="button" data-goal="play" class="pri">▶ เริ่มผจญภัยเลย</button></div>
+      </div></section>
     <section class="ti-cc" aria-labelledby="ccT" hidden>
       <h2 id="ccT" class="ti-cc-t">สร้างตัวละคร</h2>
       <div class="cc-box">
@@ -111,14 +125,16 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
   // ---------- เมนู ----------
   const menu = root.querySelector(".ti-menu"), mBtns = [...menu.querySelectorAll("button")];
   const focusMenu = (i) => { mBtns.forEach((b, j) => b.classList.toggle("on", j === i)); mBtns[i].focus({ preventScroll: true }); };
-  function toMenu() { timers.forEach(clearTimeout); timers = []; qT0 = qT0 || performance.now() - 5000; root.classList.add("s-logo", "s-ribbon"); setStage("menu"); root.querySelector(".ti-cc").hidden = true; menu.hidden = false; later(reduced ? 0 : 450, () => focusMenu(0)); }
+  function toMenu() { timers.forEach(clearTimeout); timers = []; qT0 = qT0 || performance.now() - 5000; root.classList.add("s-logo", "s-ribbon"); setStage("menu"); root.querySelectorAll(".ti-cc").forEach((x) => (x.hidden = true)); menu.hidden = false; later(reduced ? 0 : 450, () => focusMenu(0)); }
   function skip() { if (stage === "intro" || stage === "logo") toMenu(); }
   menu.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const a = b.dataset.a;
-    if (a === "play") { if (loadProfile()) enter(); else openCC("play"); } else if (a === "custom") openCC("menu"); else if (a === "settings") { close(); go("/settings"); } });
+    if (a === "play") play(); else if (a === "goal") openGoal(); else if (a === "settings") { close(); go("/settings"); } });
+  menu.addEventListener("focusin", (e) => { const i = mBtns.indexOf(e.target.closest("button")); if (i >= 0) mBtns.forEach((b, j) => b.classList.toggle("on", j === i)); });
   menu.addEventListener("mouseover", (e) => { const i = mBtns.indexOf(e.target.closest("button")); if (i >= 0) mBtns.forEach((b, j) => b.classList.toggle("on", j === i)); });
 
   // ---------- สร้างตัวละคร ----------
-  const cc = root.querySelector(".ti-cc"), prev = cc.querySelector("#ccPrev"), px = prev.getContext("2d");
+  const goal = root.querySelector(".ti-goal");
+  const cc = root.querySelector(".ti-cc:not(.ti-goal)"), prev = cc.querySelector("#ccPrev"), px = prev.getContext("2d");
   let dirI = 0, walking = !reduced, frameCache = new Map(); const DIRS = [0, 1, 3, 2];
   function syncRows() {
     cc.querySelectorAll(".cc-row[data-k]").forEach((row) => { const k = row.dataset.k, [nm, val] = OPT[k][parts[k]];
@@ -134,6 +150,13 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
     px.drawImage(f.c, Math.round(30 - f.ax), Math.round(63 - f.ay));
   }
   let ccRaf = 0; const ccLoop = (now) => { if (!alive || cc.hidden) return; ccRaf = requestAnimationFrame(ccLoop); drawPrev(now); };
+  // เริ่มผจญภัย: ยังไม่ได้เข้าสู่ระบบ → ไปหน้าเข้าสู่ระบบ · เข้าแล้วแต่ยังไม่มีตัวละคร → สร้างตัวละคร · พร้อมแล้ว → เข้าหมู่บ้าน
+  function play() {
+    if (state.config?.cloud && !state.me?.cloud) { close(); go("/login?next=/"); return; }
+    if (loadProfile()) enter(); else openCC("play");
+  }
+  function openGoal() { setStage("cc"); menu.hidden = true; goal.hidden = false; goal.querySelector('[data-goal="play"]').focus({ preventScroll: true }); }
+  goal.addEventListener("click", (e) => { const b = e.target.closest("[data-goal]"); if (!b) return; if (b.dataset.goal === "back") toMenu(); else play(); });
   function openCC(src) { from = src; setStage("cc"); menu.hidden = true; cc.hidden = false; syncRows(); cancelAnimationFrame(ccRaf); ccRaf = requestAnimationFrame(ccLoop); cc.querySelector("#ccName").focus({ preventScroll: true }); }
   cc.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.d) { const k = b.closest(".cc-row").dataset.k, n = OPT[k].length; parts[k] = (parts[k] + +b.dataset.d + n) % n; syncRows(); }
