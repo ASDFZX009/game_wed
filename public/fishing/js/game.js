@@ -471,7 +471,7 @@ function render(dt){
 }
 // debug/test helper: advance the simulation manually (used for automated testing)
 window.__step=function(n,dt){ dt=dt||1/60; for(let i=0;i<(n||1);i++){ T+=dt; update(dt); } render(dt); };
-function frame(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; T+=dt; try{ update(dt); render(dt); }catch(err){ console.error(err); } requestAnimationFrame(frame); }
+function frame(now){ const dt=Math.max(0,Math.min(0.05,(now-last)/1000)); last=now; T+=dt; try{ update(dt); render(dt); }catch(err){ console.error(err); } requestAnimationFrame(frame); }
 
 /* ------------------------------------------------------------------ */
 /* Boot                                                                 */

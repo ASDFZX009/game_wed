@@ -340,7 +340,7 @@ function drawBoatGroup(c,st,t){
   st.boatPos = {x:bx, y:deckY};
   // mast + lantern + flag at stern
   G.rect(c,bx+7,deckY-38,2,38,'#3a2416'); G.px(c,bx+7,deckY-38,'#6a4a2a');
-  const fw=Math.floor(t*5)%3; const flagRows=[[6,5,4,3,2],[6,6,5,3,2],[5,5,4,4,2]][fw];
+  const fw=((Math.floor(t*5)%3)+3)%3; const flagRows=[[6,5,4,3,2],[6,6,5,3,2],[5,5,4,4,2]][fw];
   flagRows.forEach((w,i)=>G.rect(c,bx+9,deckY-38+i,w,1, i%2?'#e8e0d0':'#d83a3a'));
   G.rect(c,bx+9,deckY-30,6,1,'#3a2416'); G.rect(c,bx+13,deckY-29,1,2,'#3a2416');
   G.rect(c,bx+11,deckY-27,5,6,'#2a1a10'); G.rect(c,bx+12,deckY-26,3,4,'#ffd27a');
