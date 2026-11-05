@@ -1,6 +1,7 @@
 // 🎣 เกมตอบคำถาม: AWS Fishing (โดย NAViK3069) แสดงในกรอบใต้แถบเมนูของ QUIZ ODYSSEY
 import { html, state } from "../core.js";
-import { onLeave } from "../app.js";
+import { onLeave, refreshMe } from "../app.js";
+import { openExchange, attachFrame, detachFrame } from "../fishbank.js";
 
 export function quizGame({ main }) {
   const src = state.config?.local ? "fishing/index.html" : "/fishing/index.html";
@@ -9,6 +10,7 @@ export function quizGame({ main }) {
     <div class="qg-bar">
       <span class="qg-ic" aria-hidden="true">🎣</span>
       <div class="qg-t"><h1 id="qg-title">EduFishing</h1><span>ตกปลา · ตอบคำถาม 9 วิชา ป.1–ม.6 · ยิ่งออกทะเลไกล คำถามยิ่งยาก</span></div>
+      ${state.config?.local ? html`<button class="qg-btn xch-btn" id="qgX" type="button">💱 แลกเป็นเหรียญ 🪙</button>` : ""}
       <button class="qg-btn" id="qgFull" type="button">⛶ เต็มจอ</button>
       <a class="qg-btn ghost" href="${src}" target="_blank" rel="noopener">เปิดในแท็บใหม่ ↗</a>
     </div>
@@ -21,5 +23,7 @@ export function quizGame({ main }) {
     try { await frame.requestFullscreen(); }
     catch { window.open(src, "_blank", "noopener"); }
   };
-  onLeave(() => document.body.classList.remove("immersive"));
+  attachFrame(frame);
+  main.querySelector("#qgX")?.addEventListener("click", () => openExchange({ onDone: () => refreshMe().catch(() => {}) }));
+  onLeave(() => { detachFrame(); document.body.classList.remove("immersive"); });
 }

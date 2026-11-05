@@ -435,6 +435,16 @@ on("POST", "/api/shop/equip", (_p, b) => {
   else delete S.equipped[b.slot];
   save(); return { ok: true, equipped: equippedView() };
 });
+// 💱 แลกเงินจากเกมตกปลา → เหรียญเกมหลัก (หักเงิน G ฝั่งเกมตกปลาก่อน แล้วจึงเรียก API นี้) · จำกัดต่อวัน
+const XCH_CAP = 300;
+const xchLeft = () => { const d = dayKey(new Date()); if (!S.xch || S.xch.day !== d) S.xch = { day: d, got: 0 }; return Math.max(0, XCH_CAP - S.xch.got); };
+on("GET", "/api/exchange/fish", () => ({ rate: 5, cap: XCH_CAP, left: xchLeft(), coins: S.coins }));
+on("POST", "/api/exchange/fish", (_p, b) => {
+  const n = Math.floor(+b.coins || 0), left = xchLeft();
+  if (!(n > 0)) throw err(400, "จำนวนไม่ถูกต้อง"); if (n > left) throw err(400, left ? `วันนี้แลกได้อีกไม่เกิน 🪙 ${left}` : "วันนี้แลกครบโควตาแล้ว");
+  S.xch.got += n; addCoins(n, "exchange", `แลกจากเกมตกปลา ${n * 5} G`); S.activity.unshift({ kind: "exchange", title: `แลกเงินเกมตกปลา ${n * 5} G → 🪙 ${n}`, xp: 0, created_at: now() }); save();
+  return { coins: S.coins, left: xchLeft(), got: n };
+});
 on("POST", "/api/shop/box", (_p, b) => {
   const box = BOXES.find((x) => x.id === b.boxId);
   if (!box) throw err(404, "ไม่พบกล่องนี้");

@@ -482,6 +482,15 @@ try{ const v=localStorage.getItem('awsfishing.vol'); if(v!==null){ $('vol').valu
 st.inv.setLevel(0); st.hp=maxHp();
 setSceneClass(); stage.classList.add('scene-title');
 $('btnContinue').style.display = hasSave()?'':'none';
+/* ธนาคารเชื่อมกับ QUIZ ODYSSEY: แลก G ในเกมตกปลาเป็นเหรียญ 🪙 ของเกมหลัก (เรียกจากหน้าหลักที่เปิดเกมนี้ในกรอบ) */
+const bankLive=()=>!$('title').classList.contains('on');
+window.QO_BANK={
+  balance(){ if(bankLive()) return st.coins|0; try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); return s? (s.coins|0):0; }catch(e){ return 0; } },
+  withdraw(n){ n=Math.floor(n); if(!(n>0)) return false;
+    if(bankLive()){ if(st.coins<n) return false; st.coins-=n; save(); A.sfx('coin'); floatText('-'+n+' G',272,206,'#ffd860'); return true; }
+    try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(!s||(s.coins|0)<n) return false; s.coins=(s.coins|0)-n; localStorage.setItem(SAVE_KEY,JSON.stringify(s)); return true; }catch(e){ return false; } },
+  deposit(n){ n=Math.floor(n); if(!(n>0)) return; if(bankLive()){ st.coins+=n; save(); return; } try{ const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(s){ s.coins=(s.coins|0)+n; localStorage.setItem(SAVE_KEY,JSON.stringify(s)); } }catch(e){} },
+};
 $('title').classList.add('on');
 ['shopPanel','upgPanel'].forEach(id=>$(id).addEventListener('pointerleave',hideTip));
 requestAnimationFrame(frame);

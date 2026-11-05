@@ -3,11 +3,12 @@ import { api, html, raw, state, toast, confetti, confirmBox, fmtDate, avatar, ti
 import { go, refreshMe, onLeave } from "../app.js";
 import { mountShopScene, chestImg } from "./shopscene.js";
 import { playBoxOpening } from "../boxfx.js";
+import { openExchange, fishBalance, hasFishSave, RATE } from "../fishbank.js";
 import { myLook } from "../look.js";
 import { playSound, setPrefs, getPrefs, playTick, reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TYPE_IC = { avatar: "🐱", pfp: "🎭", frame: "🖼️", title: "🏷️", theme: "🎨", sound: "🎵", effect: "🎉", background: "🌌" };
-const REASON = { admin: "ผู้ดูแลระบบ", gift: "ของขวัญจากผู้ดูแล", game: "เล่นเกม", quiz: "ส่งแบบทดสอบ", buy: "ซื้อ", box: "เปิดกล่อง", duplicate: "ได้ของซ้ำ คืนเหรียญ", free_box: "เปิดกล่องฟรี" };
+const REASON = { admin: "ผู้ดูแลระบบ", gift: "ของขวัญจากผู้ดูแล", game: "เล่นเกม", quiz: "ส่งแบบทดสอบ", buy: "ซื้อ", box: "เปิดกล่อง", duplicate: "ได้ของซ้ำ คืนเหรียญ", free_box: "เปิดกล่องฟรี" , exchange: "แลกจากเกมตกปลา", stars: "รางวัลสะสมดาว" };
 
 export function itemVisual(it, big = false) {
   switch (it.type) {
@@ -33,13 +34,15 @@ export async function shop({ main, query }) {
     const ownedCount = d.items.filter((x) => x.owned).length;
     const look = me?.equipped || {};
     const wallet = main.querySelector("#ssWallet");
-    if (wallet) wallet.innerHTML = me ? html`${avatar(look, "lg")}<div><div class="nm">${me.displayName}</div><div class="amt" id="coinAmt">🪙 ${d.coins.toLocaleString("th-TH")}</div></div>`.s : html`<a href="/login?next=/shop">🔐 เข้าสู่ระบบ</a>`.s;
+    if (wallet) wallet.innerHTML = me ? html`${avatar(look, "lg")}<div><div class="nm">${me.displayName}</div><div class="amt" id="coinAmt">🪙 ${d.coins.toLocaleString("th-TH")}</div>${state.config?.local ? html`<button type="button" class="ss-xch" id="ssX">💱 แลกจากเกมตกปลา</button>` : ""}</div>`.s : html`<a href="/login?next=/shop">🔐 เข้าสู่ระบบ</a>`.s;
     body.innerHTML = html`
       ${!me ? html`<div class="note">👋 ดูของในร้านได้เลย — <a href="/login?next=/shop">เข้าสู่ระบบ</a> แล้วเล่นเกมเพื่อสะสมเหรียญมาแลกของ</div>` : ""}
       <details class="info small" style="margin-top:14px"><summary><b>ได้เหรียญ 🪙 จากไหน?</b></summary>
         <ul style="margin:6px 0 0"><li>เล่นเกมจบ 1 ครั้ง ได้สูงสุด 50 เหรียญ (ตามสัดส่วนคะแนน)</li><li>ส่งแบบทดสอบ ได้สูงสุด 20 เหรียญ</li><li>เปิดกล่องสุ่มธรรมดาฟรีวันละ 1 ครั้ง</li><li>ของที่ได้ทั้งหมดอยู่ใน <a href="/bag">🎒 กระเป๋า</a> เลือกใส่/ใช้ได้ที่นั่น</li><li>ได้ของซ้ำจากกล่องสุ่ม ระบบคืนเหรียญให้ (ธรรมดา 20 · หายาก 50 · ล้ำค่า 120 · ตำนาน 300)</li></ul>
         <p style="margin:6px 0 0">เหรียญแยกจาก XP — ใช้เหรียญซื้อของแล้วระดับ (Level) ไม่ลดลง · ไม่มีการซื้อเหรียญด้วยเงินจริง</p></details>
 
+      ${me && state.config?.local ? html`<div class="xch-strip"><span class="ic">🎣</span><div class="grow"><b>เงินในเกมตกปลา ${hasFishSave() ? html`<span class="g">${fishBalance().toLocaleString("th-TH")} G</span>` : ""}</b>
+        <span class="small">ตกปลาตอบคำถามแล้วเอาเงินมาแลกเป็นเหรียญ 🪙 ได้ · ${RATE} G = 🪙 1</span></div><button class="btn" id="xchOpen">💱 แลกเหรียญ</button></div>` : ""}
       <h2>🎁 กล่องสุ่ม</h2>
       <div class="boxes">${d.boxes.map((b) => html`<div class="lootbox ${b.id === "gold" ? "gold" : b.id === "profile" ? "profile" : ""}">
         <img class="big chest" src="${chestImg(b.id)}" alt="" aria-hidden="true"><h3>${b.name}</h3><p>${b.desc}</p>
@@ -80,6 +83,8 @@ export async function shop({ main, query }) {
     main.querySelectorAll("[data-equip]").forEach((b) => b.onclick = async () => { await api("/api/shop/equip", { body: { slot: b.dataset.slot, itemId: b.dataset.equip } }); toast("ใส่แล้ว ✨"); await reload(); });
     main.querySelectorAll("[data-unequip]").forEach((b) => b.onclick = async () => { await api("/api/shop/equip", { body: { slot: b.dataset.unequip, itemId: null } }); toast("ถอดแล้ว"); await reload(); });
     main.querySelectorAll("[data-theme]").forEach((b) => b.onclick = () => { setPrefs({ palette: b.dataset.theme }); toast("เปลี่ยนธีมแล้ว 🎨"); render(); });
+    const ex = () => openExchange({ onDone: () => reload() });
+    main.querySelector("#xchOpen")?.addEventListener("click", ex); main.querySelector("#ssX")?.addEventListener("click", ex);
     main.querySelectorAll("[data-box]").forEach((b) => b.onclick = () => openBox(b.dataset.box, !!b.dataset.free, +b.dataset.times || 1));
     main.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => playTick(0, b.dataset.play, true));
     main.querySelectorAll("[data-usesound]").forEach((b) => b.onclick = () => { setPrefs({ tickSound: b.dataset.usesound }); playTick(0, b.dataset.usesound); toast("เปลี่ยนเสียงนับคะแนนแล้ว 🎵"); render(); });
