@@ -2,7 +2,7 @@
 import { PB, PAL, hash, vnoise, clamp, hex, mix, tone, ramp, pick, cylLight, outline, blob, cylinder, canvas } from "../world/art.js";
 import { grassRGB, dirtRGB } from "../world/ground.js";
 import { broadTree, pineTree, bush, flowerPatch, plateau, fence, PROP } from "../world/sprites.js";
-import { charFrame } from "../world/chars.js";
+import { charFrame, idlePose } from "../world/chars.js";
 import { VILLAGERS } from "./world.js";
 
 const H = 190;
@@ -66,7 +66,7 @@ export function mountQuestScene(host, { shirt = "#5b3df5", look = null, reduced 
   const view = document.createElement("canvas"); view.className = "qs-canvas"; view.setAttribute("aria-hidden", "true");
   host.prepend(view);
   const bubble = host.querySelector(".ss-bubble");
-  const clerk = [charFrame(0, 0, CLERK), charFrame(0, 1, CLERK)], HL = look || { shirt, pants: "#2a3550", hair: "#3a2a20" }, heroFr = [charFrame(3, 0, HL), charFrame(3, 1, HL)];
+  const HL = look || { shirt, pants: "#2a3550", hair: "#3a2a20" }, CF = new Map(), HF = new Map(), clerkAt = (p) => CF.get(p) || (CF.set(p, charFrame(0, 0, CLERK, p)), CF.get(p)), heroAt = (p) => HF.get(p) || (HF.set(p, charFrame(3, 0, HL, p)), HF.get(p));
   const lamp = PROP.lamp(), barrel = PROP.barrel(), crate = PROP.crate(), sign = PROP.sign();
   const [buf, bx] = canvas(10, 10);
   let S = 1.5, W = 0, dpr = 1, bg = null, board = null, L = null, raf = 0, line = 0, lineT = 0, smooth = false;
@@ -103,8 +103,8 @@ export function mountQuestScene(host, { shirt = "#5b3df5", look = null, reduced 
     for (const lx of [L.board - L.bw / 2 - 52, L.board + L.bw / 2 + 12]) { x.fillStyle = `rgba(255,200,110,${0.08 + (reduced ? 0 : 0.03 * Math.sin(t * 3 + lx))})`; x.beginPath(); x.arc(lx, by - 52, 20, 0, 7); x.fill(); }
     x.globalCompositeOperation = "source-over";
     const step = reduced ? 0 : Math.floor(t * 1.4) % 2;
-    shadow(L.clerk, by + 2, 10); put(clerk[Math.sin(t * 2) > 0.85 ? 1 : 0], L.clerk, by + 2);
-    if (L.hero > 0) { shadow(L.hero, by + 6, 10); put(heroFr[step], L.hero, by + 6); }
+    shadow(L.clerk, by + 2, 10); put(clerkAt(reduced ? 0 : idlePose(t, 2.1)), L.clerk, by + 2);
+    if (L.hero > 0) { shadow(L.hero, by + 6, 10); put(heroAt(reduced ? 0 : idlePose(t, 0)), L.hero, by + 6); }
     // ประกายเล็ก ๆ รอบกระดาน
     if (!reduced) for (let i = 0; i < 8; i++) { const ph = (t * 0.25 + hash(i, 5, 2)) % 1, px = L.board - L.bw / 2 + hash(i, 6, 2) * L.bw, py = by - 30 - ph * 80;
       x.fillStyle = `rgba(255,240,170,${0.7 * Math.sin(ph * Math.PI)})`; x.fillRect(Math.round(px), Math.round(py), 2, 2); }

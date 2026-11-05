@@ -18,7 +18,7 @@ export function assignmentHref(a, classId) {
 function drawHero(cv) {
   const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
   const f = charFrame(0, 0, myLook(/^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5")), x = cv.getContext("2d");
-  cv.width = 44; cv.height = 58; x.imageSmoothingEnabled = false; x.fillStyle = "rgba(30,20,10,.3)"; x.beginPath(); x.ellipse(22, 54, 12, 3, 0, 0, 7); x.fill(); x.drawImage(f.c, Math.round(22 - f.ax), Math.round(55 - f.ay));
+  cv.width = 52; cv.height = 72; x.imageSmoothingEnabled = false; x.fillStyle = "rgba(30,20,10,.3)"; x.beginPath(); x.ellipse(26, 68, 13, 3, 0, 0, 7); x.fill(); x.drawImage(f.c, Math.round(26 - f.ax), Math.round(69 - f.ay));
 }
 // ภาพบอสในสมุด (ยังไม่เคยเจอ = เงาดำ)
 function drawBoss(cv, id, seen, elite) {

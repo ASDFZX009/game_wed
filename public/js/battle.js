@@ -16,7 +16,7 @@ import { html, raw, esc, toast } from "./core.js";
 import { PB, PAL, hex, ramp, pick, blob, outline, canvas, hash, vnoise, mix, tone, sphereLight } from "./world/art.js";
 import { grassRGB } from "./world/ground.js";
 import { plateau, broadTree, bush } from "./world/sprites.js";
-import { charFrame } from "./world/chars.js";
+import { charFrame, idlePose } from "./world/chars.js";
 import { BOSSES } from "./bosses.js";
 
 const PXFX = globalThis.PXFX;
@@ -96,7 +96,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
   const stage = host.querySelector("#btStage"), bg = host.querySelector(".bt-bg"), fxc = host.querySelector(".bt-fx"), hand = host.querySelector("#btHand"), foot = host.querySelector("#btFoot"), pop = host.querySelector("#btPop");
   const view = new PXFX.View(fxc, 240, 150); view.mode = "3d"; view.yaw = 0; view.pitch = 0.3; view.transparent = true; view.noProps = true; view.tune = { density: 1 };
   const boss = B.make(bossColor);
-  const heroFrames = new Map(), hf = (dir, step) => { const k = heroI + ":" + dir + ":" + step; if (!heroFrames.has(k)) heroFrames.set(k, charFrame(dir, step, HEROES[heroI].look)); return heroFrames.get(k); };
+  const heroFrames = new Map(), hf = (dir, step, pose = 0) => { const k = heroI + ":" + dir + ":" + step + ":" + pose; if (!heroFrames.has(k)) heroFrames.set(k, charFrame(dir, step, HEROES[heroI].look, pose)); return heroFrames.get(k); };
   let S = 2, W = 0, H = 170, GY = 96, bgc = null, raf = 0, alive = true;
   const pos = () => ({ hx: Math.round(W * 0.2), bx: Math.round(W * 0.76), fy: H - (S === 1 ? 24 : 34) }); // ยกพื้นขึ้นเล็กน้อยบนจอใหญ่ ไม่ให้การ์ดบังวงเวทใต้เท้า
 
@@ -141,11 +141,11 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       x.globalCompositeOperation = "source-over"; }
     if (state.combo >= 3 && !reduced) { x.globalCompositeOperation = "lighter"; const g = x.createRadialGradient(hx + 2, fy - 24, 2, hx + 2, fy - 24, 30);
       g.addColorStop(0, `rgba(${er},${eg},${eb},${0.18 + 0.06 * Math.sin(t * 9)})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`); x.fillStyle = g; x.fillRect(hx - 30, fy - 56, 64, 64); x.globalCompositeOperation = "source-over"; }
-    const f = hf(hurt ? 1 : 2, step), hxo = hurt ? -5 : casting ? 4 : 0, lift = charging ? -Math.round(ch * 3) : 0;
+    const f = hf(hurt ? 1 : 2, step, step || reduced ? 0 : idlePose(t, 0)), hxo = hurt ? -5 : casting ? 4 : 0, lift = charging ? -Math.round(ch * 3) : 0;
     sh(hx, fy, 16); x.drawImage(f.c, hx - f.ax + hxo, fy - f.ay + lift + (reduced ? 0 : Math.round(Math.sin(t * 3) * 0.6)));
     if (charging) { x.globalCompositeOperation = "lighter"; const hx2 = hx + 12, hy2 = fy - 22 + lift, g = x.createRadialGradient(hx2, hy2, 0, hx2, hy2, 6 + ch * 6);
       g.addColorStop(0, `rgba(255,255,255,${0.9 * ch})`); g.addColorStop(0.4, `rgba(${er},${eg},${eb},${0.7 * ch})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`); x.fillStyle = g; x.fillRect(hx2 - 14, hy2 - 14, 28, 28); x.globalCompositeOperation = "source-over"; }
-    if (hurt && Math.floor(now / 70) % 2 === 0) { x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(255,60,60,.5)"; x.fillRect(hx - 20, fy - 54, 40, 56); x.globalCompositeOperation = "source-over"; }
+    if (hurt && Math.floor(now / 70) % 2 === 0) { x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(255,60,60,.5)"; x.fillRect(hx - 24, fy - 68, 48, 70); x.globalCompositeOperation = "source-over"; }
   }
   const loop = (now) => { if (!alive) return; raf = requestAnimationFrame(loop); draw(now); };
 

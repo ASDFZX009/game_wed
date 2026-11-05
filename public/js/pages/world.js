@@ -6,7 +6,7 @@ import { groundTypes, groundBaker } from "../world/ground.js";
 import { windmill, windmillSails, gazebo, greatTree, ruinArch, scarecrow, hayBale, stoneLantern } from "../world/landmarks.js";
 import { broadTree, pineTree, bush, flowerPatch, lavender, plateau, fence, PROP, HOUSE, house, dockSign, pillar, crystal } from "../world/sprites.js";
 import { subjectSign, drawSignFx, SIGN_FX } from "../world/signs.js";
-import { charFrame, foxFrame, silhouette } from "../world/chars.js";
+import { charFrame, foxFrame, silhouette, idlePose } from "../world/chars.js";
 import { joinVillage, EMOTES } from "../net/village.js";
 import { toLook, ROWS, OPT } from "../look.js";
 
@@ -294,7 +294,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   const hero = { x: (start ? start.ex : home[0]) * T + 16, y: ((start ? start.ey : home[1]) + 0.6) * T, dir: 0, step: 0, stepT: 0, path: null, target: null };
   const fox = { x: (PLAZA.x + 2) * T, y: (PLAZA.y + 2) * T, tx: 0, ty: 0, face: 1, step: 0, wait: 1 };
   const heroLook = look ? { ...look } : { shirt, pants: "#2a3550", hair: "#3a2a20" };
-  const frames = (key, look) => (dir, step) => spr(`${key}${dir}${step}`, () => charFrame(dir, step, look));
+  const frames = (key, look) => (dir, step, pose = 0) => spr(`${key}${dir}${step}p${pose}`, () => charFrame(dir, step, look, pose));
   const heroF = frames("hero", heroLook);
   const npcs = M.npcs.map((n, i) => ({ ...n, fx: n.x * T + 16, fy: n.y * T + 26, F: frames("npc" + i, n.look), phase: i * 0.7 }));
   const keys = new Set();
@@ -316,7 +316,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   const PEER_SHIRTS = ["#c8402e", "#3a78c8", "#3c8a3c", "#d8a828", "#8a5ae0", "#e870a0", "#2fa88a", "#b8602a"];
   const lookOf = (p) => { if (p.parts) { const q = {}; for (const [k] of ROWS) { const v = p.parts[k]; q[k] = Number.isInteger(v) && v >= 0 && v < OPT[k].length ? v : 0; } return [JSON.stringify(q), toLook(q)]; }
     let h = 0; for (const ch of p.id) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return ["d" + (h % 8), { shirt: PEER_SHIRTS[h % 8], pants: "#2a3550", hair: ["#3a2a20", "#1e1a18", "#8a5a2a", "#e0b860"][h % 4] }]; };
-  const peerF = (p, dir, step) => { const [k, L] = p._look && p._lk === JSON.stringify(p.parts) ? p._look : (p._lk = JSON.stringify(p.parts), p._look = lookOf(p)); return spr(`peer${k}:${dir}${step}`, () => charFrame(dir, step, L)); };
+  const peerF = (p, dir, step) => { const [k, L] = p._look && p._lk === JSON.stringify(p.parts) ? p._look : (p._lk = JSON.stringify(p.parts), p._look = lookOf(p)); return spr(`peer${k}:${dir}${step}p${p.pose || 0}`, () => charFrame(dir, step, L, p.pose || 0)); };
   const emotes = new Map(); // id → { e, until } (id "me" = ตัวเรา)
   let online = null, mpOn = (() => { try { return localStorage.getItem("qo:mp") !== "off"; } catch { return true; } })();
   const mpPill = mp.querySelector(".wo-pill"), mpEm = mp.querySelector(".wo-emotes"), mpTog = mp.querySelector('[data-mp="toggle"]'), mpEmBtn = mp.querySelector('[data-mp="emote"]');
@@ -395,7 +395,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     if (mx || my) hero.path = null, hero.target = null;
     else if (hero.path && hero.path.length) { const [tx, ty] = hero.path[0], gx2 = tx * T + 16, gy2 = ty * T + 20; const dx = gx2 - hero.x, dy = gy2 - hero.y, d = Math.hypot(dx, dy);
       if (d < 3) { hero.path.shift(); if (!hero.path.length) { hero.path = null; if (hero.target) { const t = hero.target; hero.target = null; hero.dir = 3; enter(t); } } } else { mx = dx / d; my = dy / d; } }
-    const moving = !!(mx || my);
+    const moving = !!(mx || my); hero.moving = moving;
     if (moving) { const l = Math.hypot(mx, my) || 1, vx = mx / l * speed * dt, vy = my / l * speed * dt;
       if (!solid(hero.x + vx, hero.y)) hero.x += vx; if (!solid(hero.x, hero.y + vy)) hero.y += vy;
       hero.dir = Math.abs(mx) > Math.abs(my) ? (mx < 0 ? 1 : 2) : my < 0 ? 3 : 0;
@@ -469,11 +469,12 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
       for (let b = b0; b <= b1; b++) for (let a = a0; a <= a1; a++) { const c = chunks.get(b * NCX + a); if (c) x.drawImage(c, a * CH - cx, b * CH - cy); } }
     // เงาตัวละคร (ยืดตามแดด)
     x.globalAlpha = SHADOW_A;
-    const hf = heroF(hero.dir, hero.step), ff = spr(`fox${fox.face}${fox.step % 2}`, () => foxFrame(fox.face, fox.step % 2));
+    const tI = reduced ? 0 : now / 1000, hf = heroF(hero.dir, hero.moving ? hero.step + 1 : 0, hero.moving ? 0 : idlePose(tI, 0)), ff = spr(`fox${fox.face}${fox.step % 2}`, () => foxFrame(fox.face, fox.step % 2));
     dynShadow(x, hf, hero.x, hero.y, cx, cy); dynShadow(x, ff, fox.x, fox.y, cx, cy);
     const peersIn = online ? [...online.peers.values()].filter((p) => p.rx > cx - 60 && p.rx < cx + vw + 60 && p.ry > cy - 20 && p.ry < cy + vh + 80) : [];
-    for (const p of peersIn) dynShadow(x, peerF(p, p.dir, p.step || 0), p.rx, p.ry, cx, cy);
-    for (const n of npcs) if (n.fx > cx - 80 && n.fx < cx + vw + 80 && n.fy > cy - 20 && n.fy < cy + vh + 80) dynShadow(x, n.F(n.dir, 0), n.fx, n.fy, cx, cy);
+    for (const p of peersIn) p.pose = p.walking ? 0 : idlePose(tI, (p.id.charCodeAt(0) % 7) * 0.9);
+    for (const p of peersIn) dynShadow(x, peerF(p, p.dir, p.walking ? (p.step || 0) + 1 : 0), p.rx, p.ry, cx, cy);
+    for (const n of npcs) if (n.fx > cx - 80 && n.fx < cx + vw + 80 && n.fy > cy - 20 && n.fy < cy + vh + 80) dynShadow(x, n.F(n.dir, 0, idlePose(tI, n.phase * 2.3)), n.fx, n.fy, cx, cy);
     x.globalAlpha = 1;
     x.save(); x.translate(-cx, -cy);
     if (!reduced) for (let i = 0; i < 90; i++) { const wx = 54 * T + ((i * 53) % (26 * T)), wy = 32 * T + ((i * 37) % (17 * T)) + Math.sin(now / 600 + i) * 3; const [tx, ty] = tileAt(wx, wy);
@@ -484,8 +485,8 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     const list = objects.filter((o) => o.x1 >= cx && o.x0 <= cx + vw && o.bot >= cy && o.top <= cy + vh);
     list.push({ y: fox.y, draw: (c) => c.drawImage(ff.c, Math.round(fox.x) - ff.ax, Math.round(fox.y) - ff.ay) });
     list.push({ y: hero.y, draw: (c) => c.drawImage(hf.c, Math.round(hero.x) - hf.ax, Math.round(hero.y) - hf.ay) });
-    for (const p of peersIn) list.push({ y: p.ry, draw: (c) => { const f = peerF(p, p.dir, p.step || 0); c.drawImage(f.c, Math.round(p.rx) - f.ax, Math.round(p.ry) - f.ay); } });
-    for (const n of npcs) list.push({ y: n.fy, draw: (c) => { const f = n.F(n.dir, 0), b = !reduced && Math.sin(now / 700 + n.phase) > 0.6 ? 1 : 0; c.drawImage(f.c, n.fx - f.ax, n.fy - f.ay + b); } });
+    for (const p of peersIn) list.push({ y: p.ry, draw: (c) => { const f = peerF(p, p.dir, p.walking ? (p.step || 0) + 1 : 0); c.drawImage(f.c, Math.round(p.rx) - f.ax, Math.round(p.ry) - f.ay); } });
+    for (const n of npcs) list.push({ y: n.fy, draw: (c) => { const f = n.F(n.dir, 0, idlePose(tI, n.phase * 2.3)), b = 0; c.drawImage(f.c, n.fx - f.ax, n.fy - f.ay + b); } });
     list.sort((a, b) => a.y - b.y);
     for (const o of list) o.draw(x, now);
     magicFront(x, t, vb);
@@ -536,7 +537,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
       g.fillStyle = "rgba(0,0,0,.3)"; g.fillRect(Lx + 3 * dpr, Tp + 3 * dpr, w, h); g.fillStyle = "#1a1420"; g.fillRect(Lx - 2 * dpr, Tp - 2 * dpr, w + 4 * dpr, h + 4 * dpr); g.fillStyle = "#fffdf6"; g.fillRect(Lx, Tp, w, h);
       g.beginPath(); g.moveTo(X - 6 * dpr, Tp + h); g.lineTo(X, Tp + h + 8 * dpr); g.lineTo(X + 6 * dpr, Tp + h); g.fill();
       g.fillStyle = "#1a1420"; lines.forEach((l, i) => g.fillText(l, X, Tp + pad * 0.7 + lh * (i + 0.5))); };
-    for (const n of npcs) { const X = sx(n.fx), Y = sy(n.fy - 50); if (X < -60 || Y < -40 || X > labels.width + 60 || Y > labels.height + 60) continue;
+    for (const n of npcs) { const X = sx(n.fx), Y = sy(n.fy - 64); if (X < -60 || Y < -40 || X > labels.width + 60 || Y > labels.height + 60) continue;
       if (n === talk) { g.font = `600 ${fs}px "Noto Sans Thai", system-ui, sans-serif`; bubble(X, Y, wrapText(g, n.tip, Math.min(240 * dpr, labels.width * 0.6))); g.font = F; }
       else { const lit = reduced ? 3 : 1 + (Math.floor(now / 400 + n.phase * 3) % 3), b = 2 * dpr, w = 28 * dpr, h = 15 * dpr, Lx = Math.round(X - w / 2), Tp = Math.round(Y - h - 6 * dpr - (reduced ? 0 : Math.sin(now / 500 + n.phase) * 2 * dpr));
         g.fillStyle = "rgba(0,0,0,.3)"; g.fillRect(Lx + b, Tp + b, w, h); g.fillStyle = "#1a1420"; g.fillRect(Lx - b, Tp - b, w + 2 * b, h + 2 * b); g.fillStyle = "#fffdf6"; g.fillRect(Lx, Tp, w, h);
@@ -544,8 +545,8 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
         for (let d = 0; d < 3; d++) { g.fillStyle = d < lit ? "#1a1420" : "#c8c0c8"; g.fillRect(Math.round(Lx + 6 * dpr + d * 6.5 * dpr), Math.round(Tp + 6 * dpr), Math.round(3.5 * dpr), Math.round(3.5 * dpr)); } } }
     const nowE = performance.now(), emoteOf = (id) => { const e = emotes.get(id); if (!e) return null; if (e.until < nowE) { emotes.delete(id); return null; } return EMOTES[e.e]; };
     const emoteBubble = (wx, wy, em) => { const X = sx(wx), Y = sy(wy); if (X < -100 || Y < -60 || X > labels.width + 100 || Y > labels.height + 60) return; g.font = `700 ${fs}px "Noto Sans Thai", system-ui, sans-serif`; bubble(X, Y, [`${em[0]} ${em[1]}`]); g.font = F; };
-    if (online) for (const p of online.peers.values()) { const em = emoteOf(p.id); if (em) emoteBubble(p.rx, p.ry - 64, em); else tag(p.name, p.rx, p.ry - 58, "rgba(26,120,70,.92)"); }
-    { const em = emoteOf("me"); if (em) emoteBubble(hero.x, hero.y - 64, em); else if (!talk) tag(playerName, hero.x, hero.y - 58, "rgba(91,61,245,.92)"); }
+    if (online) for (const p of online.peers.values()) { const em = emoteOf(p.id); if (em) emoteBubble(p.rx, p.ry - 78, em); else tag(p.name, p.rx, p.ry - 72, "rgba(26,120,70,.92)"); }
+    { const em = emoteOf("me"); if (em) emoteBubble(hero.x, hero.y - 78, em); else if (!talk) tag(playerName, hero.x, hero.y - 72, "rgba(91,61,245,.92)"); }
     if (near) tag(`กด E หรือแตะปุ่มด้านล่าง เพื่อเข้า`, near.dock ? near.x * T + 32 : near.x * T + 80, (near.dock ? near.y * T - 100 : (near.y + 4) * T - HOUSE.ay - 36), "rgba(255,255,255,.95)", "#1a1420");
   }
 
@@ -564,7 +565,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     const r = view.getBoundingClientRect(), wx = (e.clientX - r.left) / S + cam.x, wy = (e.clientY - r.top) / S + cam.y;
     const house2 = PLACES.find((p) => p.dock ? wx >= p.x * T - 8 && wx < p.x * T + 80 && wy >= p.y * T - 70 && wy < (p.y + 6) * T : wx >= p.x * T && wx < (p.x + 5) * T && wy >= p.y * T - 50 && wy < (p.y + 4) * T);
     if (house2) { if (near === house2) enter(house2); else walkTo(house2.ex, house2.ey, house2); return; }
-    const npc = npcs.find((n) => Math.abs(wx - n.fx) < 16 && wy > n.fy - 48 && wy < n.fy + 4);
+    const npc = npcs.find((n) => Math.abs(wx - n.fx) < 16 && wy > n.fy - 64 && wy < n.fy + 4);
     if (npc) { for (const [dx, dy] of [[0, 1], [-1, 0], [1, 0], [0, -1]]) { const tx = npc.x + dx, ty = npc.y + dy; if (M.inb(tx, ty) && !M.block[M.at(tx, ty)]) { walkTo(tx, ty); return; } } }
     walkTo(Math.floor(wx / T), Math.floor(wy / T));
   });

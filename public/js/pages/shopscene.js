@@ -1,7 +1,7 @@
 // ฉากในร้านค้า (พิกเซลอาร์ตความละเอียดสูงแนวเดียวกับหมู่บ้าน): ผนังไม้ ชั้นวางของ เคาน์เตอร์ พ่อค้า โคมไฟ แสงแดดจากหน้าต่าง
 import { PB, PAL, hash, vnoise, clamp, hex, mix, mul, tone, ramp, pick, cylLight, sphereLight, outline, blob, cylinder, bloom, canvas } from "../world/art.js";
 import { PROP, crystal } from "../world/sprites.js";
-import { charFrame } from "../world/chars.js";
+import { charFrame, idlePose } from "../world/chars.js";
 import { VILLAGERS } from "./world.js";
 
 const H = 200; // ความสูงฉาก (พิกเซลโลก)
@@ -82,7 +82,8 @@ export function mountShopScene(host, { shirt = "#5b3df5", look = null, reduced =
   const view = document.createElement("canvas"); view.className = "ss-canvas"; view.setAttribute("aria-hidden", "true");
   host.prepend(view);
   const bubble = host.querySelector(".ss-bubble");
-  const keeper = charFrame(0, 0, MERCHANT), heroFr = charFrame(3, 0, look || { shirt, pants: "#2a3550", hair: "#3a2a20" });
+  const KF = new Map(), HF = new Map(), HL0 = look || { shirt, pants: "#2a3550", hair: "#3a2a20" };
+  const keeperAt = (p) => KF.get(p) || (KF.set(p, charFrame(0, 0, MERCHANT, p)), KF.get(p)), heroAt = (p) => HF.get(p) || (HF.set(p, charFrame(3, 0, HL0, p)), HF.get(p));
   const cry = crystal(7), barrel = PROP.barrel(), crate = PROP.crate(), pot = PROP.pot(0.1);
   const [buf, bx] = canvas(10, 10);
   let S = 1.5, W = 0, dpr = 1, bg = null, L = null, raf = 0, line = 0, lineT = 0, smooth = false;
@@ -114,7 +115,7 @@ export function mountShopScene(host, { shirt = "#5b3df5", look = null, reduced =
       x.fillStyle = O; x.fillRect(cX + 14, cY - 5, 8, 8); x.fillRect(cX + 14, cY - 7, 2, 2); x.fillRect(cX + 20, cY - 7, 2, 2); x.fillStyle = D; x.fillRect(cX + 16, cY, 4, 1); x.fillStyle = O; x.fillRect(cX - 5, cY + 5, 6, 3);
       if (!reduced && Math.floor(t / 2.4) % 3 === 0) { x.fillStyle = "#f6f0e0"; x.font = "bold 8px sans-serif"; x.fillText("z", cX + 24, cY - 10 - (t * 6 % 6)); } }
     const bob = reduced ? 0 : Math.sin(t * 2) > 0.7 ? 1 : 0;
-    put(keeper, cx, 114 + bob);
+    put(keeperAt(reduced ? 0 : idlePose(t, 1.3)), cx, 114);
     // เคาน์เตอร์
     const cw = 170, c0 = Math.round(cx - cw / 2), Wd = PAL.wood;
     x.fillStyle = "#1e1208"; x.fillRect(c0 - 2, 104, cw + 4, 52);
@@ -129,7 +130,7 @@ export function mountShopScene(host, { shirt = "#5b3df5", look = null, reduced =
     x.fillStyle = "#2a1608"; x.fillRect(cx - 19, 125, 38, 20); x.fillStyle = "#f0e2c0"; x.fillRect(cx - 17, 127, 34, 16); x.fillStyle = "#f6c840"; x.fillRect(cx - 11, 132, 6, 6); x.fillStyle = "#5a3a20"; x.fillRect(cx - 1, 134, 10, 2);
     // ผู้เล่นยืนหน้าร้าน (มีเงา)
     x.fillStyle = "rgba(20,20,50,.35)"; x.beginPath(); x.ellipse(L.hero + 6, 188, 16, 5, 0, 0, 7); x.fill();
-    put(heroFr, L.hero, 190);
+    put(heroAt(reduced ? 0 : idlePose(t, 0)), L.hero, 190);
     // โคมแขวน
     const lampsX = [Math.round(W * 0.2), Math.round(W * 0.58), Math.round(W * 0.9)];
     x.globalCompositeOperation = "lighter";

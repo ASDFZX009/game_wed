@@ -1125,7 +1125,7 @@ body.ti-open { overflow: hidden; }
 .ti-cc-t { font-family: var(--px-font); font-size: clamp(1.8rem, 5vw, 2.8rem); margin: 0 0 14px; color: #f2f8ff; text-shadow: 0 3px 0 #4a62b8, 3px 3px 0 #1a2050, -3px 3px 0 #1a2050, 3px -3px 0 #1a2050, -3px -3px 0 #1a2050, 0 6px 0 #1a2050; }
 .cc-box { display: grid; grid-template-columns: 220px minmax(0, 440px); gap: 18px; padding: 18px; background: rgba(26,32,80,.88); box-shadow: inset 0 0 0 3px #6a7ad8, 0 0 0 4px #1a2050, 0 10px 0 4px rgba(0,0,0,.35); }
 .cc-prev { display: grid; justify-items: center; align-content: start; gap: 10px; padding: 14px 10px; background: radial-gradient(circle at 50% 40%, #e8f0ff, #b8c8e8); box-shadow: inset -4px -4px 0 #8a9ac0, inset 4px 4px 0 #fff, 0 0 0 3px #1a2050; }
-.cc-prev canvas { width: 180px; height: 210px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.cc-prev canvas { width: 180px; height: 240px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .cc-rot { display: flex; gap: 8px; } .cc-rot button { width: 42px; height: 38px; font-size: 1.1rem; }
 .cc-rot button[aria-pressed="true"] { background: #ffd84a; }
 .cc-form { display: grid; gap: 7px; align-content: start; }
@@ -1145,7 +1145,7 @@ label.cc-row { grid-template-columns: 128px 1fr; }
 .w-title-btn { position: relative; padding: 6px 12px; font-weight: 800; font-size: .88rem; border: 0; cursor: pointer; color: #1a2050; background: #f4e4bc; box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608, 3px 4px 0 3px rgba(0,0,0,.3); }
 .w-title-btn:hover { background: #ffd84a; }
 @media (max-width: 700px) {
-  .cc-box { grid-template-columns: 1fr; padding: 12px; } .cc-prev { grid-template-columns: auto auto; align-items: center; } .cc-prev canvas { width: 120px; height: 140px; } .cc-rot { flex-direction: column; }
+  .cc-box { grid-template-columns: 1fr; padding: 12px; } .cc-prev { grid-template-columns: auto auto; align-items: center; } .cc-prev canvas { width: 120px; height: 160px; } .cc-rot { flex-direction: column; }
   .cc-row { grid-template-columns: 96px 32px 1fr 32px; } label.cc-row { grid-template-columns: 96px 1fr; } .cc-row > span { font-size: .82rem; }
   .w-hud { top: 100px; right: 10px; gap: 8px; } .w-title-btn { font-size: .8rem; }
   .ti-menu { top: 54%; } .ti-logo { top: 18%; } .ti-title { font-size: 14vw; } .ti[data-stage="menu"] .ti-logo { top: 9%; }
@@ -1195,7 +1195,7 @@ body.px-page table { color: #3a2412; }
 /* 📖 สมุดผจญภัย */
 .jr-hero { display: grid; grid-template-columns: auto 1fr; gap: 6px 20px; align-items: center; }
 .jr-ava { display: grid; justify-items: center; gap: 4px; padding: 8px 10px; background: radial-gradient(circle at 50% 40%, #fff8e0, #e8d098); box-shadow: inset -3px -3px 0 #c8aa70, 0 0 0 3px #2a1608; }
-.jr-ava canvas { width: 110px; height: 145px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.jr-ava canvas { width: 110px; height: 152px; image-rendering: pixelated; image-rendering: crisp-edges; }
 .jr-name { font-family: var(--px-font); font-size: 1.6rem; font-weight: 700; color: #2a1608; }
 .jr-rank { font-weight: 800; color: #8a5a1a; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .jr-lv { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-top: 6px; }

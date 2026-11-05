@@ -4,7 +4,7 @@ import { html, raw, state } from "../core.js";
 import { PB, PAL, hex, ramp, pick, blob, outline, canvas, hash, rng, vnoise, fbm, mix, tone, clamp } from "../world/art.js";
 import { grassRGB, dirtRGB } from "../world/ground.js";
 import { broadTree, pineTree, bush, flowerPatch, lavender } from "../world/sprites.js";
-import { charFrame } from "../world/chars.js";
+import { charFrame, idlePose } from "../world/chars.js";
 import { loadSkinFont } from "../prefs.js";
 import { OPT, ROWS, DEFAULT, toLook, loadProfile, saveProfile, randomParts } from "../look.js";
 
@@ -100,8 +100,8 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
     <section class="ti-cc" aria-labelledby="ccT" hidden>
       <h2 id="ccT" class="ti-cc-t">สร้างตัวละคร</h2>
       <div class="cc-box">
-        <div class="cc-prev"><canvas id="ccPrev" width="60" height="70" aria-label="ตัวอย่างตัวละคร" role="img"></canvas>
-          <div class="cc-rot"><button type="button" data-rot="1" aria-label="หมุนตัวละครไปทางซ้าย">⟲</button><button type="button" id="ccWalk" aria-pressed="true" aria-label="เดิน/หยุด">🚶</button><button type="button" data-rot="-1" aria-label="หมุนตัวละครไปทางขวา">⟳</button></div></div>
+        <div class="cc-prev"><canvas id="ccPrev" width="60" height="80" aria-label="ตัวอย่างตัวละคร" role="img"></canvas>
+          <div class="cc-rot"><button type="button" data-rot="1" aria-label="หมุนตัวละครไปทางซ้าย">⟲</button><button type="button" id="ccWalk" aria-pressed="false" aria-label="เดิน/หยุด">🚶</button><button type="button" data-rot="-1" aria-label="หมุนตัวละครไปทางขวา">⟳</button></div></div>
         <div class="cc-form">
           <label class="cc-row"><span>ชื่อ</span><input id="ccName" maxlength="16" autocomplete="off" placeholder="ตั้งชื่อนักผจญภัย…" value="${prof?.name || me?.displayName || ""}"></label>
           ${ROWS.map(([k, lb]) => html`<div class="cc-row" data-k="${k}"><span>${lb}</span><button type="button" class="cc-arr" data-d="-1" aria-label="${lb} ก่อนหน้า">◀</button><output aria-live="polite"></output><button type="button" class="cc-arr" data-d="1" aria-label="${lb} ถัดไป">▶</button></div>`)}
@@ -151,7 +151,7 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
   // ---------- สร้างตัวละคร ----------
   const goal = root.querySelector(".ti-goal");
   const cc = root.querySelector(".ti-cc:not(.ti-goal)"), prev = cc.querySelector("#ccPrev"), px = prev.getContext("2d");
-  let dirI = 0, walking = !reduced, frameCache = new Map(); const DIRS = [0, 1, 3, 2];
+  let dirI = 0, walking = false, frameCache = new Map(); const DIRS = [0, 1, 3, 2];
   function syncRows() {
     cc.querySelectorAll(".cc-row[data-k]").forEach((row) => { const k = row.dataset.k, [nm, val] = OPT[k][parts[k]];
       row.querySelector("output").innerHTML = (/^#/.test(val) ? `<i style="background:${val}"></i>` : "") + nm;
@@ -159,11 +159,11 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
     frameCache = new Map();
   }
   function drawPrev(now) {
-    const L = toLook(parts), step = walking ? [0, 1, 0, 3][Math.floor(now / 160) % 4] : 0, key = DIRS[dirI] + ":" + step;
-    if (!frameCache.has(key)) frameCache.set(key, charFrame(DIRS[dirI], step, L));
-    const f = frameCache.get(key); px.clearRect(0, 0, 60, 70); px.imageSmoothingEnabled = false;
-    px.fillStyle = "rgba(20,30,60,.35)"; px.beginPath(); px.ellipse(30, 62, 13, 3.5, 0, 0, 7); px.fill();
-    px.drawImage(f.c, Math.round(30 - f.ax), Math.round(63 - f.ay));
+    const L = toLook(parts), step = walking ? [1, 2, 3, 4 % 4][Math.floor(now / 160) % 4] : 0, pose = step || reduced ? 0 : idlePose(now / 1000, 0), key = DIRS[dirI] + ":" + step + ":" + pose;
+    if (!frameCache.has(key)) frameCache.set(key, charFrame(DIRS[dirI], step, L, pose));
+    const f = frameCache.get(key); px.clearRect(0, 0, 60, 80); px.imageSmoothingEnabled = false;
+    px.fillStyle = "rgba(20,30,60,.35)"; px.beginPath(); px.ellipse(30, 74, 14, 3.5, 0, 0, 7); px.fill();
+    px.drawImage(f.c, Math.round(30 - f.ax), Math.round(76 - f.ay));
   }
   let ccRaf = 0; const ccLoop = (now) => { if (!alive || cc.hidden) return; ccRaf = requestAnimationFrame(ccLoop); drawPrev(now); };
   // เริ่มผจญภัย: ยังไม่ได้เข้าสู่ระบบ → ไปหน้าเข้าสู่ระบบ · เข้าแล้วแต่ยังไม่มีตัวละคร → สร้างตัวละคร · พร้อมแล้ว → เข้าหมู่บ้าน
