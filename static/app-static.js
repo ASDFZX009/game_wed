@@ -7,6 +7,8 @@ import { state, api, html, raw, toast, avatar, confirmBox, formData, busy, fmtDa
 import { loadPrefs, setPrefs, isDark } from "../public/js/prefs.js";
 import { loadProfile } from "../public/js/look.js";
 import { pxPage } from "../public/js/pxpage.js";
+import { mountMeadowBg } from "../public/js/pages/title.js";
+import { reducedMotion } from "../public/js/prefs.js";
 import * as P from "../public/js/pages/public.js";
 import * as S from "../public/js/pages/student.js";
 import * as SH from "../public/js/pages/shop.js";
@@ -116,6 +118,7 @@ const pwOk = (p) => p.length >= 8;
 async function withBusy(btn, fn) { busy(btn, true); try { await fn(); } finally { if (btn.isConnected) busy(btn, false); } }
 function authCard(main, title, body, foot = "") {
   pxPage(onLeave);
+  if (!document.querySelector(".meadow-bg")) { const stopBg = mountMeadowBg({ reduced: reducedMotion() }); onLeave(stopBg); }
   main.innerHTML = html`<div class="narrower auth-wrap"><h1 class="px-sign">🧭 ${title}</h1><div class="card">
     ${raw(body.s || body)}</div>${raw(foot.s || foot)}</div>`.s;
 }
