@@ -4,6 +4,7 @@
 import { T, rng, hash, canvas, css } from "../world/art.js";
 import { bakeGround } from "../world/ground.js";
 import { broadTree, pineTree, bush, flowerPatch, lavender, plateau, fence, PROP, HOUSE, house, dockSign, pillar, crystal } from "../world/sprites.js";
+import { subjectSign, drawSignFx, SIGN_FX } from "../world/signs.js";
 import { charFrame, foxFrame, silhouette } from "../world/chars.js";
 
 const MW = 48, MH = 34; // ขนาดแผนที่ (ช่อง)
@@ -161,7 +162,11 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     add(t.kind === "pine" ? spr("pine" + t.v, () => pineTree(t.v * 31)) : spr(t.kind + t.v, () => broadTree(t.kind, t.v * 17 + t.kind.length)), bx, by); }
   for (const p of PLACES) {
     if (p.dock) { add(spr("dock", dockSign), (p.x - 1) * T + 16, p.y * T + T - 2, p.y * T + T); continue; }
-    add(spr("h" + p.id, () => house(p)), p.x * T, (p.y + 4) * T, (p.y + 4) * T, null, "shift", 64);
+    // บ้านวิชา: ป้ายประจำวิชา (ไอคอน + ป้ายไม้ + วงแสงหมุน) ติดบนหลังคาแทนตราเดิม
+    const sx = p.x * T - HOUSE.ax + HOUSE.emblem[0], sy = (p.y + 4) * T - HOUSE.ay + HOUSE.emblem[1];
+    const sign = !p.shop && SIGN_FX[p.id] ? (x, now) => { const sg = spr("sign" + p.id, () => subjectSign(p.id)), tt = reduced ? 1.3 : now / 1000, bob = reduced ? 0 : Math.round(Math.sin(tt * 1.8 + p.x) * 1.2);
+      x.drawImage(sg.c, Math.round(sx - sg.ax), Math.round(sy + 36 - sg.ay + bob)); drawSignFx(x, p.id, sx, sy - 6 + bob, tt, near === p, reduced); } : null;
+    add(spr("h" + p.id, () => house(p)), p.x * T, (p.y + 4) * T, (p.y + 4) * T, sign, "shift", 64);
   }
   for (const h of M.plats) add(spr(`plat${h.w}x${h.h}s${h.seed}`, () => plateau(h.w, h.h, h.seed)), h.x * T, (h.y + h.h) * T, (h.y + h.h) * T, null, "shift", 26);
   for (const f of M.fences) add(spr("fence" + f.len, () => fence(f.len)), f.x * T, f.y * T + 30, f.y * T + 30);
@@ -390,7 +395,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     for (const p of PLACES) {
       if (p.dock) { tag(`${p.ic} ${p.name}`, p.x * T, p.y * T - 70, near === p ? "#ffcf3a" : "rgba(20,40,24,.88)", near === p ? "#1a1420" : "#fff"); continue; }
       const ex = p.x * T - HOUSE.ax + HOUSE.emblem[0], ey = (p.y + 4) * T - HOUSE.ay + HOUSE.emblem[1];
-      g.font = `${Math.round(18 * k)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.fillText(p.ic, sx(ex), sy(ey + 1)); g.font = F;
+      if (p.shop) { g.font = `${Math.round(18 * k)}px system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif`; g.fillText(p.ic, sx(ex), sy(ey + 1)); g.font = F; }
       tag(p.name, p.x * T + 80, (p.y + 4) * T - HOUSE.ay - 10, near === p ? "#ffcf3a" : "rgba(24,18,30,.82)", near === p ? "#1a1420" : "#fff");
     }
     const bubble = (X, Y, lines) => { const pad = 8 * dpr, lh = fs * 1.4, w = Math.max(...lines.map((l) => g.measureText(l).width)) + pad * 2, h = lines.length * lh + pad * 1.4, Lx = Math.round(X - w / 2), Tp = Math.round(Y - h - 8 * dpr);
