@@ -7,6 +7,8 @@ import { mountWorld } from "./world.js";
 import { mountQuestScene } from "./questscene.js";
 import { openTitle, titleSeen } from "./title.js";
 import { myLook, loadProfile } from "../look.js";
+import { pxPage } from "../pxpage.js";
+import { rankOf } from "../journey.js";
 import { reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
@@ -17,12 +19,23 @@ export function gameCard(g) {
     <span class="meta">${g.category ? g.category.name + " · " : ""}บทเรียน · 5 ระดับ</span>
     <h3>${g.title}</h3><p>${g.description}</p>
     <span class="lesson-modes">${(g.modeNames || []).map((m) => html`<i>${m}</i>`)}</span>
+    ${g.stars ? html`<span class="q-stars" aria-label="ได้ ${g.stars.got} จาก ${g.stars.max} ดาว"><b>★ ${g.stars.got}<small>/${g.stars.max}</small></b>${[1, 2, 3, 4, 5].map((L) => html`<i class="s${g.stars.byLevel?.[L] || 0}" title="ระดับ ${L}: ${g.stars.byLevel?.[L] || 0} ดาว"></i>`)}</span>` : ""}
     <span class="meta">อายุ ${g.ageMin}–${g.ageMax} ปี · ${g.generated ? "สร้างโจทย์ใหม่ไม่จำกัด" : `คลัง ${g.questionCount} ข้อ`} · ${g.sets} ชุดคำถาม · เล่นแล้ว ${g.plays} ครั้ง</span></a>`;
   return html`<a class="game-card" href="/games/${g.id}" data-cat="${g.category?.slug || ""}">
     <span class="ic" aria-hidden="true">${g.category?.icon || TPL_IC[g.template]}</span>
     <span class="meta">${g.category ? g.category.name + " · " : ""}${g.templateName} · ${DIFF[g.difficulty]}</span>
     <h3>${g.title}</h3><p>${g.description}</p>
     <span class="meta">อายุ ${g.ageMin}–${g.ageMax} ปี · ${g.questionCount} ${g.template === "match" ? "คู่" : "ข้อ"} · เล่นแล้ว ${g.plays} ครั้ง</span></a>`;
+}
+
+// ป้ายผู้เล่นในหมู่บ้าน: เลเวล ยศ แถบ XP ดาว รางวัลรอรับ
+function hudPlate() {
+  const u = state.me; if (!u || u.level == null) return "";
+  const per = u.xpPerLevel || 100, into = (u.xp || 0) % per, rk = rankOf(u.level);
+  return html`<a class="w-plate" href="/dashboard?j=1" title="เปิดสมุดผจญภัย">
+    <span class="lv"><small>Lv</small>${u.level}</span><span class="wp-info"><b>${rk.icon} ${rk.name}</b>
+    <span class="xp" role="progressbar" aria-label="XP สู่เลเวลถัดไป" aria-valuemin="0" aria-valuemax="${per}" aria-valuenow="${into}"><i style="width:${(into / per) * 100}%"></i></span>
+    <span class="st">★ ${u.stars ?? 0}${u.rewardsReady ? html` · <em>🎁 ${u.rewardsReady} รอรับ</em>` : ""}</span></span></a>`;
 }
 
 export async function home({ main }) {
@@ -33,7 +46,7 @@ export async function home({ main }) {
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
-      <button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button>
+      <div class="w-hud">${hudPlate()}<button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button></div>
       <div class="world" id="world"></div>
       <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
         ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
@@ -45,7 +58,8 @@ export async function home({ main }) {
   let title = null;
   const showTitle = (startAt) => { title = openTitle({ go, me: state.me, reduced: reducedMotion(), startAt, onEnter: (p) => { title = null; w.setLook(myLook(shirt), nameOf(p)); main.querySelector(".world-canvas")?.focus({ preventScroll: true }); } }); };
   main.querySelector("#wTitle").addEventListener("click", () => showTitle("menu"));
-  if (!titleSeen()) showTitle("intro");
+  const want = (() => { try { const v = sessionStorage.getItem("qo:titleOpen"); sessionStorage.removeItem("qo:titleOpen"); return v; } catch { return null; } })();
+  if (want) showTitle(want); else if (!titleSeen()) showTitle("intro");
   onLeave(() => title?.close());
   window.__world = w; // ให้สคริปต์ทดสอบตรวจได้
   onLeave(() => { w.destroy(); if (window.__world === w) delete window.__world; document.body.classList.remove("immersive", "home-world"); });
@@ -64,7 +78,7 @@ export async function library({ main, query }) {
       <div class="ss-bubble" role="status" aria-live="polite"></div>
       <h1 class="ss-sign">📜 กระดานภารกิจ</h1>
       <a class="ss-back" href="/" id="qsBack">⬅ กลับหมู่บ้าน</a>
-      <div class="qs-count"><b>${data.total}</b><span>ภารกิจ${cur ? ` · ${cur.icon} ${cur.name}` : ""}</span></div>
+      <div class="qs-count"><b>${data.total}</b><span>ภารกิจ${cur ? ` · ${cur.icon} ${cur.name}` : ""}</span>${state.me?.stars != null ? html`<a class="qs-stars" href="/dashboard?j=1" title="ดูสมุดผจญภัย">★ ${state.me.stars} ดาว${state.me.rewardsReady ? html` · 🎁 ${state.me.rewardsReady}` : ""}</a>` : ""}</div>
     </section>
     <div class="quest-body">
     <nav class="q-cats" aria-label="เลือกหมวด"><a class="q-cat ${f.category ? "" : "on"}" href="/games?${new URLSearchParams({ ...f, category: "", page: 1 })}">🌈 ทั้งหมด</a>${categories.map((c) => html`<a class="q-cat ${f.category === c.slug ? "on" : ""}" href="/games?${new URLSearchParams({ ...f, category: c.slug, page: 1 })}">${c.icon} ${c.name}</a>`)}</nav>
@@ -115,9 +129,10 @@ export async function playGame({ main, params, query }) {
 export async function quizList({ main, query }) {
   const q = query.get("q") || "", page = query.get("page") || "1";
   const d = await api("/api/quizzes?" + new URLSearchParams({ q, page }));
-  main.innerHTML = html`<h1>แบบทดสอบ</h1>
-    <form class="row" id="qf" role="search"><input name="q" value="${q}" placeholder="ค้นหาแบบทดสอบ…" style="flex:1" aria-label="ค้นหาแบบทดสอบ"><button class="btn">ค้นหา</button></form>
-    <div class="grid" style="margin-top:16px">${d.quizzes.map((x) => html`<a class="game-card" href="/quizzes/${x.id}"><span class="ic">📝</span>
+  pxPage(onLeave);
+  main.innerHTML = html`<h1 class="px-sign">📝 หอแบบทดสอบ</h1><p class="px-sub">ลองวัดความรู้แบบจริงจัง ทำครบแล้วได้ XP และเหรียญ</p>
+    <form class="row filters" id="qf" role="search"><input name="q" value="${q}" placeholder="🔎 ค้นหาแบบทดสอบ…" style="flex:1" aria-label="ค้นหาแบบทดสอบ"><button class="btn">ค้นหา</button></form>
+    <div class="grid quests" style="margin-top:16px">${d.quizzes.map((x) => html`<a class="game-card" href="/quizzes/${x.id}" data-cat="${["math", "science", "thai", "english", "social", "health", "early", "brain", "general"][x.id % 9]}"><span class="ic">📝</span>
       <span class="meta">${x.grade || "ทุกระดับ"} · ${DIFF[x.difficulty]}</span><h3>${x.title}</h3><p>${x.description}</p>
       <span class="meta">${x.questionCount} ข้อ · ${x.totalPoints} คะแนน${x.timeLimitMin ? ` · ${x.timeLimitMin} นาที` : ""}</span></a>`)}</div>
     ${!d.quizzes.length ? html`<div class="empty">ไม่พบแบบทดสอบ</div>` : ""}
@@ -127,9 +142,9 @@ export async function quizList({ main, query }) {
 
 export async function quizPage({ main, params, query }) {
   const info = await api(`/api/quizzes/${params.id}`);
-  const z = info.quiz;
+  const z = info.quiz; pxPage(onLeave);
   const aid = query.get("assignment");
-  const head = html`<h1>${z.title}</h1><p class="muted" style="margin-top:-.3em">${z.description}</p>
+  const head = html`<h1 class="px-sign">📝 ${z.title}</h1><p class="muted" style="margin-top:-.3em">${z.description}</p>
     <p class="small muted">${z.questionCount} ข้อ · ${z.totalPoints} คะแนน${z.timeLimitMin ? ` · เวลา ${z.timeLimitMin} นาที` : ""}${z.hasEssay ? " · มีข้ออัตนัยที่ครูตรวจเอง" : ""}</p>`;
   if (!state.me) {
     main.innerHTML = html`<div class="narrow">${head}<div class="card center"><p>เข้าสู่ระบบเพื่อทำแบบทดสอบและบันทึกคะแนน</p><a class="btn" href="/login?next=${encodeURIComponent(location.pathname + location.search)}">เข้าสู่ระบบ</a> <a class="btn btn-ghost" href="/register">สมัครสมาชิก</a></div></div>`.s;
@@ -176,6 +191,7 @@ export async function quizPage({ main, params, query }) {
 
 export async function attemptPage({ main, params, query }) {
   const { attempt: a } = await api(`/api/quizzes/attempt/${params.id}`);
+  pxPage(onLeave);
   let extra = null;
   try { extra = JSON.parse(sessionStorage.getItem("lastQuizResult") || "null"); sessionStorage.removeItem("lastQuizResult"); } catch { /* ignore */ }
   const pending = a.status === "pending_review";
@@ -254,6 +270,7 @@ export function forgot({ main }) {
 }
 
 export function privacy({ main }) {
+  pxPage(onLeave);
   main.innerHTML = html`<article class="prose"><h1>นโยบายความเป็นส่วนตัว</h1>
     <div class="note small">⚠️ ฉบับร่างสำหรับผู้ติดตั้งระบบ: อธิบายสิ่งที่ซอฟต์แวร์นี้ทำจริง ผู้ให้บริการควรให้ที่ปรึกษากฎหมายตรวจสอบ (เช่น PDPA และความยินยอมจากผู้ปกครองสำหรับเด็ก) และใส่ข้อมูลผู้ควบคุมข้อมูลก่อนเปิดใช้งานจริง</div>
     <h2>ข้อมูลที่เราเก็บ</h2><ul>

@@ -63,22 +63,32 @@ function bakeStage(W, H, gy) {
   return c;
 }
 
-export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml }) {
+// ท่าโจมตีสวนของบอสแต่ละตัว (ร่างจ้าวได้ท่าพิเศษเพิ่ม)
+const BOSS_ATK = {
+  warden: [["soul-siphon", "ดูดวิญญาณ"], ["shadow-glaive", "ใบมีดเงา"], ["black-hole", "หลุมดำกลืนแสง"]],
+  knight: [["thunder-strike", "อสนีฟาดดาบ"], ["charged-beam", "ลำแสงดาบหนาม"], ["energy-burst", "ระเบิดเกราะสายฟ้า"]],
+  druid: [["thorn-crown", "มงกุฎหนามรัด"], ["venom-stream", "สายพิษกัดกร่อน"], ["venom-pool", "บ่อพิษเดือด"], ["wind-vortex", "พายุใบไม้คม"]],
+};
+const ELITE_ATK = { warden: ["astral-convergence", "ดวงดาวดับสูญ"], knight: ["starblade-cataclysm", "ดาบดาราล้างโลก"], druid: ["magma-fissure", "รอยแยกรากเพลิง"] };
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml, boss: bossInfo = null, playerLv = 1 }) {
   let hs = 7; for (const ch of String(lesson || "x")) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
-  const r0 = hash(hs % 100003, 3, 5);
-  const B = BOSSES[Math.floor(r0 * BOSSES.length)], bossColor = CAT_COLOR[category] || "#4a9ae0";
-  const bossLv = 5 + Math.floor(hash(total, (lesson || "").length, 9) * 30);
+  const B = BOSSES.find((b) => b.id === bossInfo?.id) || BOSSES[hs % BOSSES.length], elite = !!bossInfo?.elite;
+  const bossColor = elite ? "#ff3a4a" : CAT_COLOR[category] || "#4a9ae0", bossName = bossInfo?.name || B.name;
+  const bossLv = bossInfo?.lv || 5 + (hs % 30), atkList = [...(BOSS_ATK[B.id] || [["fireball", "ลูกไฟ"]]), ...(elite && ELITE_ATK[B.id] ? [ELITE_ATK[B.id]] : [])].filter(([id]) => PXFX.get(id));
   let heroI = Math.max(0, HEROES.findIndex((h) => h.id === (localStorage.getItem(HERO_KEY) || "fire")));
-  const state = { hp: total, combo: 0, right: 0, busy: false, q: null, idx: 0, hurt: 0, bossHurt: 0, cast: 0, dead: 0 };
+  const state = { hp: total, combo: 0, right: 0, busy: false, q: null, idx: 0, hurt: 0, bossHurt: 0, cast: 0, dead: 0, charge: 0, windup: 0, lunge: 0, enraged: false, atkI: 0 };
   host.innerHTML = html`<div class="bt">
     <div class="bt-stage" id="btStage"><canvas class="bt-bg"></canvas><canvas class="bt-fx" aria-hidden="true"></canvas>
       <div class="bt-hud">
-        <div class="bt-plate hero"><span class="lv">ข้อ <b id="btN">1/${total}</b></span><b class="nm" id="btHeroName"></b><span class="combo" id="btCombo"></span>${raw(getTimerHtml ? getTimerHtml() : "")}</div>
-        <div class="bt-plate boss"><span class="lv">Lv ${bossLv}</span><b class="nm">${B.name}</b>
+        <div class="bt-plate hero"><span class="lv">ข้อ <b id="btN">1/${total}</b> · ผู้เล่น Lv ${playerLv}</span><b class="nm" id="btHeroName"></b><span class="combo" id="btCombo"></span>${raw(getTimerHtml ? getTimerHtml() : "")}</div>
+        <div class="bt-plate boss ${elite ? "elite" : ""}"><span class="lv">${elite ? "👑 ร่างจ้าว · " : ""}Lv ${bossLv}</span><b class="nm">${bossName}</b>
           <div class="bt-hp" role="meter" aria-label="พลังชีวิตบอส" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${total}"><i id="btHpBar"></i>${raw(Array.from({ length: total - 1 }, (_, i) => `<s style="left:${((i + 1) / total) * 100}%"></s>`).join(""))}<em id="btHpTxt">${total}/${total}</em></div></div>
       </div>
       <div class="bt-q" id="btQ"></div>
       <div class="bt-pop" id="btPop" aria-live="polite"></div>
+      <div class="bt-atk" id="btAtk" aria-live="polite"></div>
       <div class="bt-heroes" role="group" aria-label="เลือกตัวละคร">${HEROES.map((h, i) => html`<button type="button" class="bt-hero" data-h="${i}" title="${h.name} ${h.title}" aria-label="เปลี่ยนเป็น ${h.name} ${h.title}"><span>${EL[h.id].ic}</span></button>`)}</div>
     </div>
     <div class="bt-hand" id="btHand" role="group" aria-label="การ์ดคำตอบ"></div>
@@ -88,7 +98,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
   const boss = B.make(bossColor);
   const heroFrames = new Map(), hf = (dir, step) => { const k = heroI + ":" + dir + ":" + step; if (!heroFrames.has(k)) heroFrames.set(k, charFrame(dir, step, HEROES[heroI].look)); return heroFrames.get(k); };
   let S = 2, W = 0, H = 170, GY = 96, bgc = null, raf = 0, alive = true;
-  const pos = () => ({ hx: Math.round(W * 0.2), bx: Math.round(W * 0.76), fy: H - 26 });
+  const pos = () => ({ hx: Math.round(W * 0.2), bx: Math.round(W * 0.76), fy: H - (S === 1 ? 24 : 34) }); // ยกพื้นขึ้นเล็กน้อยบนจอใหญ่ ไม่ให้การ์ดบังวงเวทใต้เท้า
 
   function layout() {
     const w = stage.clientWidth || 800; S = w < 560 ? 1 : w < 900 ? 1.5 : 2;
@@ -103,19 +113,38 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     const sh = (cx, cy, w) => { x.fillStyle = "rgba(20,24,50,.32)"; x.beginPath(); x.ellipse(cx + 6, cy, w, w * 0.22, 0, 0, 7); x.fill(); };
     // บอส (3 เฟรมผ้าพลิ้ว + แสงเรืองซ้อน)
     const bob = reduced ? 0 : Math.round(Math.sin(t * 2.2) * (boss.float ? 3 : 1.4)), knock = state.bossHurt > now ? 6 : 0, fade = state.dead ? Math.max(0, 1 - (now - state.dead) / 900) : 1;
-    const fr = boss.frames[reduced ? 0 : Math.floor(t * 5) % boss.frames.length], ox = bx - boss.ax + knock, oy = fy - boss.ay - boss.float + bob + (state.dead ? (1 - fade) * 20 : 0);
+    const wind = state.windup > now ? 1 - (state.windup - now) / 450 : 0, lunge = state.lunge > now ? Math.sin((1 - (state.lunge - now) / 380) * Math.PI) : 0;
+    const shake = state.enraged && !reduced && !state.dead ? Math.round(Math.sin(t * 40) * 0.6) : 0;
+    const fr = boss.frames[reduced ? 0 : Math.floor(t * (state.enraged ? 8 : 5)) % boss.frames.length], ox = bx - boss.ax + knock + Math.round(wind * 5 - lunge * 14) + shake, oy = fy - boss.ay - boss.float + bob + (state.dead ? (1 - fade) * 20 : 0) - Math.round(wind * 2);
+    // ออร่าร่างจ้าว / โกรธจัด
+    if ((elite || state.enraged) && !state.dead) { const a = 0.22 + (reduced ? 0 : 0.08 * Math.sin(t * 4)), g = x.createRadialGradient(bx, fy - boss.hit, 4, bx, fy - boss.hit, boss.frames[0].width * 0.62);
+      g.addColorStop(0, `rgba(255,40,60,${a})`); g.addColorStop(0.6, `rgba(120,0,30,${a * 0.6})`); g.addColorStop(1, "rgba(60,0,20,0)"); x.fillStyle = g; x.fillRect(bx - 120, fy - boss.hit - 120, 240, 240); }
     x.globalAlpha = fade; sh(bx, fy, boss.shw * (boss.float ? 0.8 + 0.1 * Math.sin(t * 2.2) : 1)); x.drawImage(fr, ox, oy);
     if (state.bossHurt > now && Math.floor(now / 60) % 2 === 0) { x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.6; x.drawImage(fr, ox, oy); x.globalCompositeOperation = "source-over"; }
+    if (wind > 0 && Math.floor(now / 70) % 2 === 0) { x.globalCompositeOperation = "lighter"; x.globalAlpha = 0.35 * wind; x.drawImage(fr, ox, oy); x.globalCompositeOperation = "source-over"; x.globalAlpha = fade; }
+    if (wind > 0) { x.fillStyle = "#ff3a3a"; const ex = bx, ey = oy - 8 - Math.round(Math.abs(Math.sin(t * 12)) * 3); x.fillRect(ex - 2, ey - 12, 4, 8); x.fillRect(ex - 2, ey - 2, 4, 3); x.fillStyle = "#fff"; x.fillRect(ex - 1, ey - 11, 2, 6); }
     x.globalCompositeOperation = "lighter"; const [gr, gg, gb] = boss.color;
     for (const [gx, gy, r] of boss.glow) { const a = (0.32 + (reduced ? 0 : 0.12 * Math.sin(t * 3 + gx))) * fade, g = x.createRadialGradient(ox + gx, oy + gy, 0, ox + gx, oy + gy, r);
       g.addColorStop(0, `rgba(${gr},${gg},${gb},${a})`); g.addColorStop(1, `rgba(${gr},${gg},${gb},0)`); x.fillStyle = g; x.fillRect(ox + gx - r, oy + gy - r, r * 2, r * 2); }
     if (!reduced) for (let i = 0; i < 7; i++) { const ph = (t * 0.35 + hash(i, 4, 7)) % 1, px = bx - 40 + hash(i, 5, 7) * 80 + Math.sin(t + i) * 4, py = fy - 10 - ph * 110;
       x.fillStyle = `rgba(${gr},${gg},${gb},${0.8 * Math.sin(ph * Math.PI) * fade})`; x.fillRect(Math.round(px), Math.round(py), 2, 2); }
     x.globalCompositeOperation = "source-over"; x.globalAlpha = 1;
-    // ตัวละคร
-    const casting = state.cast > now, hurt = state.hurt > now, step = casting ? 1 + (Math.floor(now / 120) % 2) * 2 : (reduced ? 0 : Math.floor(t * 1.5) % 2 ? 0 : 0);
-    const f = hf(hurt ? 1 : 2, step), hxo = hurt ? -5 : casting ? 4 : 0;
-    sh(hx, fy, 16); x.drawImage(f.c, hx - f.ax + hxo, fy - f.ay + (reduced ? 0 : Math.round(Math.sin(t * 3) * 0.6)));
+    // ตัวละคร: วงเวทใต้เท้าตอนร่ายสกิล + ออร่าคอมโบ
+    const casting = state.cast > now, hurt = state.hurt > now, charging = state.charge > now, step = casting ? 1 + (Math.floor(now / 120) % 2) * 2 : 0;
+    const ec = hex(EL[HEROES[heroI].id].color), [er, eg, eb] = ec;
+    const ch = charging ? 1 - (state.charge - now) / 480 : casting ? 1 : 0, circ = Math.max(ch, state.cast > now ? (state.cast - now) / 900 : 0);
+    if (circ > 0.02) { const rx = 22 * Math.min(1, circ * 1.6), ry = rx * 0.32, rot = t * 3;
+      x.globalCompositeOperation = "lighter"; x.strokeStyle = `rgba(${er},${eg},${eb},${0.75 * circ})`; x.lineWidth = 1;
+      x.beginPath(); x.ellipse(hx + 2, fy, rx, ry, 0, 0, 7); x.stroke(); x.beginPath(); x.ellipse(hx + 2, fy, rx * 0.66, ry * 0.66, 0, 0, 7); x.stroke();
+      for (let i = 0; i < 8; i++) { const a = rot + (i / 8) * Math.PI * 2; x.fillStyle = `rgba(255,255,255,${0.8 * circ})`; x.fillRect(Math.round(hx + 2 + Math.cos(a) * rx * 0.83), Math.round(fy + Math.sin(a) * ry * 0.83), 1, 1); }
+      for (let i = 0; i < 6; i++) { const ph = (t * 1.8 + i / 6) % 1; x.fillStyle = `rgba(${er},${eg},${eb},${(1 - ph) * circ})`; x.fillRect(Math.round(hx - 12 + ((i * 7) % 26)), Math.round(fy - ph * 46), 1, 2); }
+      x.globalCompositeOperation = "source-over"; }
+    if (state.combo >= 3 && !reduced) { x.globalCompositeOperation = "lighter"; const g = x.createRadialGradient(hx + 2, fy - 24, 2, hx + 2, fy - 24, 30);
+      g.addColorStop(0, `rgba(${er},${eg},${eb},${0.18 + 0.06 * Math.sin(t * 9)})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`); x.fillStyle = g; x.fillRect(hx - 30, fy - 56, 64, 64); x.globalCompositeOperation = "source-over"; }
+    const f = hf(hurt ? 1 : 2, step), hxo = hurt ? -5 : casting ? 4 : 0, lift = charging ? -Math.round(ch * 3) : 0;
+    sh(hx, fy, 16); x.drawImage(f.c, hx - f.ax + hxo, fy - f.ay + lift + (reduced ? 0 : Math.round(Math.sin(t * 3) * 0.6)));
+    if (charging) { x.globalCompositeOperation = "lighter"; const hx2 = hx + 12, hy2 = fy - 22 + lift, g = x.createRadialGradient(hx2, hy2, 0, hx2, hy2, 6 + ch * 6);
+      g.addColorStop(0, `rgba(255,255,255,${0.9 * ch})`); g.addColorStop(0.4, `rgba(${er},${eg},${eb},${0.7 * ch})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`); x.fillStyle = g; x.fillRect(hx2 - 14, hy2 - 14, 28, 28); x.globalCompositeOperation = "source-over"; }
     if (hurt && Math.floor(now / 70) % 2 === 0) { x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(255,60,60,.5)"; x.fillRect(hx - 20, fy - 54, 40, 56); x.globalCompositeOperation = "source-over"; }
   }
   const loop = (now) => { if (!alive) return; raf = requestAnimationFrame(loop); draw(now); };
@@ -179,14 +208,18 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     if (!r) { state.busy = false; hand.querySelectorAll(".bc").forEach((b) => (b.disabled = false)); btn.classList.remove("picked"); return; }
     const { hx, bx, fy } = pos(), from = [hx * S + 14 * S, (fy - 24) * S], to = [bx * S, (fy - boss.hit) * S, fy * S];
     if (r.correct) {
-      state.combo++; state.right++; btn.classList.add("right"); state.cast = performance.now() + 900;
+      state.combo++; state.right++; btn.classList.add("right");
+      if (!reduced) { state.charge = performance.now() + 480; await sleep(480); }
+      state.cast = performance.now() + 900;
       await playFx(btn.dataset.skill, { from, to, onHit: () => { state.hp = Math.max(0, state.hp - 1); setHp(); state.bossHurt = performance.now() + 420; stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
-        popText(state.combo >= 2 ? `-1  COMBO ×${state.combo}!` : "-1", "dmg", [to[0], to[1] - 40]); } });
+        popText(state.combo >= 2 ? `-1  COMBO ×${state.combo}!` : "-1", "dmg", [to[0], to[1] - 40]);
+        if (!state.enraged && state.hp > 0 && state.hp <= Math.ceil(total * 0.3)) { state.enraged = true; setTimeout(() => popText("โกรธจัด! 😡", "rage", [to[0], to[1] - 76]), 350); host.querySelector(".bt-plate.boss").classList.add("rage"); } } });
     } else {
       state.combo = 0; btn.classList.add("wrong");
       hand.querySelectorAll(".bc").forEach((b) => { const o = state.q.options; const txt = o ? o[+b.dataset.i] : (+b.dataset.i === 0 ? "ถูก" : "ผิด"); if ((o && txt === r.answer) || (!o && r.answer === txt)) b.classList.add("right"); });
       popText("พลาด!", "miss", [to[0], to[1] - 40]);
-      await playFx("fireball", { from: [to[0] - 30 * S, from[1]], to: [from[0], from[1]], mirror: true, hue: 250, onHit: () => { state.hurt = performance.now() + 500; popText("โดนสวน!", "hurt", [from[0], from[1] - 30]); stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake"); } });
+      const hits = state.enraged ? 2 : 1;
+      for (let h = 0; h < hits; h++) await bossAttack(from, to, h > 0);
     }
     host.querySelector("#btCombo").textContent = state.combo >= 2 ? `🔥 คอมโบ ${state.combo}` : "";
     const last = state.idx + 1 >= total;
@@ -196,6 +229,16 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       <button class="btn bt-next" id="g-next">${last ? (state.hp === 0 ? "ปราบบอสสำเร็จ! ดูผลลัพธ์ 🏆" : "ดูผลลัพธ์ 🏁") : "ข้อต่อไป ▶"}</button>`.s;
     const nb = foot.querySelector("#g-next"); nb.focus({ preventScroll: true }); nb.onclick = () => { foot.innerHTML = ""; onNext(); };
     state.after?.(r); state.busy = false;
+  }
+  // บอสโจมตีสวน: เงื้อ (มีเครื่องหมาย !) → พุ่งเข้าหา → ปล่อยท่า (สุ่มจากชุดท่าของบอส)
+  async function bossAttack(from, to, quick) {
+    const [id, nm] = atkList[(state.atkI++ + (hs % 3)) % atkList.length] || ["fireball", "ลูกไฟ"];
+    const atk = host.querySelector("#btAtk"); atk.textContent = `${quick ? "⚡ ซ้ำ! " : ""}${bossName} ใช้ “${nm}”`; atk.classList.remove("on"); void atk.offsetWidth; atk.classList.add("on");
+    if (!reduced) { state.windup = performance.now() + (quick ? 260 : 450); await sleep(quick ? 260 : 450); state.lunge = performance.now() + 380; }
+    const cat = SKILL_CAT[id] || "area", hero = [from[0] - 6 * S, from[1], pos().fy * S];
+    const hitHero = () => { state.hurt = performance.now() + 500; popText(quick ? "โดนซ้ำ!" : "โดนสวน!", "hurt", [from[0], from[1] - 30]); stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake"); };
+    if (cat === "area") await playFx(id, { from: to, to: hero, hue: elite ? 330 : 0, onHit: hitHero });
+    else await playFx(id, { from: [to[0] - 30 * S, from[1]], to: [from[0], from[1]], mirror: true, hue: elite ? 330 : 0, onHit: hitHero });
   }
   function ask(idx, q) {
     state.idx = idx; state.q = q; foot.innerHTML = "";

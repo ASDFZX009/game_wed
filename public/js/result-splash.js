@@ -34,6 +34,12 @@ export function showResultSplash(host, o) {
   const pct = r.max ? Math.round((r.score / r.max) * 100) : 0;
   const isMatch = game.template === "match";
   const saved = !!r.saved;
+  const prog = [
+    ...(r.levelUp ? [{ icon: "🆙", small: "เลเวลอัป!", name: `Lv ${r.levelUp.from} → ${r.levelUp.to} · ${r.levelUp.rank.name}`, cls: "lv" }] : []),
+    ...(r.unlockedLevel ? [{ icon: "🔓", small: "ปลดล็อกระดับใหม่!", name: `ระดับ${r.unlockedLevel.name}` }] : []),
+    ...(r.boss?.win ? [{ icon: "⚔️", small: r.boss.first ? "ปราบบอสครั้งแรก! บันทึกลงสมุดแล้ว" : "ปราบบอสสำเร็จ!", name: r.boss.name, cls: "boss" }] : []),
+    ...(r.eliteNow ? [{ icon: "👑", small: "ปลดล็อกแล้ว!", name: "บอสร่างจ้าว" }] : []),
+  ];
   const stat = (cls, key, val, extra = "") => html`<div class="vs-stat ${cls}"><span class="k">${key}</span><b>${raw(val)}</b>${raw(extra)}</div>`;
   const sparkles = Array.from({ length: 14 }, (_, i) =>
     `<i class="vs-spark" style="left:${(i * 37 + 7) % 97}%;top:${(i * 53 + 11) % 93}%;--d:${(i % 7) * 0.35}s;font-size:${10 + (i % 4) * 6}px">✦</i>`).join("");
@@ -56,6 +62,7 @@ export function showResultSplash(host, o) {
           <div class="vs-burst" aria-label="ได้ ${r.score} จาก ${r.max} คะแนน"><div class="in"><b data-count="${r.score}">0</b><small>/ ${r.max} คะแนน</small></div></div>
           <div class="vs-rank vs-rank-${rank.r}" aria-label="แรงก์ ${rank.r} ${rank.name}"><b>${rank.r}</b><span>${rank.name}</span></div>
         </div>
+        ${r.stars ? html`<div class="vs-stars" aria-label="ได้ ${r.stars.got} ดาวจาก 3">${[1, 2, 3].map((i) => html`<i class="${i <= r.stars.got ? "on" : ""}" style="--i:${i}">★</i>`)}<small>ระดับ${r.stars.levelName}${r.stars.got > r.stars.prevBest ? " · สถิติใหม่!" : ""}</small></div>` : ""}
       </div>
       <div class="vs-right">
         ${stat("acc", isMatch ? "พลิกการ์ด" : "ตอบถูก", isMatch ? `${o.moves || 0}<small> ครั้ง</small>` : `${r.correct}<small>/${r.total}</small>`,
@@ -63,7 +70,7 @@ export function showResultSplash(host, o) {
         ${stat("xp", "XP ที่ได้", saved ? `+<span data-count="${r.xp}">0</span>` : "—")}
         ${stat("coin", "🪙 เหรียญ", saved ? `+<span data-count="${r.coins || 0}">0</span>` : "—")}
         ${stat("time", "⏱ เวลา", o.seconds != null ? fmtTime(o.seconds) : "—", `<small class="pct">ความแม่น ${pct}%</small>`)}
-        ${r.newBadges?.length ? html`<div class="vs-badges">${r.newBadges.map((b) => html`<div class="vs-badge"><span class="ic">${b.icon}</span><div><small>ปลดล็อกเหรียญใหม่!</small><b>${b.name}</b></div></div>`)}</div>` : ""}
+        ${prog.length || r.newBadges?.length ? html`<div class="vs-badges">${prog.map((b) => html`<div class="vs-badge ${b.cls || ""}"><span class="ic">${b.icon}</span><div><small>${b.small}</small><b>${b.name}</b></div></div>`)}${(r.newBadges || []).map((b) => html`<div class="vs-badge"><span class="ic">${b.icon}</span><div><small>ปลดล็อกเหรียญใหม่!</small><b>${b.name}</b></div></div>`)}</div>` : ""}
         ${!saved ? html`<p class="vs-note">${r.preview ? "โหมดทดลองเล่น — ไม่บันทึกผล" : "เล่นแบบผู้เยี่ยมชม — เข้าสู่ระบบเพื่อสะสม XP และเหรียญ"}</p>` : ""}
         <div class="vs-actions">
           <button class="vs-btn" id="vs-next">ดูเฉลย &amp; สรุปผล ▶</button>

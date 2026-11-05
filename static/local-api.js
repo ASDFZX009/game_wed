@@ -4,6 +4,7 @@
 import DATA from "./data.json";
 import G from "../server/grading.js";
 import Lessons from "../server/lessons/index.js";
+import * as J from "../public/js/journey.js";
 
 const TZ = "Asia/Bangkok";
 const KEY = "eduplay-web:v1";
@@ -30,7 +31,7 @@ const ITEM = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
 
 // ---------- ที่เก็บความคืบหน้า ----------
 const fresh = () => ({ v: 1, name: "นักผจญภัย", grade: "", xp: 0, coins: WELCOME_COINS, createdAt: now(), updatedAt: now(), seq: 1,
-  plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {} });
+  plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {}, stars: {}, bosses: {}, claimed: {} });
 let S = fresh();
 let adminFlag = false; // ตรวจสิทธิ์จริงที่ Supabase (is_admin) แล้วจึงเปิด
 let remote = null; // ที่เก็บในบัญชี Claude (artifact) ถ้ามี
@@ -132,7 +133,7 @@ export async function connectRemote(onLoaded) {
 // ---------- ช่วยเหลือ ----------
 const equippedView = () => Object.fromEntries(Object.entries(S.equipped).filter(([s, id]) => ITEM[id]?.type === s).map(([s, id]) => [s, ITEM[id].value]));
 const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, admin: adminFlag && !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), owned: Object.keys(S.items), local: true,
-  level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL });
+  level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL, stars: totalStars(), rewardsReady: rewardsReady() });
 function addXP(xp, kind, title) { S.xp += xp; S.activity.unshift({ kind, title, xp, created_at: now() }); S.activity = S.activity.slice(0, 200); }
 function addCoins(amount, reason, detail) { if (!amount && reason !== "free_box") return; S.coins += amount; S.coinTx.unshift({ amount, reason, detail, at: now() }); S.coinTx = S.coinTx.slice(0, 200); }
 function streak() {
@@ -141,6 +142,13 @@ function streak() {
   for (let i = 0; ; i++) { const k = dayKey(Date.now() - i * 86400000); if (days.has(k)) n++; else if (i === 0) continue; else break; }
   return n;
 }
+// ---------- เส้นทางความคืบหน้า: ดาว · ระดับที่ปลดล็อก · บอส · รางวัลสะสมดาว ----------
+const starsOf = (gid) => S.stars[gid] || {};
+const starSum = (o) => Object.values(o || {}).reduce((a, b) => a + (+b || 0), 0);
+const totalStars = () => Object.values(S.stars).reduce((a, o) => a + starSum(o), 0);
+const eliteUnlocked = () => totalStars() >= J.ELITE_AT;
+const rewardsReady = () => { const t = totalStars(); return J.MILESTONES.filter((m) => t >= m.at && !S.claimed[m.at]).length; };
+const lockedFor = (gid) => (adminFlag && cloudUser ? [] : J.lockedLevels(starsOf(gid)));
 function checkBadges(perfect) {
   const earned = [];
   const give = (c) => { if (S.badges[c]) return; S.badges[c] = now(); earned.push(BADGES.find((b) => b.code === c)); };
@@ -159,7 +167,7 @@ function gameRow(g) {
     return { id: g.id, title: g.title, description: g.description, template: "lesson", templateName: "บทเรียน", icon: L.icon,
       category: c ? { slug: c.slug, name: c.name, icon: c.icon } : null, ageMin: g.age[0], ageMax: g.age[1], difficulty: "all",
       visibility: "public", status: "published", timeLimitSec: null, pointsPerQ: 100, passPct: 60, plays: S.gamePlays[g.id] || 0,
-      questionCount: su.size, generated: su.generated, modeCount: su.modes.length, modeNames: su.modes.map((m) => m.icon + " " + m.name), sets: su.sets, version: 1, createdAt: g.createdAt, howTo: "เลือกระดับ รูปแบบการเล่น จำนวนข้อ และชุดคำถามได้ก่อนเริ่ม" }; }
+      questionCount: su.size, generated: su.generated, modeCount: su.modes.length, modeNames: su.modes.map((m) => m.icon + " " + m.name), sets: su.sets, stars: { got: starSum(starsOf(g.id)), max: 15, byLevel: starsOf(g.id) }, version: 1, createdAt: g.createdAt, howTo: "เลือกระดับ รูปแบบการเล่น จำนวนข้อ และชุดคำถามได้ก่อนเริ่ม" }; }
   return { id: g.id, title: g.title, description: g.description, template: g.template, templateName: TEMPLATE_TH[g.template],
     category: c ? { slug: c.slug, name: c.name, icon: c.icon } : null, ageMin: g.age[0], ageMax: g.age[1], difficulty: g.difficulty,
     visibility: "public", status: "published", timeLimitSec: g.timeLimitSec || null, pointsPerQ: 100, passPct: 60, plays: S.gamePlays[g.id] || 0,
@@ -245,10 +253,13 @@ on("GET", "/api/games", (_p, _b, q) => {
 on("GET", "/api/games/:id/play", ({ id }, _b, q) => {
   const g = gameById(id);
   if (g.template === "lesson") {
-    const L = Lessons.lessonById(g.lesson), built = Lessons.build(L, { level: q.get("level"), mode: q.get("mode"), count: q.get("count"), set: q.get("set") ?? 1, seed: q.get("seed") });
+    const L = Lessons.lessonById(g.lesson), locked = lockedFor(g.id), opts = { level: q.get("level"), mode: q.get("mode"), count: q.get("count"), set: q.get("set") ?? 1, seed: q.get("seed") };
+    let built = Lessons.build(L, opts);
+    if (locked.includes(built.level)) built = Lessons.build(L, { ...opts, level: Math.min(...locked) - 1 }); // ระดับที่ยังล็อกอยู่ → เล่นระดับสูงสุดที่เปิดแล้ว
     return { game: { ...gameRow(g), template: built.template, templateName: built.templateName, howTo: built.howTo, timeLimitSec: built.timeLimitSec, questionCount: built.questions.length },
       questions: playableQs(built.template, built.questions), preview: false, key: built.key,
-      setup: { ...Lessons.setupOf(L), current: { level: built.level, mode: built.mode, count: built.count, set: built.set } } };
+      setup: { ...Lessons.setupOf(L), current: { level: built.level, mode: built.mode, count: built.count, set: built.set }, stars: starsOf(g.id), locked },
+      boss: J.pickBoss(g.lesson, built.level, eliteUnlocked()) };
   }
   return { game: gameRow(g), questions: playable(g), preview: false };
 });
@@ -260,6 +271,7 @@ on("POST", "/api/games/:id/check", ({ id }, b) => {
 });
 on("POST", "/api/games/:id/finish", ({ id }, b) => {
   const g0 = gameById(id), set = g0.template === "lesson" ? lessonSet(g0, b.key) : null;
+  const lvl = set ? set.level : 0, lvBefore = Math.floor(S.xp / XP_PER_LEVEL) + 1, lockBefore = set ? lockedFor(g0.id) : [], eliteBefore = eliteUnlocked();
   const g = set ? { ...g0, template: set.template, questions: set.questions } : g0; const qs = g.questions, ppq = 100;
   let correct = 0, score = 0, max = 0, review = []; const total = qs.length;
   if (g.template === "match") {
@@ -279,11 +291,39 @@ on("POST", "/api/games/:id/finish", ({ id }, b) => {
   S.plays.unshift({ id: S.seq++, gameId: g.id, score, max, correct, total, xp, at: now() });
   S.gamePlays[g.id] = (S.gamePlays[g.id] || 0) + 1;
   addXP(xp, "game", g.title); addCoins(xp, "game", g.title);
+  // ดาว (เก็บค่าที่ดีที่สุดของแต่ละระดับ)
+  const got = J.starsFor(score, max), byL = (S.stars[g0.id] = S.stars[g0.id] || {}), prevBest = byL[lvl] || 0;
+  if (got > prevBest) byL[lvl] = got;
+  const unlockedNow = set ? lockBefore.filter((L) => !lockedFor(g0.id).includes(L)) : [];
+  // บอส: นับการเผชิญหน้า ชนะเมื่อตอบถูกครบ (หลอดเลือดบอส = จำนวนข้อ)
+  let boss = null; const BM = b.boss && J.BOSS_LIST.find((x) => x.id === b.boss.id);
+  if (BM && ["mcq", "truefalse"].includes(g.template)) { const elite = !!b.boss.elite && eliteBefore, rec = (S.bosses[BM.id] = S.bosses[BM.id] || { seen: 0, wins: 0, eliteWins: 0 }), win = correct === total && total > 0;
+    rec.seen++; const first = win && !(elite ? rec.eliteWins : rec.wins); if (win) { if (elite) rec.eliteWins++; else rec.wins++; }
+    boss = { id: BM.id, name: elite ? BM.elite : BM.name, elite, win, first }; }
   const newBadges = checkBadges(perfect);
+  const lvAfter = Math.floor(S.xp / XP_PER_LEVEL) + 1;
   save();
-  return { score, max, correct, total, passed: (score / Math.max(1, max)) * 100 >= 60, passPct: 60, perfect, review, saved: true, xp, coins: xp, newBadges, preview: false };
+  return { score, max, correct, total, passed: (score / Math.max(1, max)) * 100 >= 60, passPct: 60, perfect, review, saved: true, xp, coins: xp, newBadges, preview: false,
+    stars: set ? { got, best: Math.max(got, prevBest), prevBest, level: lvl, levelName: Lessons.setupOf(Lessons.lessonById(g0.lesson)).levels[lvl - 1] } : null,
+    unlockedLevel: unlockedNow.length ? { level: unlockedNow[0], name: ["ง่ายมาก", "ง่าย", "ปานกลาง", "ยาก", "ยากมาก"][unlockedNow[0] - 1] } : null,
+    levelUp: lvAfter > lvBefore ? { from: lvBefore, to: lvAfter, rank: J.rankOf(lvAfter) } : null,
+    eliteNow: !eliteBefore && eliteUnlocked(), boss, totalStars: totalStars(), rewardsReady: rewardsReady() };
 });
 
+on("GET", "/api/progress", () => {
+  const t = totalStars(), lv = Math.floor(S.xp / XP_PER_LEVEL) + 1;
+  const cats = CATS.map((c) => { const gs = GAMES.filter((g) => g.category === c.slug); return { slug: c.slug, name: c.name, icon: c.icon, got: gs.reduce((a, g) => a + starSum(starsOf(g.id)), 0), max: gs.length * 15, lessons: gs.length }; }).filter((c) => c.lessons);
+  const lessons = GAMES.filter((g) => g.template === "lesson").map((g) => ({ id: g.id, title: g.title, icon: Lessons.lessonById(g.lesson).icon, category: g.category, got: starSum(starsOf(g.id)), byLevel: starsOf(g.id) }));
+  return { level: lv, xp: S.xp, xpPerLevel: XP_PER_LEVEL, rank: J.rankOf(lv), stars: t, maxStars: lessons.length * 15, eliteUnlocked: eliteUnlocked(), eliteAt: J.ELITE_AT,
+    milestones: J.MILESTONES.map((m) => ({ ...m, reached: t >= m.at, claimed: !!S.claimed[m.at] })), rewardsReady: rewardsReady(),
+    bosses: J.BOSS_LIST.map((x) => ({ ...x, ...(S.bosses[x.id] || { seen: 0, wins: 0, eliteWins: 0 }) })), cats, lessons };
+});
+on("POST", "/api/progress/claim", (_p, b) => {
+  const m = J.MILESTONES.find((x) => x.at === +b.at); if (!m) throw err(404, "ไม่พบรางวัลนี้");
+  if (totalStars() < m.at) throw err(400, `ต้องสะสมให้ครบ ${m.at} ดาวก่อน`); if (S.claimed[m.at]) throw err(400, "รับรางวัลนี้ไปแล้ว");
+  S.claimed[m.at] = now(); addCoins(m.coins, "stars", `รางวัลสะสม ${m.at} ดาว`); S.activity.unshift({ kind: "reward", title: `รับรางวัล “${m.name}” (+${m.coins} เหรียญ)`, xp: 0, created_at: now() }); save();
+  return { coins: S.coins, got: m.coins, rewardsReady: rewardsReady() };
+});
 on("GET", "/api/quizzes", (_p, _b, q) => {
   const t = (q.get("q") || "").toLowerCase();
   const list = QUIZZES.filter((x) => !t || x.title.toLowerCase().includes(t) || x.description.toLowerCase().includes(t));

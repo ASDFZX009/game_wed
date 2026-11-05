@@ -27,8 +27,9 @@ const HASH = [
   [/^login$/, "/login"], [/^register$/, "/register"], [/^forgot$/, "/forgot"], [/^reset-password$/, "/reset-password"],
 ];
 let pending = null; // ที่อยู่เต็ม (รวม ?query) ที่รอแสดง
-let cleanup = null;
-export function onLeave(fn) { cleanup = fn; }
+// เก็บได้หลายตัว (หน้าเดียวอาจลงทะเบียนหลายอย่าง: ฉาก, คลาสของ body, ตัวจับเวลา)
+let cleanups = [];
+export function onLeave(fn) { cleanups.push(fn); }
 export const homeFor = () => "/dashboard";
 export async function refreshMe() { const { user } = await api("/api/auth/me"); state.me = user; loadPrefs(); renderNav(); }
 
@@ -48,7 +49,7 @@ export function go(path, _replace) {
 }
 
 async function render() {
-  if (cleanup) { try { cleanup(); } catch { /* ignore */ } cleanup = null; }
+  const cl = cleanups; cleanups = []; for (const fn of cl.reverse()) { try { fn(); } catch { /* ignore */ } }
   const h = decodeURIComponent(location.hash.slice(1));
   const full = pending && pathToHash(pending) === h ? pending : hashToPath(h);
   pending = null;
@@ -91,7 +92,7 @@ function renderNav(cur = "/") {
   document.getElementById("nav").innerHTML = html`<div class="wrap topbar">
     <a href="/" class="logo" aria-label="QUIZ ODYSSEY หน้าแรก"><span aria-hidden="true">🧭</span> QUIZ ODYSSEY</a>
     <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
-    <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "คลังเกม", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "ความคืบหน้า", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
+    <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "คลังเกม", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "📖 สมุดผจญภัย", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
       <div class="nav-right">${state.config?.cloud && !u.cloud ? html`<a href="/login" class="btn btn-sm nav-login">🔐 เข้าสู่ระบบ</a>` : ""}${u.admin ? html`<a href="/admin" class="${cur === "/admin" ? "active" : ""}" title="ผู้ดูแลระบบ">🛡️ แอดมิน</a>` : ""}<a href="/shop" class="coins" title="เหรียญของฉัน">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a>
         <a href="/profile" class="me">${avatar(u.equipped)} <span class="ellipsis">${u.displayName || ""}</span>${u.cloud ? html`<span title="บันทึกในบัญชีออนไลน์" aria-label="บันทึกในบัญชีออนไลน์">☁️</span>` : ""}</a><a href="/settings">⚙️ ตั้งค่า</a>
         <button class="theme" id="themeBtn" aria-label="สลับโหมดมืด/สว่าง" title="สลับโหมดมืด/สว่าง">🌓</button></div></div></div>`.s;

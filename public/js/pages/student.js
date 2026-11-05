@@ -1,6 +1,11 @@
 // หน้าของนักเรียน: แดชบอร์ด โปรไฟล์ ห้องเรียน ตั้งค่า
 import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo, avatar, titleTag } from "../core.js";
-import { go, refreshMe } from "../app.js";
+import { go, refreshMe, onLeave } from "../app.js";
+import { pxPage } from "../pxpage.js";
+import { rankOf } from "../journey.js";
+import { BOSSES } from "../bosses.js";
+import { charFrame } from "../world/chars.js";
+import { myLook, loadProfile } from "../look.js";
 import * as T from "./teacher.js";
 import { getPrefs, setPrefs, playSound, playTick, ownsTick, getTickSound, setTickSound, TICK_MAX_BYTES, TICK_SOUNDS, SKINS, PALETTES, DEFAULTS } from "../prefs.js";
 
@@ -9,11 +14,27 @@ export function assignmentHref(a, classId) {
   return a.kind === "game" ? `/games/${a.refId}?assignment=${a.id}&class=${classId}` : `/quizzes/${a.refId}?assignment=${a.id}&class=${classId}`;
 }
 
-export async function dashboard({ main, me }) {
+// ภาพตัวละครของผู้เล่น (ใช้ตัวที่แต่งไว้ที่หน้าเริ่มเกม)
+function drawHero(cv) {
+  const brand = getComputedStyle(document.documentElement).getPropertyValue("--brand").trim();
+  const f = charFrame(0, 0, myLook(/^#[0-9a-f]{6}$/i.test(brand) ? brand : "#5b3df5")), x = cv.getContext("2d");
+  cv.width = 44; cv.height = 58; x.imageSmoothingEnabled = false; x.fillStyle = "rgba(30,20,10,.3)"; x.beginPath(); x.ellipse(22, 54, 12, 3, 0, 0, 7); x.fill(); x.drawImage(f.c, Math.round(22 - f.ax), Math.round(55 - f.ay));
+}
+// ภาพบอสในสมุด (ยังไม่เคยเจอ = เงาดำ)
+function drawBoss(cv, id, seen, elite) {
+  const B = BOSSES.find((b) => b.id === id); if (!B) return; const b = B.make(elite ? "#ff3a4a" : "#6a9ae0"), fr = b.frames[0];
+  cv.width = fr.width; cv.height = fr.height; const x = cv.getContext("2d"); x.drawImage(fr, 0, 0);
+  if (!seen) { x.globalCompositeOperation = "source-in"; x.fillStyle = "#1a1020"; x.fillRect(0, 0, fr.width, fr.height); }
+}
+
+export async function dashboard(ctx) {
+  const { main, me } = ctx;
   if (me.role !== "student") return go("/teacher", true);
-  const d = await api("/api/dashboard/student");
+  pxPage(onLeave);
+  const [d, P] = await Promise.all([api("/api/dashboard/student"), api("/api/progress").catch(() => null)]);
   const lv = levelInfo(d.xp, d.xpPerLevel);
-  main.innerHTML = html`
+  if (P) return journey(ctx, d, P, lv);
+  main.innerHTML = html`<h1 class="px-sign">📖 ความคืบหน้า</h1>
     <section class="card"><div class="hello"><div class="row" style="gap:14px;flex-wrap:nowrap"><a href="/shop" title="แต่งตัวที่ร้านค้า">${avatar(me.equipped, "lg")}</a><div><h1 style="margin:0">สวัสดี ${me.displayName} 👋</h1>
       <div class="muted">${titleTag(me.equipped)} ระดับ ${lv.level} · ${d.xp} XP${d.streak ? html` · 🔥 เล่นต่อเนื่อง ${d.streak} วัน` : ""}</div></div></div>
       <a class="coins" href="/shop" style="font-size:1.1rem;padding:8px 14px">🪙 ${(me.coins || 0).toLocaleString("th-TH")} · ไปร้านค้า</a></div>
@@ -35,12 +56,58 @@ export async function dashboard({ main, me }) {
       <section><h2>กิจกรรมล่าสุด</h2>${d.activity.length ? html`<ul class="list">${d.activity.map((a) => html`<li><span class="grow ellipsis">${KIND[a.kind] || a.kind}<span class="small muted"> · ${a.title}</span></span><span class="small">+${a.xp} XP · ${fmtDate(a.created_at)}</span></li>`)}</ul>` : html`<div class="empty">ยังไม่มีกิจกรรม</div>`}</section></div>`.s;
 }
 
+function journey(ctx, d, P, lv) {
+  const { main, me } = ctx, rk = P.rank, nextRank = rk.next, prof = loadProfile();
+  const pctStars = P.maxStars ? (P.stars / P.maxStars) * 100 : 0, lastAt = P.milestones[P.milestones.length - 1].at;
+  main.innerHTML = html`<h1 class="px-sign">📖 สมุดผจญภัย</h1>
+    <section class="card jr-hero">
+      <div class="jr-ava"><canvas id="jrHero" aria-label="ตัวละครของฉัน" role="img"></canvas><a class="linkish small" href="/" id="jrEdit">🎨 แต่งตัวละคร</a></div>
+      <div class="jr-who"><div class="jr-name">${prof?.name || me.displayName}</div><div class="jr-rank">${rk.icon} ${rk.name}${titleTag(me.equipped)}</div>
+        <div class="jr-lv"><b>Lv ${P.level}</b><div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="${lv.per}" aria-valuenow="${lv.into}" aria-label="XP สู่เลเวลถัดไป"><i style="width:${(lv.into / lv.per) * 100}%"></i></div><span class="small">${lv.into}/${lv.per} XP</span></div>
+        <p class="small muted" style="margin:4px 0 0">${nextRank ? `อีก ${nextRank - P.level} เลเวลจะได้ยศใหม่` : "ได้ยศสูงสุดแล้ว 🌟"} · ทุก ${lv.per} XP ขึ้น 1 เลเวล</p></div>
+      <div class="jr-chips"><span class="jr-chip star">★ <b>${P.stars}</b><small>/${P.maxStars} ดาว</small></span><a class="jr-chip coin" href="/shop">🪙 <b>${(me.coins || 0).toLocaleString("th-TH")}</b><small>เหรียญ</small></a>
+        <span class="jr-chip">🔥 <b>${d.streak || 0}</b><small>วันติดกัน</small></span><span class="jr-chip">🎮 <b>${d.stats.games}</b><small>ครั้งที่เล่น</small></span></div>
+    </section>
+
+    <h2 class="px-tab" id="journey">🎁 เส้นทางสะสมดาว</h2>
+    <p class="small jr-note">ได้ดาวจากการเล่นบทเรียน: ผ่าน 60% = ★ · 80% = ★★ · เต็ม = ★★★ (เก็บผลที่ดีที่สุดของแต่ละระดับ) · ระดับ “ยาก” และ “ยากมาก” ปลดล็อกเมื่อได้ดาวที่ระดับก่อนหน้า</p>
+    <div class="jr-track" role="list" style="--p:${Math.min(100, (P.stars / lastAt) * 100)}%"><div class="jr-line" aria-hidden="true"><i></i></div>
+      ${P.milestones.map((m) => html`<div class="jr-ms ${m.claimed ? "done" : m.reached ? "ready" : ""}" role="listitem" style="--x:${(m.at / lastAt) * 100}%">
+        <span class="ic" aria-hidden="true">${m.claimed ? "✅" : m.icon}</span><b>★ ${m.at}</b><span class="nm">${m.name}</span><span class="rw">🪙 ${m.coins}${m.elite ? " + 👑" : ""}</span>
+        ${m.claimed ? html`<span class="st">รับแล้ว</span>` : m.reached ? html`<button class="btn btn-sm free" data-claim="${m.at}">รับรางวัล</button>` : html`<span class="st">อีก ${m.at - P.stars} ดาว</span>`}</div>`)}</div>
+
+    <h2 class="px-tab">📖 สมุดล่าบอส</h2>
+    <p class="small jr-note">ตอบถูกครบทุกข้อในโหมดปรนัย/ถูกผิด/ท้าเวลาเพื่อปราบบอส ${P.eliteUnlocked ? "· 👑 ร่างจ้าวปลดล็อกแล้ว พบได้ที่ระดับยากขึ้นไป" : `· 👑 ร่างจ้าวปลดล็อกเมื่อสะสมครบ ${P.eliteAt} ดาว`}</p>
+    <div class="jr-bosses">${P.bosses.map((b) => html`<article class="jr-boss ${b.seen ? "" : "unseen"}">
+      <canvas data-boss="${b.id}" data-seen="${b.seen ? 1 : 0}" aria-hidden="true"></canvas>
+      <h3>${b.seen ? b.name : "??? ยังไม่เคยพบ"}</h3><p class="small">${b.seen ? b.lore : "เล่นบทเรียนต่าง ๆ เพื่อพบบอสตัวนี้"}</p>
+      <div class="jr-bs"><span>⚔️ เผชิญ <b>${b.seen}</b></span><span>🏆 ชนะ <b>${b.wins}</b></span><span class="${P.eliteUnlocked ? "" : "lock"}">👑 ${P.eliteUnlocked ? html`ร่างจ้าว <b>${b.eliteWins}</b>` : "ล็อก"}</span></div></article>`)}</div>
+
+    <h2 class="px-tab">🗺️ ดาวรายหมวด</h2>
+    <div class="jr-cats">${P.cats.map((c) => html`<a class="jr-cat" href="/games?category=${c.slug}"><span class="ic">${c.icon}</span><span class="grow"><b>${c.name}</b><span class="jbar"><i style="width:${c.max ? (c.got / c.max) * 100 : 0}%"></i></span></span><span class="n">★ ${c.got}<small>/${c.max}</small></span></a>`)}</div>
+
+    <h2 class="px-tab">🏅 เหรียญรางวัล</h2><div class="badges">${d.badges.map((b) => html`<div class="bdg ${b.earned ? "" : "locked"}" title="${b.desc}"><div class="ic">${b.earned ? b.icon : "🔒"}</div><div class="n">${b.name}</div><div class="d">${b.earned ? `ได้รับ ${fmtDate(b.at, false)}` : b.desc}</div></div>`)}</div>
+    <div class="grid-2" style="margin-top:8px"><section><h2 class="px-tab">📈 XP 7 วันล่าสุด</h2><div class="card">${barChart(d.xpChart, { label: (r) => fmtDay(r.day), value: (r) => r.xp, unit: "XP", title: "XP รายวัน 7 วันล่าสุด" })}</div></section>
+      <section><h2 class="px-tab">📜 กิจกรรมล่าสุด</h2>${d.activity.length ? html`<ul class="list">${d.activity.map((a) => html`<li><span class="grow ellipsis">${KIND[a.kind] || (a.kind === "reward" ? "รับรางวัล" : a.kind)}<span class="small muted"> · ${a.title}</span></span><span class="small">${a.xp ? `+${a.xp} XP · ` : ""}${fmtDate(a.created_at)}</span></li>`)}</ul>` : html`<div class="empty">ยังไม่มีกิจกรรม</div>`}</section></div>`.s;
+  drawHero(main.querySelector("#jrHero"));
+  main.querySelectorAll("canvas[data-boss]").forEach((cv) => drawBoss(cv, cv.dataset.boss, cv.dataset.seen === "1", false));
+  main.querySelector("#jrEdit").onclick = (e) => { e.preventDefault(); try { sessionStorage.setItem("qo:titleOpen", "custom"); } catch { /* ignore */ } go("/"); };
+  main.querySelectorAll("[data-claim]").forEach((b) => b.onclick = async () => {
+    busy(b, true);
+    try { const r = await api("/api/progress/claim", { body: { at: +b.dataset.claim } }); playSound("win"); toast(`ได้รับ 🪙 ${r.got} เหรียญ!`); await refreshMe(); dashboard({ ...ctx, me: state.me }); }
+    catch (er) { toast(er.message, "bad"); busy(b, false); }
+  });
+  if (ctx.query?.get?.("j")) main.querySelector("#journey")?.scrollIntoView({ block: "start" });
+}
+
 export async function profile({ main, me }) {
   const d = await api("/api/dashboard/profile");
+  pxPage(onLeave);
   const lv = levelInfo(me.xp);
-  main.innerHTML = html`<div class="narrow"><div class="card"><div class="row" style="gap:16px;flex-wrap:nowrap">${avatar(me.equipped, "xl")}<div><h1 style="margin:0">${me.displayName}</h1>${titleTag(me.equipped)}</div></div>
+  main.innerHTML = html`<div class="narrow"><h1 class="px-sign">🪪 โปรไฟล์นักผจญภัย</h1><div class="card"><div class="row" style="gap:16px;flex-wrap:nowrap">${avatar(me.equipped, "xl")}<div><h2 style="margin:0">${me.displayName}</h2>${titleTag(me.equipped)}</div></div>
       <div class="muted">${me.email} · ${{ student: "นักเรียน", teacher: "ครู", admin: "ผู้ดูแลระบบ" }[me.role]}${me.grade ? ` · ${me.grade}` : ""}</div>
-      <p style="margin-bottom:0">ระดับ ${lv.level} · ${me.xp} XP · 🪙 ${me.coins || 0} · เหรียญรางวัล ${d.badges.length} อัน · <a href="/shop?tab=mine">ของสะสมของฉัน</a></p></div>
+      <p style="margin-bottom:0">Lv ${lv.level} · ${rankOf(lv.level).icon} ${rankOf(lv.level).name} · ${me.xp} XP${me.stars != null ? ` · ★ ${me.stars} ดาว` : ""} · 🪙 ${me.coins || 0} · เหรียญรางวัล ${d.badges.length} อัน · <a href="/shop?tab=mine">ของสะสมของฉัน</a></p></div>
+    <p class="row" style="margin:12px 0 0"><a class="btn btn-sm" href="/dashboard">📖 เปิดสมุดผจญภัย</a><a class="btn btn-ghost btn-sm" href="/bag">🎒 กระเป๋า</a></p>
     <h2>ประวัติการเล่นเกม</h2>${d.plays.length ? html`<ul class="list">${d.plays.map((p) => html`<li><a class="grow ellipsis" href="/games/${p.id}">${p.title}</a><b>${p.score}</b><span class="small muted">${fmtDate(p.created_at)}</span></li>`)}</ul>` : html`<div class="empty">ยังไม่มีประวัติ</div>`}
     <h2>ประวัติแบบทดสอบ</h2>${d.quizzes.length ? html`<ul class="list">${d.quizzes.map((q) => html`<li><a class="grow ellipsis" href="/attempts/${q.id}">${q.title}</a><b>${q.score}/${q.max_score}${q.status === "pending_review" ? " ⏳" : ""}</b><span class="small muted">${fmtDate(q.submitted_at)}</span></li>`)}</ul>` : html`<div class="empty">ยังไม่มีประวัติ</div>`}</div>`.s;
 }
@@ -83,14 +150,14 @@ export async function classPage(ctx) {
 }
 
 export async function settings({ main, me }) {
-  const P = getPrefs();
+  const P = getPrefs(); pxPage(onLeave);
   const shop = me ? await api("/api/shop").catch(() => null) : null;
   const ownedIds = new Set((shop?.items || []).filter((i) => i.owned).map((i) => i.id));
   const locked = (x) => x.premium && !ownedIds.has(x.premium);
   const seg = (key, opts) => html`<div class="seg" role="group" data-seg="${key}">${opts.map(([v, t]) => html`<button type="button" data-v="${v}" aria-pressed="${P[key] === v}">${t}</button>`)}</div>`;
   const sw = (key, title, desc) => html`<div class="set-row"><div class="t"><b id="l-${key}">${title}</b><span class="small muted">${desc}</span></div>
     <label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label></div>`;
-  main.innerHTML = html`<div class="narrow"><h1>ตั้งค่า</h1>
+  main.innerHTML = html`<div class="narrow"><h1 class="px-sign">⚙️ ตั้งค่า</h1>
     <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a>${state.config.local ? "" : html`<a href="#s-app">📲 ติดตั้งแอป</a>`}${me ? html`<a href="#s-account">👤 ${state.config.local ? "ผู้เล่นและความคืบหน้า" : "บัญชี"}</a>` : ""}</nav>
     <p class="small muted">${state.config.local ? "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้" : me ? "การตั้งค่าการแสดงผลจะบันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ" : "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้ — เข้าสู่ระบบเพื่อให้ตามไปทุกเครื่อง"} · มีผลทันทีที่เลือก</p>
 

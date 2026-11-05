@@ -5,6 +5,7 @@ import { refreshMe } from "./app.js";
 import { showResultSplash, resultMeta, fmtTime } from "./result-splash.js";
 import { createBattle } from "./battle.js";
 import { reducedMotion } from "./prefs.js";
+import { pickBoss } from "./journey.js";
 
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
@@ -63,12 +64,14 @@ export function startGame(root, data, opts = {}) {
   }
 
   // ⚔️ ปรนัยและถูก/ผิด: ตอบด้วยการ์ดสกิลโจมตีบอส (หลอดเลือดบอส = จำนวนข้อ)
-  let battle = null;
+  let battle = null, usedBattle = false;
+  const boss = data.boss || pickBoss(game.title, data.setup?.current?.level || 2, false);
   function renderBattle() {
+    usedBattle = true;
     if (!battle) {
       root.innerHTML = html`<div class="play play-battle">${introHead(true)}<div id="g-battle"></div></div>`.s;
       battle = createBattle(root.querySelector("#g-battle"), {
-        total: questions.length, lesson: game.title, category: game.category?.slug, reduced: reducedMotion(),
+        total: questions.length, lesson: game.title, category: game.category?.slug, reduced: reducedMotion(), boss, playerLv: state.me?.level || 1,
         getTimerHtml: () => (game.timeLimitSec ? '<span class="timer" id="g-timer" role="timer" aria-live="off">⏱ --:--</span>' : ""),
         onAnswer: async (a) => { answers[idx] = a; const r = await check(a).catch((e) => { toast(e.message, "bad"); return null; }); if (r) playSound(r.correct ? "correct" : "wrong"); return r; },
         onNext: () => { clearTimeout(autoTimer); if (done) return; idx++; idx >= questions.length ? finish() : renderQ(); },
@@ -206,7 +209,7 @@ export function startGame(root, data, opts = {}) {
   let t0 = 0;
   async function finish(extra) {
     if (done) return; done = true; stop(); battle?.destroy(); battle = null;
-    const body = { answers, assignmentId: finishPayload.assignmentId, key };
+    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite } } : {}) };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
@@ -235,6 +238,7 @@ export function startGame(root, data, opts = {}) {
           ${seconds != null ? html`<span class="rs-chip">⏱ <b>${fmtTime(seconds)}</b></span>` : ""}
           <span class="rs-chip ${r.passed ? "ok" : "bad"}">${r.passed ? "ผ่านเกณฑ์" : "ยังไม่ผ่าน"} ${r.passPct}%</span>
         </div>
+        ${progressBlock(r)}
         ${r.newBadges.length ? html`<div class="rs-badges">${r.newBadges.map((b) => html`<div class="vs-badge"><span class="ic">${b.icon}</span><div><small>ปลดล็อกเหรียญใหม่!</small><b>${b.name}</b><div class="small">${b.desc}</div></div></div>`)}</div>` : ""}
         ${!r.saved ? html`<p class="rs-note">${r.preview ? "โหมดทดลองเล่น — ไม่บันทึกผล" : html`คุณเล่นในฐานะผู้เยี่ยมชม ผลนี้จะไม่ถูกบันทึก — <a href="/login?next=${encodeURIComponent(location.pathname)}">เข้าสู่ระบบ</a> เพื่อสะสม XP`}</p>` : ""}
         ${!isMatch ? html`<details class="rs-review" ${r.total <= 12 ? raw("open") : ""}><summary>📖 ดูเฉลยทุกข้อ</summary>
@@ -251,13 +255,32 @@ export function startGame(root, data, opts = {}) {
     if (r.perfect) setTimeout(() => confetti(), 1500);
   }
 
+  // ความคืบหน้าหลังจบเกม: ดาว · ปลดล็อกระดับ · เลเวลอัป · บอส
+  function progressBlock(r) {
+    if (!r.stars && !r.levelUp && !r.boss) return "";
+    const st = r.stars;
+    return html`<div class="rs-prog">
+      ${st ? html`<div class="rs-stars" aria-label="ได้ ${st.got} ดาว จาก 3 ที่ระดับ${st.levelName}">${[1, 2, 3].map((i) => html`<i class="${i <= st.got ? "on" : ""}" style="--i:${i}">★</i>`)}
+        <span>${st.got > st.prevBest ? html`<b>สถิติใหม่!</b> ` : ""}ระดับ${st.levelName} · ดีที่สุด ${"★".repeat(st.best)}${"☆".repeat(3 - st.best)}</span></div>` : ""}
+      <div class="rs-pops">
+        ${r.unlockedLevel ? html`<span class="rs-pop unlock">🔓 ปลดล็อกระดับ <b>${r.unlockedLevel.name}</b> แล้ว!</span>` : ""}
+        ${r.levelUp ? html`<span class="rs-pop lvup">🆙 เลเวลอัป! <b>Lv ${r.levelUp.from} → ${r.levelUp.to}</b> · ${r.levelUp.rank.icon} ${r.levelUp.rank.name}</span>` : ""}
+        ${r.boss ? html`<span class="rs-pop ${r.boss.win ? "boss" : "bossl"}">${r.boss.win ? html`⚔️ ปราบ <b>${r.boss.name}</b> สำเร็จ!${r.boss.first ? " บันทึกลงสมุดล่าบอสแล้ว 📖" : ""}` : html`💀 ${r.boss.name} ยังรอดอยู่ — ตอบถูกครบทุกข้อเพื่อปราบ`}</span>` : ""}
+        ${r.eliteNow ? html`<span class="rs-pop elite">👑 ปลดล็อกบอสร่างจ้าว! พบได้ในระดับยากขึ้นไป</span>` : ""}
+        ${r.rewardsReady ? html`<a class="rs-pop gift" href="/dashboard?j=1">🎁 มีรางวัลสะสมดาวรอรับ ${r.rewardsReady} ชิ้น — ไปที่สมุดผจญภัย</a>` : ""}
+      </div></div>`;
+  }
+
   // แผงเลือกบทเรียน: ระดับ · รูปแบบ · จำนวนข้อ · ชุดคำถาม
   function setupPanel() {
     const su = data.setup; if (!su) return "";
     const cur = su.current, isMatch = cur.mode === "match";
     const chip = (k, v, label, on, extra = "") => html`<button type="button" class="su-chip ${on ? "on" : ""}" data-k="${k}" data-v="${v}" aria-pressed="${on ? "true" : "false"}" ${raw(extra)}>${label}</button>`;
     return html`<div class="setup card" role="group" aria-label="ตั้งค่าก่อนเล่น">
-      <div class="su-row"><b>ระดับ</b><div class="su-chips">${su.levels.map((n, i) => chip("level", i + 1, html`<span class="lv lv${i + 1}">${"★".repeat(i + 1)}</span> ${n}`, cur.level === i + 1))}</div></div>
+      <div class="su-row"><b>ระดับ</b><div class="su-chips">${su.levels.map((n, i) => { const L = i + 1, lk = (su.locked || []).includes(L), got = (su.stars || {})[L] || 0;
+        return lk ? html`<button type="button" class="su-chip locked" disabled title="ได้อย่างน้อย 1 ดาวที่ระดับ${su.levels[i - 1]}เพื่อปลดล็อก" aria-label="${n} (ล็อกอยู่)">🔒 ${n}</button>`
+          : chip("level", L, html`<span class="lv lv${L}" aria-hidden="true">${"●".repeat(L)}</span> ${n}${su.stars ? html` <span class="got" aria-label="ได้ ${got} ดาว">${"★".repeat(got)}<s>${"☆".repeat(3 - got)}</s></span>` : ""}`, cur.level === L); })}</div></div>
+      ${su.locked?.length ? html`<p class="su-lock small">🔒 ได้อย่างน้อย ⭐ 1 ดวงที่ระดับ “${su.levels[Math.min(...su.locked) - 2]}” เพื่อปลดล็อกระดับ “${su.levels[Math.min(...su.locked) - 1]}”</p>` : ""}
       <div class="su-row"><b>รูปแบบการเล่น</b><div class="su-chips">${su.modes.map((m) => chip("mode", m.id, `${m.icon} ${m.name}`, cur.mode === m.id, `title="${esc(m.howTo)}"`))}</div></div>
       <div class="su-row"><b>จำนวน${isMatch ? "คู่" : "ข้อ"}</b><div class="su-chips">${su.counts.map((c) => chip("count", c, `${c} ${isMatch ? "คู่" : "ข้อ"}`, cur.count === c))}</div></div>
       <div class="su-row"><b>ชุดคำถาม</b><div class="su-chips">${Array.from({ length: su.sets }, (_, i) => chip("set", i + 1, `ชุดที่ ${i + 1}`, cur.set === i + 1))}${chip("set", 0, "🎲 สุ่มชุดใหม่", cur.set === 0)}</div></div>

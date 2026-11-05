@@ -30,8 +30,9 @@ const routes = [
 
 export const homeFor = (u) => (!u ? "/" : u.role === "admin" ? "/admin" : u.role === "teacher" ? "/teacher" : "/dashboard");
 
-let cleanup = null;
-export function onLeave(fn) { cleanup = fn; }
+// เก็บได้หลายตัว (หน้าเดียวอาจลงทะเบียนหลายอย่าง: ฉาก, คลาสของ body, ตัวจับเวลา)
+let cleanups = [];
+export function onLeave(fn) { cleanups.push(fn); }
 
 export function go(path, replace = false) {
   if (replace) history.replaceState({}, "", path); else history.pushState({}, "", path);
@@ -47,7 +48,7 @@ export async function refreshMe() {
 }
 
 async function render() {
-  if (cleanup) { try { cleanup(); } catch { /* ignore */ } cleanup = null; }
+  const cl = cleanups; cleanups = []; for (const fn of cl.reverse()) { try { fn(); } catch { /* ignore */ } }
   const url = new URL(location.href);
   const path = url.pathname;
   const main = document.getElementById("app");
