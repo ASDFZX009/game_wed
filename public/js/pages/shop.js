@@ -2,6 +2,7 @@
 import { api, html, raw, state, toast, confetti, confirmBox, fmtDate, avatar, titleTag } from "../core.js";
 import { go, refreshMe, onLeave } from "../app.js";
 import { mountShopScene, chestImg } from "./shopscene.js";
+import { playBoxOpening } from "../boxfx.js";
 import { myLook } from "../look.js";
 import { playSound, setPrefs, getPrefs, playTick, reducedMotion, loadSkinFont } from "../prefs.js";
 
@@ -43,7 +44,7 @@ export async function shop({ main, query }) {
       <div class="boxes">${d.boxes.map((b) => html`<div class="lootbox ${b.id === "gold" ? "gold" : b.id === "profile" ? "profile" : ""}">
         <img class="big chest" src="${chestImg(b.id)}" alt="" aria-hidden="true"><h3>${b.name}</h3><p>${b.desc}</p>
         <div class="row">${b.id === "basic" && me && d.freeBox ? html`<button class="btn free" data-box="${b.id}" data-free="1">🎉 เปิดฟรีวันนี้!</button>` : ""}
-          <button class="btn" data-box="${b.id}" ${!me ? raw("disabled") : ""}>เปิด 🪙 ${b.price}</button></div>
+          <button class="btn" data-box="${b.id}" ${!me ? raw("disabled") : ""}>เปิด 🪙 ${b.price}</button><button class="btn" data-box="${b.id}" data-times="3" ${!me ? raw("disabled") : ""}>เปิด ×3 🪙 ${b.price * 3}</button></div>
         <details><summary>ดูโอกาสที่จะได้ของแต่ละระดับ</summary><div class="odds">${Object.entries(b.odds).map(([k, v]) => html`<span>${d.rarity[k].name}</span><span style="opacity:.8">${d.items.filter((x) => x.rarity === k && (b.pool ? x.type === b.pool : x.type !== "pfp")).length} ชิ้น</span><b>${v}%</b>`)}</div></details></div>`)}</div>
 
       <div class="tabs" role="tablist">${[["all", "ทั้งหมด"], ...Object.entries(d.slots), ...(me ? [["mine", `ของฉัน (${ownedCount}/${d.items.length})`]] : [])].map(([k, v]) => html`<button class="chip" role="tab" data-tab="${k}" aria-pressed="${tab === k}">${TYPE_IC[k] || (k === "mine" ? "🎒" : "✨")} ${v}</button>`)}</div>
@@ -79,42 +80,39 @@ export async function shop({ main, query }) {
     main.querySelectorAll("[data-equip]").forEach((b) => b.onclick = async () => { await api("/api/shop/equip", { body: { slot: b.dataset.slot, itemId: b.dataset.equip } }); toast("ใส่แล้ว ✨"); await reload(); });
     main.querySelectorAll("[data-unequip]").forEach((b) => b.onclick = async () => { await api("/api/shop/equip", { body: { slot: b.dataset.unequip, itemId: null } }); toast("ถอดแล้ว"); await reload(); });
     main.querySelectorAll("[data-theme]").forEach((b) => b.onclick = () => { setPrefs({ palette: b.dataset.theme }); toast("เปลี่ยนธีมแล้ว 🎨"); render(); });
-    main.querySelectorAll("[data-box]").forEach((b) => b.onclick = () => openBox(b.dataset.box, !!b.dataset.free));
+    main.querySelectorAll("[data-box]").forEach((b) => b.onclick = () => openBox(b.dataset.box, !!b.dataset.free, +b.dataset.times || 1));
     main.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => playTick(0, b.dataset.play, true));
     main.querySelectorAll("[data-usesound]").forEach((b) => b.onclick = () => { setPrefs({ tickSound: b.dataset.usesound }); playTick(0, b.dataset.usesound); toast("เปลี่ยนเสียงนับคะแนนแล้ว 🎵"); render(); });
   }
 
-  async function openBox(boxId, free) {
-    const box = d.boxes.find((x) => x.id === boxId);
-    if (!free && d.coins < box.price) return toast(`เหรียญไม่พอ ต้องการ 🪙 ${box.price}`, "bad");
-    if (!free && !(await confirmBox(`เปิด “${box.name}” ด้วย 🪙 ${box.price}?`, "เปิดกล่อง"))) return;
-    const dlg = document.createElement("dialog");
-    dlg.className = "boxmodal";
-    dlg.innerHTML = html`<div class="reveal"><div class="inner"><div class="chest" aria-hidden="true"><img class="px-chest" src="${chestImg(box.id)}" alt=""></div><p class="muted">กำลังเปิดกล่อง…</p></div></div>`.s;
-    document.body.appendChild(dlg);
-    dlg.showModal();
-    dlg.addEventListener("close", () => dlg.remove());
-    let r;
-    try { [r] = await Promise.all([api("/api/shop/box", { body: { boxId, free } }), new Promise((ok) => setTimeout(ok, 1400))]); }
-    catch (e) { dlg.close(); return toast(e.message, "bad"); }
-    const it = r.item;
-    const full = d.items.find((x) => x.id === it.id) || it;
-    dlg.innerHTML = html`<div class="reveal r-${r.rarity}"><div class="glow" aria-hidden="true"></div><div class="inner">
-      <div class="rar-name">★ ${r.rarityName} ★</div><div class="prize">${itemVisual(full, true)}</div>
-      <h2 style="margin:.3em 0 .1em">${it.name}</h2><p class="muted" style="margin:0">${d.slots[it.type]}</p>
-      ${r.duplicate ? html`<p class="note small" style="text-align:left">มีของชิ้นนี้แล้ว — ได้คืน 🪙 ${r.refund}</p>` : html`<p class="small">เพิ่มเข้า “ของฉัน” แล้ว ✨</p>`}
-      <div class="row" style="justify-content:center;margin-top:12px">
-        ${!r.duplicate && !["theme", "sound"].includes(it.type) ? html`<button class="btn" id="eqNow">ใส่เลย</button>` : ""}${!r.duplicate && it.type === "theme" ? html`<button class="btn" id="thNow">ใช้ธีมนี้</button>` : ""}${!r.duplicate && it.type === "sound" ? html`<button class="btn" id="sndNow">ใช้เสียงนี้</button>` : ""}
-        <button class="btn btn-ghost" id="ok">ปิด</button></div></div></div>`.s;
-    playSound(r.rarity === "legendary" || r.rarity === "epic" ? "win" : "correct");
-    if (["epic", "legendary"].includes(r.rarity)) confetti();
-    dlg.querySelector("#ok").onclick = () => dlg.close();
-    dlg.querySelector("#eqNow")?.addEventListener("click", async () => { await api("/api/shop/equip", { body: { slot: it.type, itemId: it.id } }); dlg.close(); toast("ใส่แล้ว ✨"); await reload(); });
-    dlg.querySelector("#sndNow")?.addEventListener("click", async () => { setPrefs({ tickSound: it.value }); dlg.close(); await reload(); });
-    dlg.querySelectorAll("[data-play]").forEach((b) => b.onclick = () => playTick(0, b.dataset.play, true));
-    dlg.querySelector("#thNow")?.addEventListener("click", async () => { setPrefs({ palette: it.value }); dlg.close(); await reload(); });
-    dlg.addEventListener("close", () => reload(), { once: true });
+  // เปิดกล่อง: ฉากเต็มจอ (boxfx) — เปิดทีละ 1 หรือ 3 กล่อง การ์ดกางออกพร้อมกัน
+  async function openBox(boxId, free, times = 1) {
+    const box = d.boxes.find((x) => x.id === boxId), cost = free ? 0 : box.price * times;
+    if (!free && d.coins < cost) return toast(`เหรียญไม่พอ ต้องการ 🪙 ${cost}`, "bad");
+    if (!free && !(await confirmBox(`เปิด “${box.name}” ${times > 1 ? `${times} กล่อง ` : ""}ด้วย 🪙 ${cost}?`, "เปิดกล่อง"))) return;
+    const results = [];
+    try { for (let i = 0; i < times; i++) results.push(await api("/api/shop/box", { body: { boxId, free: free && i === 0 } })); }
+    catch (e) { if (!results.length) return toast(e.message, "bad"); toast(e.message, "bad"); }
+    const fullOf = (it) => d.items.find((x) => x.id === it.id) || it;
+    const fx = playBoxOpening({ kind: box.id, title: box.name, results, reduced: reducedMotion(),
+      renderCard: (r, i) => { const it = r.item, full = fullOf(it); return html`<div class="bx-foil"></div><div class="bx-in">
+        <div class="bx-rar">${r.rarityName}</div><div class="bx-prize">${itemVisual(full, true)}</div>
+        <b class="bx-name">${it.name}</b><span class="bx-type">${d.slots[it.type]}</span>
+        ${r.duplicate ? html`<span class="bx-dup">มีแล้ว · คืน 🪙 ${r.refund}</span>` : html`<span class="bx-new">ใหม่! ✨</span>`}
+        ${!r.duplicate ? (it.type === "theme" ? html`<button class="bx-use" data-th="${it.value}">ใช้ธีมนี้</button>` : it.type === "sound" ? html`<button class="bx-use" data-snd="${it.value}">ใช้เสียงนี้</button>` : html`<button class="bx-use" data-eq="${i}">ใส่เลย</button>`) : ""}</div>`.s; },
+      actions: (host, close) => {
+        host.innerHTML = html`<button class="btn btn-ghost" data-a="close">ปิด</button>${!free ? html`<button class="btn" data-a="again">เปิดอีก ${times > 1 ? `${times} กล่อง` : ""} 🪙 ${cost}</button>` : ""}`.s;
+        host.querySelector('[data-a="close"]').onclick = close;
+        host.querySelector('[data-a="again"]')?.addEventListener("click", async () => { close(); await reload(); openBox(boxId, false, times); });
+      } });
+    if (["epic", "legendary"].some((r) => results.some((x) => x.rarity === r))) setTimeout(() => confetti(), reducedMotion() ? 0 : 2400);
+    fx.el.addEventListener("click", async (e) => { const b = e.target.closest(".bx-use"); if (!b) return; e.stopPropagation();
+      if (b.dataset.th) setPrefs({ palette: b.dataset.th }); else if (b.dataset.snd) { setPrefs({ tickSound: b.dataset.snd }); playTick(0, b.dataset.snd); }
+      else { const it = results[+b.dataset.eq].item; await api("/api/shop/equip", { body: { slot: it.type, itemId: it.id } }); }
+      b.textContent = "✔ ใช้แล้ว"; b.disabled = true; toast("ใส่แล้ว ✨"); });
+    fx.done.then(() => reload());
   }
+
 
   // โครงหน้า: ฉากในร้าน (สร้างครั้งเดียว) + เนื้อหาที่วาดใหม่ทุกครั้งที่ข้อมูลเปลี่ยน
   document.body.classList.add("shop-world"); loadSkinFont("pixel");
