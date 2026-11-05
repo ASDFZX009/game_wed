@@ -5,8 +5,17 @@ import { refreshMe } from "./app.js";
 import { showResultSplash, resultMeta, fmtTime } from "./result-splash.js";
 import { createBattle } from "./battle.js";
 import { reducedMotion } from "./prefs.js";
-import { pickBoss } from "./journey.js";
+import { pickBoss, RARITY, bossInfo, SHINY } from "./journey.js";
 
+// ป้ายแนะนำบอสก่อนสู้: ความหายาก + สกิลประจำตัว (+ ร่างทองคำ)
+export function encounterHtml(boss) {
+  const info = boss && bossInfo(boss.id); if (!info) return "";
+  const R = RARITY[info.rarity];
+  return html`<div class="st-enc rar-${info.rarity} ${boss.shiny ? "shiny" : ""}" style="--rc:${R.color}">
+    ${info.rarity !== "common" || boss.shiny ? html`<div class="enc-alert">${boss.shiny ? `✨ พบ${SHINY.name}! โอกาสพบแค่ ${Math.round(SHINY.chance * 100)}%` : `${R.icon} พบบอส${R.name}!`}</div>` : ""}
+    <div class="enc-row"><span class="enc-rar">${R.icon} ${R.name}</span><span class="enc-trait"><b>สกิลประจำตัว: ${info.trait.name}</b> — ${info.trait.desc}</span></div>
+    ${R.bonus || boss.shiny ? html`<div class="enc-bonus">ปราบได้รับโบนัส 🪙 ${Math.round((R.bonus + (boss.shiny ? SHINY.bonus : 0)) * (boss.elite ? 1.5 : 1))}</div>` : ""}</div>`;
+}
 export function startGame(root, data, opts = {}) {
   const { game, questions } = data;
   const answers = [];
@@ -213,7 +222,7 @@ export function startGame(root, data, opts = {}) {
   let t0 = 0;
   async function finish(extra) {
     if (done) return; done = true; stop(); battle?.destroy(); battle = null;
-    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite } } : {}), ...(story ? { story: story.n } : {}) };
+    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite, shiny: !!boss.shiny } } : {}), ...(story ? { story: story.n } : {}) };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
@@ -272,7 +281,8 @@ export function startGame(root, data, opts = {}) {
       <div class="rs-pops">
         ${r.unlockedLevel ? html`<span class="rs-pop unlock">🔓 ปลดล็อกระดับ <b>${r.unlockedLevel.name}</b> แล้ว!</span>` : ""}
         ${r.levelUp ? html`<span class="rs-pop lvup">🆙 เลเวลอัป! <b>Lv ${r.levelUp.from} → ${r.levelUp.to}</b> · ${r.levelUp.rank.icon} ${r.levelUp.rank.name}</span>` : ""}
-        ${r.boss ? html`<span class="rs-pop ${r.boss.win ? "boss" : "bossl"}">${r.boss.win ? html`⚔️ ปราบ <b>${r.boss.name}</b> สำเร็จ!${r.boss.first ? " บันทึกลงสมุดล่าบอสแล้ว 📖" : ""}` : html`💀 ${r.boss.name} ยังรอดอยู่ — ตอบถูกครบทุกข้อเพื่อปราบ`}</span>` : ""}
+        ${r.boss ? html`<span class="rs-pop ${r.boss.win ? "boss" : "bossl"}">${r.boss.win ? html`⚔️ ปราบ <b>${r.boss.shiny ? "✨ " : ""}${r.boss.name}</b> สำเร็จ!${r.boss.first ? " บันทึกลงสมุดล่าบอสแล้ว 📖" : ""}` : html`💀 ${r.boss.name} ยังรอดอยู่ — ตอบถูกครบทุกข้อเพื่อปราบ`}</span>` : ""}
+        ${r.boss?.bonus ? html`<span class="rs-pop bonus rar-${r.boss.rarity}">${RARITY[r.boss.rarity]?.icon || "🪙"} โบนัสบอส${RARITY[r.boss.rarity]?.name || ""}${r.boss.shiny ? " · ร่างทองคำ" : ""} <b>+🪙 ${r.boss.bonus}</b></span>` : ""}
         ${r.eliteNow ? html`<span class="rs-pop elite">👑 ปลดล็อกบอสร่างจ้าว! พบได้ในระดับยากขึ้นไป</span>` : ""}
         ${r.rewardsReady ? html`<a class="rs-pop gift" href="/dashboard?j=1">🎁 มีรางวัลสะสมดาวรอรับ ${r.rewardsReady} ชิ้น — ไปที่สมุดผจญภัย</a>` : ""}
       </div></div>`;
@@ -296,7 +306,8 @@ export function startGame(root, data, opts = {}) {
   // หน้าเริ่ม
   if (story) {
     root.innerHTML = html`<div class="play play-story">${introHead()}
-      <div class="card st-start"><div class="st-vs"><span class="st-me">🧙 คุณ</span><b>VS</b><span class="st-boss">${story.boss ? "👑 " : "👾 "}${boss.name}<small>Lv ${boss.lv || "?"}</small></span></div>
+      <div class="card st-start"><div class="st-vs"><span class="st-me">🧙 คุณ</span><b>VS</b><span class="st-boss">${story.boss ? "👑 " : "👾 "}${boss.shiny ? "✨ " : ""}${boss.name}<small>Lv ${boss.lv || "?"}</small></span></div>
+        ${encounterHtml(boss)}
         <p class="small muted" style="margin:8px 0 0">${story.boss ? `ตอบถูกครบทุกข้อเพื่อปราบบอสประจำบท · ` : ""}ผ่าน 60% ได้ ★ · 80% ★★ · เต็ม ★★★ · ได้อย่างน้อย ★ เพื่อเปิดด่านถัดไป${story.prevStars ? ` · ดีที่สุดตอนนี้ ${"★".repeat(story.prevStars)}` : ""}</p>
         <button class="btn btn-lg btn-block" id="g-start" style="margin-top:12px">⚔️ เริ่มสู้!</button></div></div>`.s;
     root.querySelector("#g-start").onclick = () => { t0 = Date.now(); startTimer(); game.template === "match" ? renderMemory() : renderQ(); };

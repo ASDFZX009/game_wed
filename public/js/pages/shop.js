@@ -8,7 +8,7 @@ import { myLook } from "../look.js";
 import { playSound, setPrefs, getPrefs, playTick, reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TYPE_IC = { avatar: "🐱", pfp: "🎭", frame: "🖼️", title: "🏷️", theme: "🎨", sound: "🎵", effect: "🎉", background: "🌌" };
-const REASON = { admin: "ผู้ดูแลระบบ", gift: "ของขวัญจากผู้ดูแล", game: "เล่นเกม", quiz: "ส่งแบบทดสอบ", buy: "ซื้อ", box: "เปิดกล่อง", duplicate: "ได้ของซ้ำ คืนเหรียญ", free_box: "เปิดกล่องฟรี" , exchange: "แลกจากเกมตกปลา", stars: "รางวัลสะสมดาว" };
+const REASON = { boss: "โบนัสปราบบอส", admin: "ผู้ดูแลระบบ", gift: "ของขวัญจากผู้ดูแล", game: "เล่นเกม", quiz: "ส่งแบบทดสอบ", buy: "ซื้อ", box: "เปิดกล่อง", duplicate: "ได้ของซ้ำ คืนเหรียญ", free_box: "เปิดกล่องฟรี" , exchange: "แลกจากเกมตกปลา", stars: "รางวัลสะสมดาว" };
 
 export function itemVisual(it, big = false) {
   switch (it.type) {

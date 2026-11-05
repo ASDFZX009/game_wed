@@ -159,6 +159,155 @@ function druid(col, ph) {
   return { s: outline(pb, cx, H - 6, -0.85), glow: [[cx - 4, 32, 6], [cx + 4, 32, 6], [cx - 40, 13, 18], [cx + 34, 74, 14]] };
 }
 
+// ---------- 4) จอมเวทชาดผู้หลับใหล: เสื้อคลุมแดงชาดคอตั้งสูง มงกุฎอัญมณี หลับตาประสานมือกุมลูกแก้ว ลอยตัว ----------
+function lich(col, ph) {
+  const W = 128, H = 140, pb = new PB(W, H), cx = 64, G = hex(col), Gl = bright(G);
+  const Rb = ramp([132, 40, 64], 9, -0.9, 0.34), Rd = ramp([96, 28, 52], 9, -0.92, 0.3), Tr = ramp([236, 128, 140], 6, -0.55, 0.3), Sk = ramp([150, 160, 214], 7, -0.7, 0.32);
+  const Cap = ramp([70, 64, 140], 7, -0.8, 0.35), Au = ramp([214, 160, 56], 6, -0.6, 0.45), fl = (k) => Math.sin(ph + k) * 1.6;
+  // คอเสื้อตั้งสูงด้านหลังหัว (บานออกเป็นปีก)
+  for (const s of [-1, 1]) { const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push([cx + s * (9 + t * 15 + Math.sin(t * Math.PI) * 4), 46 - t * 30 - Math.sin(t * Math.PI) * 2]); }
+    pts.push([cx + s * 28, 14]); for (let i = 10; i >= 0; i--) { const t = i / 10; pts.push([cx + s * (16 + t * 13 + Math.sin(t * Math.PI) * 5), 50 - t * 34]); }
+    fill(pb, s < 0 ? pts.reverse() : pts, Rd, { bias: s < 0 ? 0.14 : -0.1, seed: 60 + s, rim: 0.12, fold: 0.9, foldAmp: 0.18 });
+    for (let i = 0; i <= 24; i++) { const t = i / 24; pb.set(Math.round(cx + s * (16 + t * 13 + Math.sin(t * Math.PI) * 5)), Math.round(50 - t * 34), Tr[s < 0 ? 4 : 2]); } }
+  // ชุดยาวลากพื้น
+  fill(pb, [[cx - 18, 46], [cx + 18, 46], [cx + 30, 80], [cx + 38 + fl(1), 118], [cx + 44 + fl(1), 132], ...jag(cx + 44 + fl(1), 132, cx - 44 + fl(2), 132, 6, 61, ph, 4), [cx - 44 + fl(2), 132], [cx - 38 + fl(2), 118], [cx - 30, 80]], Rb, { fold: 0.42, foldAmp: 0.32, skew: 0.03, vg: 0.25, seed: 62 });
+  // แนวขอบชมพูกลางชุดและชายผ้า
+  for (let y = 84; y < 132; y++) { const w = Math.round((y - 84) * 0.12); pb.set(cx - 1 - w, y, Tr[4]); pb.set(cx + 1 + w, y, Tr[2]); for (let x = cx - w; x <= cx + w; x++) pb.set(x, y, Rd[1]); }
+  // แขนเสื้อกว้าง (ระฆัง) พับเข้าหามือกลางอก
+  for (const s of [-1, 1]) fill(pb, [[cx + s * 16, 46], [cx + s * 30, 56], [cx + s * 44, 96 + fl(3)], [cx + s * 38, 102 + fl(3)], [cx + s * 10, 88], [cx + s * 6, 70]], Rb, { fold: 0.7, foldAmp: 0.28, skew: s * 0.2, bias: s < 0 ? 0.08 : -0.14, seed: 63 + s });
+  for (const s of [-1, 1]) for (let i = 0; i < 40; i++) { const t = i / 39, x = cx + s * (44 - t * 34), y = 96 + fl(3) - t * 8 + t * t * 0; pb.set(Math.round(x), Math.round(y + 1), Tr[s < 0 ? 4 : 2]); }
+  // มือประสาน + ลูกแก้ว
+  blob(pb, cx - 7, 80, 5, 4, Sk, { bias: 0.08 }); blob(pb, cx + 7, 80, 5, 4, Sk, { bias: -0.08 });
+  for (let y = -7; y <= 7; y++) for (let x = -7; x <= 7; x++) { const d = Math.hypot(x, y) / 7; if (d < 1) pb.set(cx + x, 72 + y, mix([255, 255, 255], G, clamp(d * 1.25 - (x + y < -4 ? 0.3 : 0), 0, 1))); }
+  for (let k = 0; k < 10; k++) { const a = ph * 0.7 + (k / 10) * 6.28; pb.set(Math.round(cx + Math.cos(a) * 10), Math.round(72 + Math.sin(a) * 4), k % 2 ? Gl : G); }
+  // ผ้าพันคอสีน้ำเงิน + หน้าซีด หลับตา
+  blob(pb, cx, 46, 10, 5, Cap, { bias: -0.05 });
+  blob(pb, cx, 33, 8, 10, Sk, { bias: 0.04 });
+  for (const ex of [cx - 4, cx + 4]) { for (let i = -2; i <= 2; i++) pb.set(ex + i, 33 + (Math.abs(i) === 2 ? -1 : 0), Sk[0]); pb.set(ex, 34, tone(G, -0.2)); }
+  pb.set(cx, 37, Sk[2]); pb.set(cx, 38, Sk[2]); for (let x = cx - 2; x <= cx + 2; x++) pb.set(x, 41, Sk[1]);
+  // หมวกครอบ + มงกุฎทองฝังอัญมณี
+  blob(pb, cx, 21, 10, 8, Cap, { bias: 0.05 });
+  for (let y = 12; y < 30; y++) { pb.set(cx - 1, y, Tr[4]); pb.set(cx, y, Tr[5]); pb.set(cx + 1, y, Tr[3]); }
+  for (let x = cx - 10; x <= cx + 10; x++) { const y = 25 - Math.round(Math.abs(x - cx) * 0.12); pb.set(x, y, pick(Au, 0.8 - (x - cx) * 0.03)); pb.set(x, y + 1, pick(Au, 0.4)); }
+  for (let y = -3; y <= 3; y++) for (let x = -3; x <= 3; x++) { const d = Math.abs(x) + Math.abs(y); if (d <= 3) pb.set(cx + x, 22 + y, d === 3 ? Au[1] : d === 2 ? tone(G, -0.25) : Gl); }
+  return { s: outline(pb, cx, H - 4, -0.85), glow: [[cx, 72, 18], [cx, 22, 9], [cx - 4, 34, 4], [cx + 4, 34, 4]] };
+}
+
+// ---------- 5) วิญญาณกะโหลกเขาแกะ: ผ้าคลุมขาดรุ่ยปลิวไปด้านหลัง ไฟผีสีฟ้าหลังหัว ปลอกคอเชือกลูกปัด ถือตะเกียงไฟ ----------
+function wraith(col, ph) {
+  const W = 156, H = 142, pb = new PB(W, H), cx = 66, G = hex(col), Gl = bright(G);
+  const Cl = ramp([52, 58, 84], 9, -0.92, 0.36), Cl2 = ramp([70, 78, 108], 9, -0.9, 0.38), Bn = ramp([226, 214, 186], 7, -0.72, 0.26), Hr = ramp([70, 52, 44], 7, -0.85, 0.3);
+  const Rp = ramp([150, 112, 64], 6, -0.7, 0.35), Au = ramp([222, 176, 70], 6, -0.6, 0.45), Fe = PAL.iron, Fi = [255, 170, 60], fl = (k) => Math.sin(ph + k) * 2.4;
+  // ไฟผีสีฟ้าพลิ้วจากหลังหัวไปทางขวา
+  for (let i = 0; i < 46; i++) { const t = i / 45, bx = cx + 6 + t * 62, by = 22 - t * 10 + Math.sin(ph * 1.3 + t * 7) * 4 * t, r = (1 - t) * 9 + 2;
+    for (let y = -r; y <= r; y++) for (let x = -r; x <= r; x++) { const d = Math.hypot(x, y) / r; if (d < 1 && hash(Math.round(bx + x), Math.round(by + y), 77) > d * 0.7) pb.set(Math.round(bx + x), Math.round(by + y), mix([236, 255, 255], [96, 210, 220], clamp(d * 0.8 + t * 0.5, 0, 1))); } }
+  // ผ้าคลุมใหญ่ ปลิวไปด้านขวาหลัง ขาดรุ่ยเป็นริ้ว
+  fill(pb, [[cx - 4, 36], [cx + 20, 40], [cx + 52 + fl(0), 54], [cx + 76 + fl(1), 74], [cx + 84 + fl(2), 98], ...jag(cx + 84 + fl(2), 100, cx - 30 + fl(3), 132, 14, 81, ph, 3.4), [cx - 34 + fl(3), 116], [cx - 30, 84], [cx - 22, 52]], Cl, { fold: 0.36, skew: -0.16, foldAmp: 0.3, vg: 0.3, noise: 0.08, seed: 80 });
+  for (let i = 0; i < 9; i++) { const sx = cx + 30 + i * 6 + fl(i), sy = 70 + i * 4; for (let k = 0; k < 18; k++) pb.set(Math.round(sx + k * 0.6), Math.round(sy + k), Cl[k % 3 ? 1 : 0]); }
+  // ชั้นผ้าคลุมไหล่
+  fill(pb, [[cx - 22, 46], [cx + 20, 44], [cx + 40 + fl(4), 62], ...jag(cx + 42 + fl(4), 64, cx - 30, 70, 12, 82, ph, 3.6), [cx - 30, 62]], Cl2, { fold: 0.9, skew: -0.3, foldAmp: 0.3, bias: 0.05, seed: 83 });
+  // เขาแกะม้วนลงข้างหลัง (วาดก่อนหัว)
+  for (const s of [-1, 1]) { let px = cx - 4 + s * 6, py = 20, a = -Math.PI / 2 - s * 0.6;
+    for (let i = 0; i < 22; i++) { a += s * 0.3; const nx = px + Math.cos(a) * 2.4, ny = py + Math.sin(a) * 2.4; stroke(pb, px, py, nx, ny, 5.4 - i * 0.18, 5.2 - i * 0.18, Hr, s > 0 ? -0.15 : 0.05); px = nx; py = ny; }
+    for (let i = 0; i < 6; i++) pb.set(Math.round(cx - 4 + s * (10 + i * 2)), 14 + i, Hr[5]); }
+  // กะโหลก
+  blob(pb, cx - 4, 28, 9, 10, Bn, { bias: 0.06 }); fill(pb, [[cx - 11, 31], [cx + 3, 31], [cx + 1, 42], [cx - 9, 42]], Bn, { bias: -0.02, rim: 0.14, seed: 84 });
+  for (const ex of [cx - 8, cx]) { pb.rect(ex - 2, 26, 5, 5, [20, 16, 26]); pb.set(ex, 28, Gl); pb.set(ex + 1, 28, [255, 255, 255]); pb.set(ex, 29, tone(G, -0.3)); }
+  pb.set(cx - 4, 34, [40, 30, 34]); pb.set(cx - 5, 35, [40, 30, 34]); pb.set(cx - 3, 35, [40, 30, 34]);
+  for (let x = cx - 8; x <= cx; x++) { pb.set(x, 38, x % 2 ? Bn[5] : [60, 46, 46]); pb.set(x, 40, Bn[2]); }
+  // ปลอกคอเชือก + ลูกปัดทอง
+  for (let k = 0; k <= 28; k++) { const a = Math.PI * (k / 28), x = cx - 4 + Math.cos(a) * 18, y = 46 + Math.sin(a) * 6; blob(pb, x, y, 2.4, 2.4, Rp, { bias: (k % 3) * 0.1 - 0.1 }); if (k % 4 === 0) blob(pb, x, y + 2, 2, 2, Au, { bias: 0.1 }); }
+  for (let k = 0; k < 4; k++) { const x = cx - 14 + k * 7; for (let y = 50; y < 56 + (k % 2) * 3; y++) pb.set(x, y, Rp[1]); blob(pb, x, 57 + (k % 2) * 3, 2, 2, k % 2 ? Bn : Au); }
+  // แขนผอมยื่นถือตะเกียง (ด้านหน้า หันหาผู้เล่น)
+  fill(pb, [[cx - 22, 58], [cx - 12, 62], [cx - 26, 84], [cx - 34, 80]], Cl2, { fold: 1, foldAmp: 0.2, bias: 0.05, seed: 85 });
+  stroke(pb, cx - 30, 82, cx - 36, 88, 3, 2.4, Bn, 0.05); for (let i = 0; i < 3; i++) stroke(pb, cx - 37 + i, 88, cx - 40 + i * 2, 93, 1.6, 1, Bn, 0);
+  for (let y = 90; y < 97; y++) pb.set(cx - 38, y, y % 2 ? Fe[4] : Fe[2]);
+  pb.rect(cx - 44, 96, 13, 2, Fe[3]); pb.rect(cx - 43, 95, 11, 1, Fe[5]);
+  for (let y = 98; y < 112; y++) for (let x = cx - 44; x < cx - 31; x++) { const fr = x === cx - 44 || x === cx - 32 || y === 104 && (x === cx - 44 || x === cx - 32); const d = Math.hypot(x - (cx - 38), y - 106) / 7;
+    pb.set(x, y, fr ? Fe[x < cx - 38 ? 4 : 2] : mix([255, 250, 210], Fi, clamp(d * 1.2, 0, 1))); }
+  pb.rect(cx - 44, 112, 13, 2, Fe[2]);
+  return { s: outline(pb, cx, H - 4, -0.85), glow: [[cx - 8, 28, 6], [cx, 28, 6], [cx - 38, 105, 22], [cx + 30, 14, 16]] };
+}
+
+// ---------- 6) นักบวชเงาไม้เท้ากะโหลก: ผ้าคลุมเทาเข้ม หน้ามืดมีแต่ตาแดง ไม้เท้ากะโหลกมือหนึ่ง เปลวไฟในอีกมือ ----------
+function reaper(col, ph) {
+  const W = 146, H = 148, pb = new PB(W, H), cx = 78, G = hex(col), Gl = bright(G);
+  const Rg = ramp([76, 72, 78], 10, -0.92, 0.36), Rh = ramp([96, 80, 70], 8, -0.88, 0.32), Bn = ramp([214, 200, 176], 7, -0.72, 0.26), Wd = ramp([120, 74, 40], 7, -0.8, 0.36), Au = ramp([214, 160, 56], 6, -0.6, 0.45);
+  const fl = (k) => Math.sin(ph + k) * 1.8;
+  // ไม้เท้า (ซ้าย) + กะโหลกบนยอด
+  for (let y = 20; y < 144; y++) { const x = cx - 44 + Math.round(Math.sin(y / 9) * 1.2); for (let k = -1; k <= 1; k++) pb.set(x + k, y, pick(Wd, 0.55 - k * 0.25 + (y % 7 === 0 ? -0.25 : 0))); if (y % 11 === 0) pb.set(x - 2, y, Wd[1]); }
+  blob(pb, cx - 44, 14, 9, 9, Bn, { bias: 0.06 }); fill(pb, [[cx - 50, 17], [cx - 38, 17], [cx - 40, 26], [cx - 48, 26]], Bn, { rim: 0.12, seed: 90 });
+  for (const ex of [cx - 48, cx - 41]) pb.rect(ex - 1, 12, 4, 4, [30, 22, 22]); pb.set(cx - 44, 19, [40, 30, 30]); pb.set(cx - 45, 20, [40, 30, 30]);
+  for (let x = cx - 48; x <= cx - 40; x++) pb.set(x, 23, x % 2 ? Bn[5] : [70, 56, 50]);
+  // ชุดยาวทรงระฆัง ชายขาด
+  fill(pb, [[cx - 14, 40], [cx + 14, 40], [cx + 28, 74], [cx + 40 + fl(1), 128], ...jag(cx + 42 + fl(1), 130, cx - 40 + fl(2), 130, 12, 91, ph, 3.6), [cx - 38 + fl(2), 128], [cx - 28, 74]], Rg, { fold: 0.55, foldAmp: 0.36, skew: 0.05, vg: 0.25, seed: 92 });
+  for (let i = 0; i < 6; i++) { const x0 = cx - 26 + i * 10; for (let y = 78; y < 126; y++) pb.set(Math.round(x0 + (y - 78) * (i - 2.5) * 0.08), y, Rh[i % 2 ? 3 : 2]); }
+  // ฮู้ดแหลม + ผ้าคลุมไหล่
+  fill(pb, [[cx, 6], [cx + 12, 18], [cx + 18, 34], [cx + 30, 46], [cx + 34, 60], ...jag(cx + 34, 62, cx - 34, 62, 8, 93, ph, 4), [cx - 34, 60], [cx - 30, 46], [cx - 18, 34], [cx - 12, 18]], Rg, { fold: 0.8, foldAmp: 0.26, bias: 0.08, vg: 0.3, seed: 94 });
+  fill(pb, [[cx, 16], [cx + 10, 26], [cx + 11, 40], [cx, 46], [cx - 11, 40], [cx - 10, 26]], ramp([24, 20, 26], 5, -0.95, -0.2), { bias: -0.4, rim: 0, seed: 95 });
+  for (let y = 24; y < 44; y++) for (let x = cx - 9; x <= cx + 9; x++) { const d = ((x - cx) / 8.5) ** 2 + ((y - 34) / 10) ** 2; if (d < 0.8) pb.set(x, y, mix([4, 2, 6], [16, 12, 18], d)); }
+  for (const ex of [cx - 4, cx + 4]) { pb.rect(ex - 1, 32, 3, 2, Gl); pb.set(ex, 32, [255, 255, 255]); }
+  // ตราทองที่อก
+  for (let x = -5; x <= 5; x++) { const y = 64 + Math.round(Math.abs(x) * 0.5); pb.set(cx + x, y, pick(Au, 0.7 - x * 0.05)); pb.set(cx + x, y + 1, Au[1]); }
+  blob(pb, cx, 66, 3, 2, Au, { bias: 0.1 }); pb.set(cx, 66, tone(G, 0.3));
+  // แขนซ้ายจับไม้เท้า
+  fill(pb, [[cx - 24, 48], [cx - 14, 56], [cx - 34, 80], [cx - 42, 74]], Rg, { fold: 1, foldAmp: 0.22, bias: 0.04, seed: 96 });
+  blob(pb, cx - 44, 80, 4, 5, Bn, { bias: 0.04 }); for (let i = 0; i < 3; i++) pb.set(cx - 41, 77 + i * 2, Bn[1]);
+  // แขนขวาหงายมือ เปลวไฟลอย
+  fill(pb, [[cx + 18, 48], [cx + 28, 56], [cx + 46, 86], [cx + 38, 92], [cx + 22, 72]], Rg, { fold: 1, foldAmp: 0.22, bias: -0.14, seed: 97 });
+  blob(pb, cx + 44, 90, 5, 3, Bn, { bias: -0.1 });
+  const fx = cx + 45, fy = 86, fh = 22 + fl(0) * 1.5;
+  for (let y = 0; y < fh; y++) { const t = y / fh, hw = Math.sin((1 - t) * Math.PI * 0.9) * 8 * (1 - t * 0.4) + Math.sin(ph * 2 + y * 0.6) * 1.2 * t;
+    for (let x = -hw; x <= hw; x++) { const u = Math.abs(x) / Math.max(1, hw); pb.set(Math.round(fx + x + Math.sin(ph + t * 4) * t * 3), Math.round(fy - y), mix([255, 248, 200], u > 0.6 || t > 0.6 ? [216, 52, 30] : [255, 140, 40], clamp(u * 0.9 + t * 0.7, 0, 1))); } }
+  for (let i = 0; i < 9; i++) { const ex = fx - 6 + hash(i, 3, 98) * 14 + fl(i) * 2, ey = fy - fh - 2 - hash(i, 4, 98) * 16; pb.set(Math.round(ex), Math.round(ey), i % 2 ? [255, 120, 40] : [200, 40, 30]); }
+  return { s: outline(pb, cx, H - 6, -0.85), glow: [[cx - 4, 32, 6], [cx + 4, 32, 6], [fx, fy - 10, 22], [cx - 44, 14, 10]] };
+}
+
+// ---------- 7) จ้าวปีกราตรี (ตำนาน): ปีศาจปีกค้างคาวขาดวิ่น เขาโค้งไปหน้า ตาม่วงเรือง หางปลายหอก ลอยเหนือพื้น ----------
+function shade(col, ph) {
+  const W = 190, H = 150, pb = new PB(W, H), cx = 96, G = hex(col), Gl = bright(G);
+  const Bd = ramp([46, 36, 76], 10, -0.92, 0.36), Wm = ramp([84, 44, 104], 9, -0.9, 0.34), Bo = ramp([60, 50, 92], 8, -0.88, 0.4), Hn = ramp([150, 136, 168], 7, -0.8, 0.3), Cw = ramp([220, 210, 236], 5, -0.6, 0.2);
+  const fl = (k) => Math.sin(ph + k) * 3;
+  // ปีกสองข้าง: เยื่อปีก + กระดูกนิ้วปีก ขอบล่างเป็นลอนขาด
+  for (const s of [-1, 1]) {
+    const sh = [cx + s * 10, 52], tip = [cx + s * 88, 10 + fl(0)], elbow = [cx + s * 44, 22 + fl(0) * 0.5];
+    const lows = [[cx + s * 86, 64 + fl(1)], [cx + s * 70, 54 + fl(1)], [cx + s * 62, 82 + fl(2)], [cx + s * 46, 66], [cx + s * 36, 92 + fl(2)], [cx + s * 24, 72], [cx + s * 14, 86]];
+    const poly = [sh, elbow, tip, ...lows]; if (s < 0) poly.reverse();
+    fill(pb, poly, Wm, { fold: 0.22, skew: s * 0.35, foldAmp: 0.16, bias: s < 0 ? 0.04 : -0.14, vg: 0.3, noise: 0.07, seed: 100 + s });
+    for (let i = 0; i < 18; i++) { const a = hash(i, s + 5, 101), x = cx + s * (20 + a * 64), y = 30 + hash(i, s + 6, 101) * 40; if (pb.alpha(x, y)) pb.set(x, y, Wm[1]); }
+    stroke(pb, sh[0], sh[1], elbow[0], elbow[1], 5, 4, Bo, 0.05); stroke(pb, elbow[0], elbow[1], tip[0], tip[1], 4, 1.5, Bo, 0);
+    for (const [lx, ly] of [lows[1], lows[3], lows[5]]) stroke(pb, elbow[0], elbow[1], lx, ly, 2.6, 1.2, Bo, -0.05);
+    for (let k = 0; k < 3; k++) pb.set(Math.round(elbow[0] + s * k), Math.round(elbow[1] - 3 - k), Cw[3]);
+  }
+  // หางปลายหอก
+  { let px = cx + 4, py = 96, a = 1.2; for (let i = 0; i < 26; i++) { a -= 0.07; const nx = px + Math.cos(a) * 2.6, ny = py + Math.sin(a) * 2.6; stroke(pb, px, py, nx, ny, 5 - i * 0.14, 4.8 - i * 0.14, Bd, -0.05); px = nx; py = ny; }
+    fill(pb, [[px - 2, py + 3], [px + 9, py - 6], [px + 4, py + 6], [px + 8, py + 12]], Bo, { bias: 0.1, rim: 0.1, seed: 102 }); pb.set(Math.round(px + 6), Math.round(py), Gl); }
+  // ขาพับใต้ตัว + กรงเล็บ
+  for (const [s, b] of [[-1, 0.05], [1, -0.12]]) { stroke(pb, cx + s * 8, 90, cx + s * 16, 104, 7, 5.6, Bd, b); stroke(pb, cx + s * 16, 104, cx + s * 10, 118, 5, 3.6, Bd, b);
+    for (let i = 0; i < 3; i++) stroke(pb, cx + s * 10 - 3 + i * 3, 118, cx + s * 10 - 4 + i * 3.6, 124, 1.8, 0.8, Cw, 0); }
+  // ลำตัวเกราะกระดูก
+  fill(pb, [[cx - 19, 46], [cx + 19, 46], [cx + 15, 62], [cx + 8, 80], [cx + 9, 94], [cx - 9, 94], [cx - 8, 80], [cx - 15, 62]], Bd, { seed: 103, bias: 0.06 });
+  for (let k = 0; k < 4; k++) { const y = 54 + k * 6; for (let x = cx - 14 + k * 2; x <= cx + 14 - k * 2; x++) if (Math.abs(x - cx) > 2) pb.set(x, y + Math.round(Math.abs(x - cx) * 0.25), tone(pb.get(x, y) || Bd[4], -0.45)); }
+  for (const s of [-1, 1]) blob(pb, cx + s * 18, 50, 7, 6, Bo, { bias: s < 0 ? 0.12 : -0.1 });
+  for (let k = -4; k <= 4; k++) { glowPx(pb, cx, 62 + k * 2, G); }
+  fill(pb, [[cx - 12, 84], [cx + 12, 84], [cx + 16 + fl(3) * 0.5, 104], ...jag(cx + 18 + fl(3) * 0.5, 106, cx - 18 + fl(4) * 0.5, 106, 12, 107, ph, 3.4), [cx - 16 + fl(4) * 0.5, 104]], Wm, { fold: 0.9, foldAmp: 0.3, bias: -0.1, seed: 108 });
+  for (let x = cx - 12; x <= cx + 12; x++) { pb.set(x, 84, Bo[5]); pb.set(x, 85, Bo[2]); }
+  // แขนยาวยื่นกรงเล็บไปทางผู้เล่น
+  stroke(pb, cx - 20, 52, cx - 34, 70, 6, 5, Bd, 0.08); stroke(pb, cx - 34, 70, cx - 46, 64, 5, 4, Bd, 0.08); blob(pb, cx - 34, 70, 3.5, 3.5, Bo, { bias: 0.1 });
+  blob(pb, cx - 47, 64, 3.5, 3, Bd, { bias: 0.1 }); for (let i = 0; i < 4; i++) { const a = -0.9 + i * 0.5; stroke(pb, cx - 49, 64, cx - 49 + Math.cos(Math.PI + a) * 6, 64 + Math.sin(Math.PI + a) * 6, 1.8, 0.8, Cw, 0.05); }
+  stroke(pb, cx + 20, 52, cx + 30, 72, 6, 5, Bd, -0.16); stroke(pb, cx + 30, 72, cx + 26, 86, 5, 4, Bd, -0.16);
+  for (let i = 0; i < 3; i++) stroke(pb, cx + 24 + i * 2, 86, cx + 22 + i * 3, 92, 1.6, 0.8, Cw, 0);
+  // หัว: เขาโค้งไปข้างหน้า ตาม่วงเรือง ปากเรืองแสง
+  for (const s of [-1, 1]) { let px = cx + s * 7, py = 28, a = -Math.PI / 2 + s * 1.2; for (let i = 0; i < 10; i++) { a -= s * (i < 4 ? 0.05 : 0.2); const nx = px + Math.cos(a) * 2.4, ny = py + Math.sin(a) * 2.4; stroke(pb, px, py, nx, ny, 6 - i * 0.5, 5.6 - i * 0.5, Hn, s > 0 ? -0.15 : 0.05); px = nx; py = ny; } }
+  fill(pb, [[cx - 9, 26], [cx + 9, 26], [cx + 11, 34], [cx + 6, 46], [cx, 49], [cx - 6, 46], [cx - 11, 34]], Bd, { bias: 0.1, rim: 0.12, seed: 106 });
+  for (let x = cx - 8; x <= cx + 8; x++) pb.set(x, 30, tone(pb.get(x, 30) || Bd[5], -0.3));
+  for (const s of [-1, 1]) { const ex = cx + s * 5; for (let i = 0; i < 4; i++) pb.set(ex + s * i, 32 + Math.round(i * 0.5), i < 2 ? [255, 255, 255] : Gl); pb.set(ex + s, 33, Gl); }
+  for (let x = cx - 4; x <= cx + 4; x++) pb.set(x, 41, tone(G, -0.2)); for (const fx2 of [cx - 3, cx + 3]) { pb.set(fx2, 42, Cw[4]); pb.set(fx2, 43, Cw[3]); }
+  // เศษผลึกรูนลอยรอบหัว
+  for (let k = 0; k < 5; k++) { const a = ph * 0.6 + (k / 5) * 6.28, rx = cx + Math.cos(a) * 26, ry = 22 + Math.sin(a) * 6; for (const [dx, dy] of [[0, -2], [-1, 0], [0, 0], [1, 0], [0, 2], [0, -1], [0, 1]]) pb.set(Math.round(rx + dx), Math.round(ry + dy), dx || Math.abs(dy) === 2 ? G : Gl); }
+  return { s: outline(pb, cx, H - 8, -0.85), glow: [[cx - 5, 33, 7], [cx + 5, 33, 7], [cx, 62, 14], [cx, 42, 8]] };
+}
+
 function build(fn, col, extra) {
   const fr = [0, 2.1, 4.2].map((ph) => fn(col, ph));
   const { ax, ay } = fr[0].s; return { frames: fr.map((f) => f.s.c), ax, ay, glow: fr[0].glow.map(([x, y, r]) => [x + 1, y + 1, r]), color: hex(col), ...extra };
@@ -167,4 +316,8 @@ export const BOSSES = [
   { id: "warden", name: "ผู้คุมวิญญาณไร้หน้า", make: (c) => build(warden, c, { hit: 72, shw: 26, float: 4 }) },
   { id: "knight", name: "อัศวินหนามเงา", make: (c) => build(knight, c, { hit: 74, shw: 44, float: 0 }) },
   { id: "druid", name: "นักบวชเขากวางแห่งป่าลึก", make: (c) => build(druid, c, { hit: 72, shw: 38, float: 0 }) },
+  { id: "wraith", name: "วิญญาณกะโหลกเขาแกะ", make: (c) => build(wraith, c, { hit: 70, shw: 34, float: 5 }) },
+  { id: "reaper", name: "นักบวชเงาไม้เท้ากะโหลก", make: (c) => build(reaper, c, { hit: 74, shw: 40, float: 0 }) },
+  { id: "lich", name: "จอมเวทชาดผู้หลับใหล", make: (c) => build(lich, c, { hit: 72, shw: 32, float: 7 }) },
+  { id: "shade", name: "จ้าวปีกราตรี", make: (c) => build(shade, c, { hit: 66, shw: 30, float: 3 }) },
 ];

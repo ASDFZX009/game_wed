@@ -2,7 +2,7 @@
 import { api, html, raw, state, toast, fmtDate, fmtDay, relTime, dueText, pct, barChart, formData, busy, confirmBox, levelInfo, avatar, titleTag } from "../core.js";
 import { go, refreshMe, onLeave } from "../app.js";
 import { pxPage } from "../pxpage.js";
-import { rankOf } from "../journey.js";
+import { rankOf, SHINY } from "../journey.js";
 import { BOSSES } from "../bosses.js";
 import { charFrame } from "../world/chars.js";
 import { myLook, loadProfile } from "../look.js";
@@ -78,9 +78,14 @@ function journey(ctx, d, P, lv) {
 
     <h2 class="px-tab">📖 สมุดล่าบอส</h2>
     <p class="small jr-note">ตอบถูกครบทุกข้อในโหมดปรนัย/ถูกผิด/ท้าเวลาเพื่อปราบบอส ${P.eliteUnlocked ? "· 👑 ร่างจ้าวปลดล็อกแล้ว พบได้ที่ระดับยากขึ้นไป" : `· 👑 ร่างจ้าวปลดล็อกเมื่อสะสมครบ ${P.eliteAt} ดาว`}</p>
-    <div class="jr-bosses">${P.bosses.map((b) => html`<article class="jr-boss ${b.seen ? "" : "unseen"}">
+    <p class="small jr-note">บอสแต่ละตัวมีความหายากต่างกัน ยิ่งเล่นระดับยาก (และด่านบอสประจำบท) ยิ่งมีโอกาสเจอตัวหายาก · ทุกตัวมีโอกาส ${Math.round(SHINY.chance * 100)}% ปรากฏเป็น ✨${SHINY.name} · ปราบตัวหายากได้เหรียญโบนัส</p>
+    <div class="jr-bosses">${P.bosses.map((b) => html`<article class="jr-boss ${b.seen ? "" : "unseen"} rar-${b.rarity}" style="--rc:${b.rar?.color || "#ccc"}">
+      <span class="jr-rar">${b.rar?.icon} ${b.rar?.name}</span>${b.shiny ? html`<span class="jr-shiny" title="ปราบร่างทองคำแล้ว ${b.shiny} ครั้ง">✨×${b.shiny}</span>` : ""}
       <canvas data-boss="${b.id}" data-seen="${b.seen ? 1 : 0}" aria-hidden="true"></canvas>
       <h3>${b.seen ? b.name : "??? ยังไม่เคยพบ"}</h3><p class="small">${b.seen ? b.lore : "เล่นบทเรียนต่าง ๆ เพื่อพบบอสตัวนี้"}</p>
+      <div class="jr-trait"><b>✦ ${b.seen ? b.trait.name : "???"}</b><span>${b.seen ? b.trait.desc : "พบตัวจริงก่อนจึงจะรู้สกิล"}</span></div>
+      ${b.seen ? html`<div class="jr-skills">${b.skills.map((k) => html`<i>${k}</i>`)}</div>` : ""}
+      <div class="jr-odds">🎲 โอกาสพบ <b>${b.chance < 1 ? b.chance.toFixed(1) : Math.round(b.chance)}%</b> · ด่านบอสระดับยากมาก <b>${b.chanceHard < 1 ? b.chanceHard.toFixed(1) : Math.round(b.chanceHard)}%</b>${b.bonus ? html` · โบนัส 🪙 ${b.bonus}` : ""}</div>
       <div class="jr-bs"><span>⚔️ เผชิญ <b>${b.seen}</b></span><span>🏆 ชนะ <b>${b.wins}</b></span><span class="${P.eliteUnlocked ? "" : "lock"}">👑 ${P.eliteUnlocked ? html`ร่างจ้าว <b>${b.eliteWins}</b>` : "ล็อก"}</span></div></article>`)}</div>
 
     <h2 class="px-tab">🗺️ ดาวรายหมวด</h2>

@@ -298,9 +298,11 @@ on("POST", "/api/games/:id/finish", ({ id }, b) => {
   const unlockedNow = set ? lockBefore.filter((L) => !lockedFor(g0.id).includes(L)) : [];
   // บอส: นับการเผชิญหน้า ชนะเมื่อตอบถูกครบ (หลอดเลือดบอส = จำนวนข้อ)
   let boss = null; const BM = b.boss && J.BOSS_LIST.find((x) => x.id === b.boss.id);
-  if (BM && ["mcq", "truefalse"].includes(g.template)) { const elite = !!b.boss.elite && eliteBefore, rec = (S.bosses[BM.id] = S.bosses[BM.id] || { seen: 0, wins: 0, eliteWins: 0 }), win = correct === total && total > 0;
-    rec.seen++; const first = win && !(elite ? rec.eliteWins : rec.wins); if (win) { if (elite) rec.eliteWins++; else rec.wins++; }
-    boss = { id: BM.id, name: elite ? BM.elite : BM.name, elite, win, first }; }
+  if (BM && ["mcq", "truefalse"].includes(g.template)) { const elite = !!b.boss.elite && eliteBefore, shiny = !!b.boss.shiny, rec = (S.bosses[BM.id] = S.bosses[BM.id] || { seen: 0, wins: 0, eliteWins: 0 }), win = correct === total && total > 0;
+    rec.seen++; if (shiny) rec.shinySeen = (rec.shinySeen || 0) + 1; const first = win && !(elite ? rec.eliteWins : rec.wins); if (win) { if (elite) rec.eliteWins++; else rec.wins++; if (shiny) rec.shiny = (rec.shiny || 0) + 1; }
+    // ปราบบอสหายาก/ร่างทองคำ → เหรียญโบนัส
+    const bonus = win ? J.bossBonus(BM.rarity, shiny, elite) : 0; if (bonus) addCoins(bonus, "boss", `${shiny ? "✨ " : ""}${elite ? BM.elite : BM.name}`);
+    boss = { id: BM.id, name: elite ? BM.elite : BM.name, elite, win, first, rarity: BM.rarity, shiny, bonus }; }
   const newBadges = checkBadges(perfect);
   const lvAfter = Math.floor(S.xp / XP_PER_LEVEL) + 1;
   save();
@@ -317,7 +319,7 @@ on("GET", "/api/progress", () => {
   const lessons = GAMES.filter((g) => g.template === "lesson").map((g) => ({ id: g.id, title: g.title, icon: Lessons.lessonById(g.lesson).icon, category: g.category, got: starSum(starsOf(g.id)), byLevel: starsOf(g.id) }));
   return { level: lv, xp: S.xp, xpPerLevel: XP_PER_LEVEL, rank: J.rankOf(lv), stars: t, maxStars: lessons.length * 15, eliteUnlocked: eliteUnlocked(), eliteAt: J.ELITE_AT,
     milestones: J.MILESTONES.map((m) => ({ ...m, reached: t >= m.at, claimed: !!S.claimed[m.at] })), rewardsReady: rewardsReady(),
-    bosses: J.BOSS_LIST.map((x) => ({ ...x, ...(S.bosses[x.id] || { seen: 0, wins: 0, eliteWins: 0 }) })), cats, lessons };
+    bosses: (() => { const ch = J.bossChances(3), chB = J.bossChances(5, true); return J.BOSS_LIST.map((x) => ({ ...x, chance: ch[x.id], chanceHard: chB[x.id], rar: J.RARITY[x.rarity], bonus: J.bossBonus(x.rarity, false, false), seen: 0, wins: 0, eliteWins: 0, shiny: 0, ...(S.bosses[x.id] || {}) })); })(), cats, lessons };
 });
 on("POST", "/api/progress/claim", (_p, b) => {
   const m = J.MILESTONES.find((x) => x.at === +b.at); if (!m) throw err(404, "ไม่พบรางวัลนี้");
@@ -352,7 +354,7 @@ on("GET", "/api/story/:cat/:n/play", ({ cat, n }) => {
   const next = (() => { try { return stageOf(P, st.n + 1).st; } catch { return null; } })();
   return { game: { ...gameRow(g), template: best.template, templateName: best.templateName, howTo: best.howTo, timeLimitSec: best.timeLimitSec, questionCount: best.questions.length },
     questions: playableQs(best.template, best.questions), preview: false, key: best.key,
-    boss: J.pickBoss(g.lesson + (st.boss ? "|boss" : ""), st.level, st.boss && ch.n >= 4 && eliteUnlocked()),
+    boss: J.pickBoss(g.lesson + (st.boss ? "|boss" : ""), st.level, st.boss && ch.n >= 4 && eliteUnlocked(), { storyBoss: !!st.boss }),
     story: { cat, n: st.n, total: P.total, chapter: ch.n, chapterTitle: ch.title, chapterIntro: ch.intro, levelName: ch.levelName, line: st.line, boss: st.boss, villain: P.villain, house: P.house, prevStars: st.stars, next: next ? { n: next.n, lesson: next.lesson } : null } };
 });
 on("GET", "/api/quizzes", (_p, _b, q) => {
