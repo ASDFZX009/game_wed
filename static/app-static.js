@@ -3,10 +3,11 @@
 import { localApi, connectRemote, resetProgress, exportProgress, importProgress, useCloud, dropCloud, syncInfo, flushCloud, ownedByAccount, setAdmin } from "./local-api.js";
 import { adminPage } from "./admin-static.js";
 import * as C from "./cloud.js";
-import { state, api, html, raw, toast, avatar, confirmBox, formData, busy, fmtDate } from "../public/js/core.js";
-import { loadPrefs, setPrefs, isDark } from "../public/js/prefs.js";
+import { state, api, html, raw, toast, confirmBox, formData, busy, fmtDate } from "../public/js/core.js";
+import { loadPrefs } from "../public/js/prefs.js";
 import { loadProfile } from "../public/js/look.js";
 import { pxPage } from "../public/js/pxpage.js";
+import { hudHtml, bindHud } from "../public/js/gamehud.js";
 import { mountMeadowBg } from "../public/js/pages/title.js";
 import { reducedMotion } from "../public/js/prefs.js";
 import * as P from "../public/js/pages/public.js";
@@ -89,27 +90,13 @@ function privacyLocal({ main }) {
 }
 
 // ---------- เมนู ----------
-function link(href, text, cur) {
-  const on = href === "/" ? cur === "/" : cur === href || cur.startsWith(href + "/");
-  return html`<a href="${href}" class="${on ? "active" : ""}" ${on ? raw('aria-current="page"') : ""}>${text}</a>`;
-}
 function renderNav(cur = "/") {
-  const u = state.me || {};
-  document.getElementById("nav").innerHTML = html`<div class="wrap topbar">
-    <a href="/" class="logo" aria-label="QUIZ ODYSSEY หน้าแรก"><span aria-hidden="true">🧭</span> QUIZ ODYSSEY</a>
-    <button class="hamburger" id="menuBtn" aria-label="เปิดเมนู" aria-expanded="false" aria-controls="menu"><span></span><span></span><span></span></button>
-    <div class="menu" id="menu"><nav class="links" aria-label="เมนูหลัก">${link("/games", "🗺️ บ้านวิชา", cur)}${link("/quizzes", "แบบทดสอบ", cur)}${link("/quiz-game", "🎣 เกมตอบคำถาม", cur)}${link("/dashboard", "📖 สมุดผจญภัย", cur)}${link("/shop", "🛒 ร้านค้า", cur)}${link("/bag", "🎒 กระเป๋า", cur)}</nav>
-      <div class="nav-right">${state.config?.cloud && !u.cloud ? html`<a href="/login" class="btn btn-sm nav-login">🔐 เข้าสู่ระบบ</a>` : ""}${u.admin ? html`<a href="/admin" class="${cur === "/admin" ? "active" : ""}" title="ผู้ดูแลระบบ">🛡️ แอดมิน</a>` : ""}<a href="/shop" class="coins" title="เหรียญของฉัน">🪙 ${(u.coins || 0).toLocaleString("th-TH")}</a>
-        <a href="/profile" class="me">${avatar(u.equipped)} <span class="ellipsis">${u.displayName || ""}</span>${u.cloud ? html`<span title="บันทึกในบัญชีออนไลน์" aria-label="บันทึกในบัญชีออนไลน์">☁️</span>` : ""}</a><a href="/settings">⚙️ ตั้งค่า</a>
-        <button class="theme" id="themeBtn" aria-label="สลับโหมดมืด/สว่าง" title="สลับโหมดมืด/สว่าง">🌓</button></div></div></div>`.s;
-  document.getElementById("menuBtn").onclick = () => { const o = document.body.classList.toggle("menu-open"); document.getElementById("menuBtn").setAttribute("aria-expanded", o); };
-  document.getElementById("themeBtn").onclick = () => { setPrefs({ mode: isDark() ? "light" : "dark" }); };
-  const items = [["/", "🏠", "หน้าแรก"], ["/games", "🗺️", "บ้านวิชา"], ["/quizzes", "📝", "แบบทดสอบ"], ["/bag", "🎒", "กระเป๋า"], ["/shop", "🛒", "ร้านค้า"]];
-  document.getElementById("bnav").innerHTML = items.map(([href, i, t]) => {
-    const on = href === "/" ? cur === "/" : cur === href || cur.startsWith(href + "/");
-    return html`<a href="${href}" class="${on ? "active" : ""}"><span class="i" aria-hidden="true">${i}</span>${t}</a>`.s;
-  }).join("");
-  document.body.classList.add("has-bottom-nav");
+  const u = state.me || {}, nav = document.getElementById("nav");
+  nav.className = "gamehud"; nav.setAttribute("aria-label", "เมนูเกม");
+  nav.innerHTML = hudHtml({ me: u, cur, cloud: !!state.config?.cloud, admin: !!u.admin }).s;
+  bindHud(nav);
+  document.getElementById("bnav").innerHTML = "";
+  document.body.classList.add("has-hud");
 }
 
 // ---------- บัญชีออนไลน์ ----------

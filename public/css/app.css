@@ -1456,3 +1456,70 @@ dialog.xch::backdrop { background: rgba(10,8,20,.7); backdrop-filter: blur(3px);
 .xch-act .btn { border: 0; border-radius: 0; font-family: var(--px-font); font-weight: 700; color: #fff; background: #4caf3c; box-shadow: inset -3px -3px 0 #2e7a24, inset 3px 3px 0 #8ee070, 0 0 0 3px #1a1006; }
 .xch-act .btn-ghost { color: #2a1608; background: #e2c992; box-shadow: inset -3px -3px 0 #c0a46c, 0 0 0 3px #1a1006; }
 @media (max-width: 480px) { .xch-wallets { grid-template-columns: 1fr; } .xch-arrow { transform: rotate(90deg); justify-self: center; animation: none; } .xch-strip { flex-wrap: wrap; } }
+
+/* ================= 🎮 เมนูในเกม (HUD) แทนแถบเมนูเว็บ ================= */
+:root { --hud-top: 70px; --dock-h: calc(86px + env(safe-area-inset-bottom)); }
+@media (max-width: 640px) { :root { --hud-top: 62px; --dock-h: calc(64px + env(safe-area-inset-bottom)); } }
+#nav.gamehud { position: static; background: none; border: 0; }
+body.has-hud { padding-top: var(--hud-top); padding-bottom: var(--dock-h); }
+body.has-hud.home-world { padding: 0; }
+body.has-hud .bottom-nav { display: none !important; }
+body.has-hud #toasts { bottom: calc(var(--dock-h) + 10px); }
+body.has-hud .sticky-bar { bottom: var(--dock-h); }
+body.has-hud .qg { height: calc(100dvh - var(--hud-top) - var(--dock-h)); }
+.gamehud { --gh-font: "Pixelify Sans", "Chakra Petch", "Kanit", "Noto Sans Thai", sans-serif; }
+.gh-top { position: fixed; left: 0; right: 0; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; padding: calc(8px + env(safe-area-inset-top)) 14px 8px; pointer-events: none; transition: background .25s, box-shadow .25s; }
+.gh-top > * { pointer-events: auto; }
+body.gh-scrolled:not(.home-world) .gh-top { background: linear-gradient(rgba(20,12,30,.94), rgba(20,12,30,.82)); box-shadow: 0 3px 0 #2a1608, 0 6px 14px rgba(0,0,0,.25); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.gh-me { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 4px 14px 4px 4px; text-decoration: none; color: #fff3d6 !important; background: rgba(30,18,8,.9); box-shadow: 0 0 0 3px #f0c040, 0 0 0 6px #2a1608, 3px 5px 0 5px rgba(0,0,0,.28); }
+.gh-me:hover { filter: brightness(1.12); }
+.gh-face { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; font-size: 1.4rem; background: linear-gradient(#8ec8f0, #5a96d0); box-shadow: inset 0 0 0 2px #2a1608, inset 0 -6px 0 rgba(0,0,0,.18); }
+.gh-face img { width: 40px; height: 40px; image-rendering: pixelated; image-rendering: crisp-edges; }
+.gh-lv { position: absolute; right: -9px; bottom: -7px; min-width: 22px; padding: 0 4px; font-family: var(--gh-font); font-size: .8rem; line-height: 18px; text-align: center; color: #2a1608; background: #ffd84a; box-shadow: inset 0 -2px 0 #c8961a, 0 0 0 2px #2a1608; }
+.gh-info { display: grid; gap: 1px; min-width: 0; }
+.gh-name { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .88rem; line-height: 1.25; }
+.gh-rank { font-size: .7rem; font-weight: 700; line-height: 1.2; color: #ffd84a; white-space: nowrap; }
+.gh-xp { display: block; width: 120px; height: 6px; margin-top: 2px; background: #3a2210; box-shadow: 0 0 0 1px #000; } .gh-xp i { display: block; height: 100%; background: linear-gradient(#a8f070, #4caf3c); }
+.gh-coins { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; font-weight: 800; font-size: .92rem; white-space: nowrap; text-decoration: none; color: #ffe9a8 !important; background: rgba(30,18,8,.9); box-shadow: 0 0 0 2px #c8961a, 0 0 0 5px #2a1608, 2px 4px 0 4px rgba(0,0,0,.25); }
+.gh-coins b { font-family: "Chakra Petch", "Kanit", sans-serif; font-size: 1rem; color: #fff; }
+.gh-coins:hover { filter: brightness(1.15); }
+.gh-stars { color: #ffd84a !important; } .gh-stars em { font-style: normal; margin-left: 2px; color: #fff; animation: ti-blink 1s steps(2) infinite; }
+.gh-sys { display: flex; gap: 10px; margin-left: auto; }
+.gh-btn { display: grid; grid-auto-flow: column; place-items: center; gap: 6px; min-width: 44px; height: 44px; padding: 0 8px; font-size: 1.25rem; font-weight: 800; text-decoration: none; color: #2a1608 !important; background: #f4e4bc; box-shadow: inset -3px -3px 0 #e2c992, inset 3px 3px 0 #fff6dc, 0 0 0 3px #2a1608, 2px 4px 0 3px rgba(0,0,0,.28); }
+.gh-btn span { font-size: .85rem; } .gh-btn:hover, .gh-btn.on { background: #ffd84a; }
+.gh-btn:active { transform: translateY(2px); }
+/* แถบช่องลัดด้านล่าง (แบบ hotbar ในเกม) */
+.gh-dock { position: fixed; left: 50%; bottom: calc(10px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 50; display: flex; gap: 6px; padding: 6px; background: rgba(30,18,8,.92); box-shadow: 0 0 0 3px #f0c040, 0 0 0 6px #2a1608, 0 7px 0 6px rgba(0,0,0,.28); }
+.gh-slot { position: relative; display: grid; justify-items: center; align-content: center; gap: 1px; width: 66px; height: 58px; text-decoration: none; color: #fff3d6 !important; background: linear-gradient(#5e3d20, #3b2311); box-shadow: inset 0 0 0 2px #8a6a3a, inset 0 -4px 0 rgba(0,0,0,.35); transition: transform .12s, background .12s; }
+.gh-slot .i { font-size: 1.45rem; line-height: 1.15; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); }
+.gh-slot .t { font-size: .68rem; font-weight: 800; line-height: 1.15; white-space: nowrap; }
+.gh-slot:hover { transform: translateY(-4px); background: linear-gradient(#7a5530, #4e3018); }
+.gh-slot:active { transform: translateY(0); }
+.gh-slot.on { color: #2a1608 !important; background: linear-gradient(#ffe680, #f0b830); box-shadow: inset 0 0 0 2px #fff4b0, inset 0 -4px 0 #c8961a; }
+.gh-slot.on::after { content: ""; position: absolute; left: 50%; top: -11px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: #ffd84a; }
+@media (prefers-reduced-motion: reduce) { .gh-slot, .gh-slot:hover { transform: none; transition: none; } }
+@media (max-width: 900px) { .gh-stars { display: none; } }
+@media (max-width: 640px) {
+  .gh-top { gap: 8px; padding: calc(6px + env(safe-area-inset-top)) 8px 6px 10px; }
+  .gh-me { gap: 8px; padding: 3px 10px 3px 3px; box-shadow: 0 0 0 2px #f0c040, 0 0 0 4px #2a1608, 2px 3px 0 4px rgba(0,0,0,.25); }
+  .gh-face { width: 38px; height: 38px; } .gh-face img { width: 34px; height: 34px; }
+  .gh-name { max-width: 96px; font-size: .78rem; } .gh-rank { font-size: .62rem; } .gh-xp { width: 84px; }
+  .gh-coins { padding: 4px 8px; font-size: .8rem; box-shadow: 0 0 0 2px #c8961a, 0 0 0 4px #2a1608; } .gh-coins b { font-size: .86rem; }
+  .gh-sys { gap: 8px; } .gh-btn { min-width: 38px; height: 38px; font-size: 1.05rem; padding: 0 6px; } .gh-login span { display: none; }
+  .gh-dock { left: 0; right: 0; bottom: 0; transform: none; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 5px 4px calc(5px + env(safe-area-inset-bottom)); box-shadow: 0 -3px 0 #f0c040, 0 -6px 0 #2a1608; }
+  .gh-slot { width: auto; height: 52px; } .gh-slot .i { font-size: 1.2rem; } .gh-slot .t { font-size: .6rem; }
+  .gh-slot:hover { transform: none; } .gh-slot.on::after { top: -9px; }
+}
+@media (max-width: 370px) { .gh-rank, .gh-xp { display: none; } .gh-slot .t { font-size: .54rem; } }
+/* หมู่บ้าน: วางของเดิมให้หลบ HUD */
+body.has-hud .w-hud { top: calc(var(--hud-top) + 8px); right: 14px; }
+body.has-hud .world-hint { top: calc(var(--hud-top) + 8px); left: 14px; animation: wh-fade .8s 12s forwards; }
+@keyframes wh-fade { to { opacity: 0; visibility: hidden; } }
+body.has-hud .w-online { bottom: calc(var(--dock-h) + 12px); }
+body.has-hud .world-enter { bottom: calc(var(--dock-h) + 16px); }
+@media (max-width: 640px) { body.has-hud .w-hud { right: 8px; } body.has-hud .world-hint { left: 8px; max-width: calc(100% - 140px); } }
+.w-time[aria-pressed="true"] { color: #fff3d6; background: #2a3a78; box-shadow: inset -3px -3px 0 #1a2450, 0 0 0 3px #0e1430, 3px 4px 0 3px rgba(0,0,0,.3), 0 0 14px rgba(140,170,255,.5); }
+.w-time[aria-pressed="true"]:hover { background: #3a4c98; }
+/* กลางคืน: ปิดแสงอุ่น CSS ที่ไม่เข้ากัน */
+.w-is-night .w-tilt.top { -webkit-mask-image: linear-gradient(#000 0%, rgba(0,0,0,.5) 40%, transparent 100%); mask-image: linear-gradient(#000 0%, rgba(0,0,0,.5) 40%, transparent 100%); }
+body.has-hud.immersive:not(.home-world) { background: #07060a; }

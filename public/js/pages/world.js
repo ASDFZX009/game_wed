@@ -204,7 +204,7 @@ function castShadow(x, sil, dx, dy, footY, mode, lift, ox = 0, oy = 0) {
 const SHADOW = "#16163a", SHADOW_A = 0.55;
 
 // ---------- ติดตั้งบนหน้า ----------
-export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false, net = null, onHouse = null }) {
+export function mountWorld(host, { go, playerName = "นักผจญภัย", shirt = "#5b3df5", look = null, reduced = false, fill = false, net = null, onHouse = null, night = false }) {
   const M = buildMap();
   const cache = new Map(), spr = (key, make) => cache.get(key) || (cache.set(key, make()), cache.get(key));
   const silCache = new Map(), sil = (s) => silCache.get(s.c) || (silCache.set(s.c, tint(silhouette(s.c))), silCache.get(s.c));
@@ -216,6 +216,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     if (shadow) shadows.push({ s, dx, dy, foot: by, mode: shadow, lift }); };
   for (const t of M.trees) { const bx = t.x * T + 16, by = t.y * T + 28;
     add(t.kind === "pine" ? spr("pine" + t.v, () => pineTree(t.v * 31)) : spr(t.kind + t.v, () => broadTree(t.kind, t.v * 17 + t.kind.length)), bx, by); }
+  const wins = [], signLights = []; // หน้าต่างบ้าน/ป้ายวิชา: จุดไฟตอนกลางคืน
   for (const p of PLACES) {
     if (p.dock) { add(spr("dock", dockSign), (p.x - 1) * T + 16, p.y * T + T - 2, p.y * T + T); continue; }
     // บ้านวิชา: ป้ายประจำวิชา (ไอคอน + ป้ายไม้ + วงแสงหมุน) ติดบนหลังคาแทนตราเดิม
@@ -223,6 +224,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     const sign = !p.shop && SIGN_FX[p.id] ? (x, now) => { const sg = spr("sign" + p.id, () => subjectSign(p.id)), tt = reduced ? 1.3 : now / 1000, bob = reduced ? 0 : Math.round(Math.sin(tt * 1.8 + p.x) * 1.2);
       x.drawImage(sg.c, Math.round(sx - sg.ax), Math.round(sy + 36 - sg.ay + bob)); drawSignFx(x, p.id, sx, sy - 6 + bob, tt, near === p, reduced); } : null;
     add(spr("h" + p.id, () => house(p)), p.x * T, (p.y + 4) * T, (p.y + 4) * T, sign, "shift", 64);
+    { const hx = p.x * T - HOUSE.ax, hy = (p.y + 4) * T - HOUSE.ay; wins.push([hx + 26, hy + 104], [hx + 124, hy + 104]); if (sign) signLights.push([sx, sy + 30]); }
   }
   for (const h of M.plats) add(spr(`plat${h.w}x${h.h}s${h.seed}`, () => plateau(h.w, h.h, h.seed)), h.x * T, (h.y + h.h) * T, (h.y + h.h) * T, null, "shift", 26);
   for (const f of M.fences) add(spr("fence" + f.len, () => fence(f.len)), f.x * T, f.y * T + 30, f.y * T + 30);
@@ -363,11 +365,51 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     rg.restore(); rg.globalCompositeOperation = "destination-in"; const m = rg.createLinearGradient(0, 0, w * 0.7, h); m.addColorStop(0, "#000"); m.addColorStop(1, "rgba(0,0,0,0)"); rg.fillStyle = m; rg.fillRect(0, 0, w + P * 2, h);
     GR = { warm, haze, vig, rays, P };
   }
-  function grade(x, now) {
+  function grade(x, now, k = 0) {
     if (!GR) return;
-    x.globalCompositeOperation = "soft-light"; x.drawImage(GR.warm, 0, 0);
-    x.globalCompositeOperation = "screen"; x.drawImage(GR.haze, 0, 0); x.drawImage(GR.rays, -GR.P + (reduced ? 0 : (now / 60) % GR.P), 0);
-    x.globalCompositeOperation = "source-over"; x.drawImage(GR.vig, 0, 0);
+    if (k < 1) { x.globalAlpha = 1 - k;
+      x.globalCompositeOperation = "soft-light"; x.drawImage(GR.warm, 0, 0);
+      x.globalCompositeOperation = "screen"; x.drawImage(GR.haze, 0, 0); x.drawImage(GR.rays, -GR.P + (reduced ? 0 : (now / 60) % GR.P), 0); }
+    x.globalCompositeOperation = "source-over"; x.globalAlpha = 1; x.drawImage(GR.vig, 0, 0);
+    if (k > 0) { x.globalAlpha = k * 0.7; x.drawImage(GR.vig, 0, 0); x.globalAlpha = 1; }
+  }
+  // ---------- 🌙 กลางคืน: ชั้นความมืดสีน้ำเงิน (คูณสี) เจาะรูด้วยแสงไฟ แล้วเติมแสงเรือง/หิ่งห้อย ----------
+  const lightSprite = (r, g2, b) => { const [c, g] = canvas(128, 128), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, `rgba(${r},${g2},${b},1)`); gr.addColorStop(0.32, `rgba(${r},${g2},${b},.62)`); gr.addColorStop(0.7, `rgba(${r},${g2},${b},.16)`); gr.addColorStop(1, `rgba(${r},${g2},${b},0)`); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return c; };
+  const LW = lightSprite(255, 206, 140), LC = lightSprite(130, 220, 255), LG = lightSprite(170, 255, 140), LM = lightSprite(150, 170, 230);
+  // กระจกหน้าต่างมีไฟ (รูปทรงเดียวกับหน้าต่างโค้งของบ้าน)
+  const WINGLOW = (() => { const [c, g] = canvas(26, 24); for (let y = 0; y < 24; y++) for (let x2 = 0; x2 < 26; x2++) { if (y < 8 && Math.hypot(x2 + 0.5 - 13, 8 - y) > 13) continue;
+      const t2 = y / 24; g.fillStyle = x2 === 12 || y === 13 ? "#5a3418" : `rgb(255,${Math.round(214 - t2 * 70)},${Math.round(120 - t2 * 70)})`; g.fillRect(x2, y, 1, 1); } return c; })();
+  let NC = null, ng = null, NB = null, nightK = night ? 1 : 0, nightGoal = nightK;
+  function nightBase() { const [c, g] = canvas(vw, vh), gr = g.createLinearGradient(0, 0, vw * 0.8, vh); gr.addColorStop(0, "rgb(78,94,160)"); gr.addColorStop(1, "rgb(36,44,96)"); g.fillStyle = gr; g.fillRect(0, 0, vw, vh); return c; }
+  function nightPass(x, now, cx, cy, k) {
+    if (!NC || NC.width !== vw || NC.height !== vh) { [NC, ng] = canvas(vw, vh); NB = nightBase(); }
+    ng.globalCompositeOperation = "source-over"; ng.globalAlpha = 1; ng.drawImage(NB, 0, 0);
+    ng.globalCompositeOperation = "lighter";
+    const L = (wx, wy, r, sp, a) => { const X = wx - cx, Y = wy - cy; if (X < -r || Y < -r || X > vw + r || Y > vh + r) return; ng.globalAlpha = a; ng.drawImage(sp, X - r, Y - r, r * 2, r * 2); };
+    const fl = (i) => (reduced ? 1 : 0.9 + 0.1 * Math.sin(now / 160 + i * 1.7) * Math.sin(now / 410 + i));
+    for (const [lx, ly] of lamps) { L(lx, ly, 92, LW, 0.95 * fl(lx)); L(lx, ly + 54, 84, LW, 0.55 * fl(lx)); } // หัวโคม + วงแสงบนพื้น
+    for (const [gx2, gy2, r, col] of glows) L(gx2, gy2, r * 3.4, col.startsWith("120") ? LC : LW, 0.85);
+    for (const [wx, wy] of wins) L(wx + 13, wy + 16, 56, LW, 0.8 * fl(wx));
+    for (const [sx2, sy2] of signLights) L(sx2, sy2 - 10, 92, LW, 0.75);
+    for (const P of pillars) { if (P.owl) continue; const [qx, qy] = crystalAt(P, now); L(qx, qy, P.big ? 170 : 72, LG, P.big ? 0.9 : 0.7); }
+    L(hero.x, hero.y - 26, 104, LW, 0.6); // ตะเกียงของเรา: มองเห็นรอบตัวเสมอ
+    if (online) for (const p of online.peers.values()) L(p.rx, p.ry - 26, 70, LW, 0.35);
+    L(cx + vw * 0.12, cy + vh * 0.08, Math.max(vw, vh) * 0.45, LM, 0.35); // แสงจันทร์มุมบน
+    ng.globalAlpha = 1; ng.globalCompositeOperation = "source-over";
+    x.globalCompositeOperation = "multiply"; x.globalAlpha = k; x.drawImage(NC, 0, 0);
+    // แสงเรืองซ้อนหลังมืด: หน้าต่าง โคมไฟ หิ่งห้อย
+    x.globalCompositeOperation = "source-over"; x.globalAlpha = k * 0.92;
+    for (const [wx, wy] of wins) { const X = wx - cx, Y = wy - cy; if (X > -30 && Y > -30 && X < vw && Y < vh) x.drawImage(WINGLOW, X, Y); }
+    x.globalCompositeOperation = "lighter";
+    for (const [lx, ly] of lamps) { const X = lx - cx, Y = ly - cy; if (X < -60 || Y < -60 || X > vw + 60 || Y > vh + 60) continue; x.globalAlpha = k * 0.55 * fl(lx); x.drawImage(LAMPGLOW, X - 34, Y - 34, 68, 68); }
+    for (const [wx, wy] of wins) { const X = wx - cx + 13, Y = wy - cy + 12; if (X < -40 || Y < -40 || X > vw + 40 || Y > vh + 40) continue; x.globalAlpha = k * 0.35; x.drawImage(LAMPGLOW, X - 26, Y - 26, 52, 52); }
+    { const tt = reduced ? 1.3 : now / 1000;
+      for (let i = 0; i < 54; i++) { const X = ((hash(i, 3, 91) * (vw + 40) + Math.sin(tt * 0.5 + i) * 26) % (vw + 40)) - 20, Y = ((hash(i, 4, 91) * (vh + 40) + Math.cos(tt * 0.4 + i * 1.3) * 18) % (vh + 40)) - 20,
+          b = Math.max(0, Math.sin(tt * (1.2 + hash(i, 5, 91)) + i * 2.1)); if (b < 0.15) continue;
+        x.globalAlpha = k * b * 0.55; x.drawImage(LAMPGLOW, Math.round(X) - 7, Math.round(Y) - 7, 14, 14);
+        x.globalAlpha = k * b; x.fillStyle = i % 4 ? "#e8ff8a" : "#fff2a0"; x.fillRect(Math.round(X), Math.round(Y), 2, 2); } }
+    x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
   }
   let lastW = 0, lastH = 0;
   const onResize = () => { if (host.clientWidth === lastW && window.innerHeight === lastH) return; lastW = host.clientWidth; lastH = window.innerHeight; resize(); };
@@ -496,16 +538,17 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
       x.globalAlpha = reduced ? 0.45 : 0.35 + 0.2 * Math.sin(now / 420 + ph); x.drawImage(LAMPGLOW, gx2 - r, gy2 - r, r * 2, r * 2);
       if (!reduced) { x.fillStyle = `rgba(${col},.9)`; for (let i = 0; i < 3; i++) { const t2 = now / 1000 + i * 2.1 + ph, fx = gx2 + Math.sin(t2 * 0.9 + i) * 22, fy = gy2 + Math.cos(t2 * 0.7 + i * 2) * 14; x.globalAlpha = 0.5 + 0.5 * Math.sin(t2 * 3); x.fillRect(Math.round(fx), Math.round(fy), 2, 2); } } }
     x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
-    if (!reduced) {
+    if (!reduced && nightK < 1) { const dayA = 1 - nightK; x.globalAlpha = dayA;
       x.fillStyle = "rgba(16,24,60,.10)"; // เงาเมฆเคลื่อนผ่าน
       for (let i = 0; i < 3; i++) { const ox = ((now / 45 + i * 660) % (MW * T + 800)) - 400, oy = (i * 380 + 160) % (MH * T);
         x.beginPath(); x.ellipse(ox, oy, 240, 104, 0, 0, 7); x.ellipse(ox + 140, oy + 40, 160, 80, 0, 0, 7); x.fill(); }
       for (let i = 0; i < 46; i++) { const tt = now / 1000, px = cx + ((i * 97 + tt * (12 + (i % 4) * 6)) % (vw + 20)) - 10, py = cy + ((i * 61 + Math.sin(tt * 0.8 + i) * 24 + tt * 6) % (vh + 10)) - 5;
-        x.globalAlpha = 0.3 + 0.45 * Math.abs(Math.sin(tt * 1.3 + i)); x.fillStyle = i % 3 ? "#fff2c8" : "#eaffd0"; x.fillRect(Math.round(px), Math.round(py), 2, 2); }
+        x.globalAlpha = dayA * (0.3 + 0.45 * Math.abs(Math.sin(tt * 1.3 + i))); x.fillStyle = i % 3 ? "#fff2c8" : "#eaffd0"; x.fillRect(Math.round(px), Math.round(py), 2, 2); }
       x.globalAlpha = 1;
     }
     x.restore();
-    grade(x, now);
+    if (nightK > 0) nightPass(x, now, cx, cy, nightK);
+    grade(x, now, nightK);
     const v = view.getContext("2d"); v.imageSmoothingEnabled = smooth; if (smooth) v.imageSmoothingQuality = "low";
     v.setTransform(1, 0, 0, 1, 0, 0); v.drawImage(buf, 0, 0, vw * S * dpr, vh * S * dpr);
     drawLabels(now, cx, cy);
@@ -577,6 +620,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   let perfN = 0, perfT = 0;
   const loop = (now) => { raf = requestAnimationFrame(loop); if (!visible || document.hidden || paused) { last = now; return; } const raw = Math.max(0, (now - last) / 1000), dt = Math.min(0.05, raw); last = now;
     if (perfN < 120) { if (perfN > 20) perfT += raw; if (++perfN === 120 && perfT / 99 > 1 / 38) host.classList.add("w-lite"); }
+    if (nightK !== nightGoal) nightK = reduced ? nightGoal : nightGoal > nightK ? Math.min(nightGoal, nightK + dt / 1.4) : Math.max(nightGoal, nightK - dt / 1.4);
     update(dt); render(now); };
   raf = requestAnimationFrame(loop);
   mpStart();
@@ -584,6 +628,8 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     get online() { return online; },
     pause(v) { paused = !!v; keys.clear(); if (!v) view.focus({ preventScroll: true }); },
     places: PLACES,
+    setNight(v) { nightGoal = v ? 1 : 0; host.classList.toggle("w-is-night", !!v); },
+    get night() { return nightGoal === 1; },
     destroy() { mpStop(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
     reachable() { const [sx, sy] = tileAt(hero.x, hero.y - 1); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) || (sx === p.ex && sy === p.ey) })); },
     _hero: hero,

@@ -9,7 +9,6 @@ import { openTitle, titleSeen } from "./title.js";
 import { myLook, loadProfile } from "../look.js";
 import { pxPage } from "../pxpage.js";
 import { openHouse, openPicker } from "./house.js";
-import { rankOf } from "../journey.js";
 import { reducedMotion, loadSkinFont } from "../prefs.js";
 
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
@@ -29,16 +28,6 @@ export function gameCard(g) {
     <span class="meta">อายุ ${g.ageMin}–${g.ageMax} ปี · ${g.questionCount} ${g.template === "match" ? "คู่" : "ข้อ"} · เล่นแล้ว ${g.plays} ครั้ง</span></a>`;
 }
 
-// ป้ายผู้เล่นในหมู่บ้าน: เลเวล ยศ แถบ XP ดาว รางวัลรอรับ
-function hudPlate() {
-  const u = state.me; if (!u || u.level == null) return "";
-  const per = u.xpPerLevel || 100, into = (u.xp || 0) % per, rk = rankOf(u.level);
-  return html`<a class="w-plate" href="/dashboard?j=1" title="เปิดสมุดผจญภัย">
-    <span class="lv"><small>Lv</small>${u.level}</span><span class="wp-info"><b>${rk.icon} ${rk.name}</b>
-    <span class="xp" role="progressbar" aria-label="XP สู่เลเวลถัดไป" aria-valuemin="0" aria-valuemax="${per}" aria-valuenow="${into}"><i style="width:${(into / per) * 100}%"></i></span>
-    <span class="st">★ ${u.stars ?? 0}${u.rewardsReady ? html` · <em>🎁 ${u.rewardsReady} รอรับ</em>` : ""}</span></span></a>`;
-}
-
 export async function home({ main }) {
   const { categories } = await api("/api/categories");
   const local = state.config?.local;
@@ -47,7 +36,7 @@ export async function home({ main }) {
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
-      <div class="w-hud">${hudPlate()}<button type="button" class="w-title-btn" id="wPick">🗺️ เลือกบ้านวิชา</button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button></div>
+      <div class="w-hud"><button type="button" class="w-title-btn w-time" id="wTime" aria-pressed="false" title="สลับเวลาในหมู่บ้าน กลางวัน/กลางคืน"></button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button></div>
       <div class="world" id="world"></div>
       <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
         ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
@@ -58,15 +47,22 @@ export async function home({ main }) {
   const net = rt ? { rt, profile: () => { const p = loadProfile(); return { name: nameOf(p), parts: p?.parts || null }; } } : null;
   // บ้านวิชา/ตัวเลือกบ้าน เปิดซ้อนบนหมู่บ้าน (ไม่ต้องเปลี่ยนหน้า)
   let overlay = null;
-  const house = (cat) => { overlay?.close(); w.pause(true); overlay = openHouse({ cat, onClose: () => { overlay = null; w.pause(false); refreshMe().then(() => refreshHud()).catch(() => {}); } }); };
+  const house = (cat) => { overlay?.close(); w.pause(true); overlay = openHouse({ cat, onClose: () => { overlay = null; w.pause(false); refreshMe().catch(() => {}); } }); };
   const picker = () => { overlay?.close(); w.pause(true); overlay = openPicker({ onPick: house, onClose: (picked) => { overlay = null; if (!picked) w.pause(false); } }); };
-  const w = mountWorld(main.querySelector("#world"), { go, fill: true, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net, onHouse: house });
+  let night = false; try { night = localStorage.getItem("qo:night") === "1"; } catch { /* ignore */ }
+  const w = mountWorld(main.querySelector("#world"), { go, fill: true, night, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net, onHouse: house });
   // หน้าเริ่มเกม: เปิดครั้งแรกของแต่ละรอบการใช้งาน หรือกด "เมนูหลัก"
   let title = null;
   const showTitle = (startAt) => { title = openTitle({ go, me: state.me, reduced: reducedMotion(), startAt, onEnter: (p) => { title = null; w.setLook(myLook(shirt), nameOf(p)); main.querySelector(".world-canvas")?.focus({ preventScroll: true }); } }); };
   main.querySelector("#wTitle").addEventListener("click", () => showTitle("menu"));
-  main.querySelector("#wPick").addEventListener("click", picker);
-  const refreshHud = () => { const h = main.querySelector(".w-plate"); if (h) h.outerHTML = hudPlate().s || hudPlate(); };
+  // 🌙 กลางวัน/กลางคืน (จำไว้ในเครื่อง)
+  const timeBtn = main.querySelector("#wTime");
+  const showTime = () => { timeBtn.textContent = night ? "☀️ กลางวัน" : "🌙 กลางคืน"; timeBtn.setAttribute("aria-pressed", String(night)); timeBtn.setAttribute("aria-label", night ? "เปลี่ยนเป็นกลางวัน" : "เปลี่ยนเป็นกลางคืน"); document.body.classList.toggle("w-night", night); };
+  timeBtn.addEventListener("click", () => { night = !night; try { localStorage.setItem("qo:night", night ? "1" : "0"); } catch { /* ignore */ } w.setNight(night); showTime(); });
+  showTime(); onLeave(() => document.body.classList.remove("w-night"));
+  // ช่องลัดในแถบล่าง: "บ้านวิชา" เปิดตัวเลือกบ้าน · "หมู่บ้าน" ปิดหน้าต่างที่ซ้อนอยู่
+  window.__qoHome = { picker, closeAll: () => { overlay?.close(); overlay = null; w.pause(false); } };
+  onLeave(() => { delete window.__qoHome; });
   onLeave(() => overlay?.close());
   { let op = null; try { op = sessionStorage.getItem("qo:openHouse"); sessionStorage.removeItem("qo:openHouse"); } catch { /* ignore */ } if (op) setTimeout(() => (op === "*" ? picker() : house(op)), 50); }
   const want = (() => { try { const v = sessionStorage.getItem("qo:titleOpen"); sessionStorage.removeItem("qo:titleOpen"); return v; } catch { return null; } })();
