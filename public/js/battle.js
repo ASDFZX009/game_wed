@@ -21,6 +21,9 @@ import { BOSSES } from "./bosses.js";
 import { bossInfo, RARITY } from "./journey.js";
 
 const PXFX = globalThis.PXFX;
+// ภาพการ์ดสกิล: เก็บไว้ทั้งเกม (เดิมวาดใหม่ทุกครั้งที่เริ่มด่าน) · LITE = จำว่าเครื่องนี้ช้า ใช้โหมดเบาตั้งแต่ด่านถัดไปเลย
+const artCache = new Map(); let artC = null, artView = null;
+const LITE = { get on() { try { return sessionStorage.getItem("qo:lite") === "1"; } catch { return false; } }, set on(v) { try { sessionStorage.setItem("qo:lite", v ? "1" : "0"); } catch { /* ignore */ } } };
 const EL = {
   fire: { name: "เพลิง", color: "#e8582a", ic: "🔥" }, ice: { name: "น้ำแข็ง", color: "#3a9ae0", ic: "❄️" }, storm: { name: "สายฟ้า", color: "#e0a820", ic: "⚡" },
   nature: { name: "พงไพร", color: "#3caa4a", ic: "🌿" }, astral: { name: "ดารา", color: "#8a5ae0", ic: "🌌" },
@@ -77,7 +80,7 @@ const BOSS_ATK = {
 const bossInfoOf = (id) => bossInfo(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml, boss: bossInfo = null, playerLv = 1 }) {
+export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml, autoNext = () => true, boss: bossInfo = null, playerLv = 1 }) {
   let hs = 7; for (const ch of String(lesson || "x")) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
   const B = BOSSES.find((b) => b.id === bossInfo?.id) || BOSSES[hs % BOSSES.length], elite = !!bossInfo?.elite;
   const shiny = !!bossInfo?.shiny, info = bossInfoOf(B.id), trait = info?.trait?.id || "", rar = RARITY[info?.rarity] || RARITY.common;
@@ -165,10 +168,18 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       g.addColorStop(0, `rgba(255,255,255,${0.9 * ch})`); g.addColorStop(0.4, `rgba(${er},${eg},${eb},${0.7 * ch})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`); x.fillStyle = g; x.fillRect(hx2 - 14, hy2 - 14, 28, 28); x.globalCompositeOperation = "source-over"; }
     if (hurt && Math.floor(now / 70) % 2 === 0) { x.globalCompositeOperation = "source-atop"; x.fillStyle = "rgba(255,60,60,.5)"; x.fillRect(hx - 24, fy - 68, 48, 70); x.globalCompositeOperation = "source-over"; }
   }
-  const loop = (now) => { if (!alive) return; raf = requestAnimationFrame(loop); draw(now); };
+  // ความลื่น: เครื่องช้า (เฟรมเฉลี่ยเกิน ~22ms) → โหมดเบา วาดฉาก 30fps และเอฟเฟกต์ 20fps (ภาพพิกเซลดูไม่ต่าง แต่ไม่กระตุก)
+  const perf = { lite: LITE.on, avg: 16.7, last: 0, n: 0, drawn: 0 };
+  const loop = (now) => { if (!alive) return; raf = requestAnimationFrame(loop);
+    if (perf.last) { const d = Math.min(100, now - perf.last); perf.avg += (d - perf.avg) * 0.08; if (++perf.n > 45 && !perf.lite && perf.avg > 22) { perf.lite = LITE.on = true; document.body.classList.add("fx-lite"); } }
+    perf.last = now;
+    if (perf.lite && now - perf.drawn < 31) return; perf.drawn = now; draw(now); };
 
   // ---------- เล่นเอฟเฟกต์สกิล ----------
-  let fxBusy = null;
+  let fxBusy = null, fxLive = 0, fxWait = [];
+  // รอให้เอฟเฟกต์ทุกตัวเล่นจนจบ (รวมหางเอฟเฟกต์) ก่อนเริ่มนับถอยหลังไปข้อถัดไป
+  const fxIdle = () => (fxLive ? new Promise((r) => fxWait.push(r)) : Promise.resolve());
+  const fxEnded = () => { fxLive = Math.max(0, fxLive - 1); if (!fxLive) { const w = fxWait; fxWait = []; w.forEach((f) => f()); } };
   function playFx(id, { from, to, mirror = false, hue = 0, onHit }) {
     return new Promise((done) => {
       const def = PXFX.get(id); if (!def || reduced) { onHit?.(); setTimeout(done, reduced ? 250 : 0); return; }
@@ -180,22 +191,24 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       if (cat === "projectile" || cat === "beam") { const a = proj(-2.7, 0, 0.9), b = proj(2.2, 0, 0.9); k = (to[0] - from[0]) / (b[0] - a[0]); left = from[0] - a[0] * k; top = from[1] - a[1] * k; }
       else { const c = proj(0, 0, 0); k = (28 * S) / (view.S || 30); left = to[0] - c[0] * k; top = to[2] - c[1] * k; }
       Object.assign(fxc.style, { left: left + "px", top: top + "px", width: 240 * k + "px", height: 150 * k + "px", transform: mirror ? "scaleX(-1)" : "none", display: "block" });
-      cancelAnimationFrame(fxBusy);
+      cancelAnimationFrame(fxBusy); fxLive = 1;
       // แสดงผล/ปุ่มถัดไปได้เลยหลังโดนเป้าไม่นาน (หางเอฟเฟกต์เล่นต่อจนจบเอง) — สกิลยาว ๆ จะได้ไม่ต้องรอ
       const t0 = performance.now(), speed = 1.25; let hit = false, settled = false;
       const settle = () => { if (!settled) { settled = true; done(); } };
+      let lastR = 0;
       const step = (now) => { const tau = ((now - t0) / 1000) * speed;
         if (!hit && tau >= hitAt) { hit = true; onHit?.(); }
         if (hit && tau >= Math.min(tm.length, hitAt + 0.6)) settle();
-        if (tau >= tm.length || !alive) { fxc.style.display = "none"; if (!hit) onHit?.(); settle(); return; }
-        view.renderAt(def, tau, tm); fxBusy = requestAnimationFrame(step); };
+        if (tau >= tm.length || !alive) { fxc.style.display = "none"; if (!hit) onHit?.(); settle(); fxEnded(); return; }
+        // เอฟเฟกต์เป็นฟังก์ชันของเวลา → ข้ามเฟรมได้โดยจังหวะไม่เพี้ยน: ปกติ 30fps · โหมดเบา 20fps
+        if (now - lastR >= (perf.lite ? 48 : 31) || !lastR) { lastR = now; const r0 = performance.now(); view.renderAt(def, tau, tm); const rd = performance.now() - r0; if (rd > 14 && !perf.lite) { perf.slowFx = (perf.slowFx || 0) + 1; if (perf.slowFx > 6) { perf.lite = LITE.on = true; document.body.classList.add("fx-lite"); } } }
+        fxBusy = requestAnimationFrame(step); };
       fxBusy = requestAnimationFrame(step);
     });
   }
   // ภาพการ์ด: เฟรมตอนสกิลแรงสุด (เรนเดอร์ครั้งเดียวแล้วจำไว้)
-  const artCache = new Map(), [artC] = canvas(240, 150), artView = new PXFX.View(artC, 240, 150);
-  artView.mode = "3d"; artView.yaw = 0.3; artView.pitch = 0.35; artView.transparent = true; artView.noProps = true;
   function art(id) {
+    if (!artView) { [artC] = canvas(240, 150); artView = new PXFX.View(artC, 240, 150); artView.mode = "3d"; artView.yaw = 0.3; artView.pitch = 0.35; artView.transparent = true; artView.noProps = true; }
     if (artCache.has(id)) return artCache.get(id);
     let url = ""; try { const def = PXFX.get(id), tm = PXFX.timing(def), h = tm.hits.find((x) => x.kind === "hit" || x.kind === "burst") || { d: tm.length * 0.5 }; artView.renderAt(def, h.d + 0.08, tm, { noShake: true }); url = artC.toDataURL(); } catch { /* ignore */ }
     artCache.set(id, url); return url;
@@ -256,8 +269,21 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     foot.innerHTML = html`<div class="bt-fb ${r.correct ? "ok" : "no"}" role="status">${r.correct ? `✅ ถูกต้อง! ${HEROES[heroI].name}ใช้ “${SKILLS[btn.dataset.skill][0]}”` : html`❌ ยังไม่ถูก — เฉลย: <b>${r.answer}</b>`}
       ${r.explain ? html`<div class="small" style="font-weight:400;margin-top:4px">💡 ${r.explain}</div>` : ""}</div>
       <button class="btn bt-next" id="g-next">${last ? (state.hp === 0 ? "ปราบบอสสำเร็จ! ดูผลลัพธ์ 🏆" : "ดูผลลัพธ์ 🏁") : "ข้อต่อไป ▶"}</button>`.s;
-    const nb = foot.querySelector("#g-next"); nb.focus({ preventScroll: true }); nb.onclick = () => { foot.innerHTML = ""; onNext(); };
+    const nb = foot.querySelector("#g-next"); nb.focus({ preventScroll: true });
+    const go = () => { clearTimeout(state.autoT); state.autoT = null; if (!nb.isConnected) return; foot.innerHTML = ""; onNext(); };
+    nb.onclick = go;
     state.after?.(r); state.busy = false;
+    if (autoNext()) autoGo(nb, go, r.correct ? 2200 : 3000);
+  }
+  // ไปข้อถัดไปเอง: รอสกิลเล่นจบ แล้วนับถอยหลัง 2–3 วินาที (แถบบนปุ่ม) · กด ⏸ เพื่ออ่านเฉลยนานขึ้นได้
+  async function autoGo(nb, go, ms) {
+    const myQ = state.idx; await fxIdle(); await sleep(reduced ? 0 : 120);
+    if (!nb.isConnected || state.idx !== myQ) return;
+    nb.classList.add("auto"); nb.style.setProperty("--auto", ms + "ms");
+    const hold = document.createElement("button"); hold.type = "button"; hold.className = "btn btn-ghost bt-hold"; hold.textContent = "⏸ รอก่อน"; hold.setAttribute("aria-label", "หยุดไปข้อถัดไปอัตโนมัติ");
+    hold.onclick = () => { clearTimeout(state.autoT); state.autoT = null; nb.classList.remove("auto"); hold.remove(); nb.focus({ preventScroll: true }); };
+    nb.before(hold);
+    state.autoT = setTimeout(go, ms);
   }
   // บอสโจมตีสวน: เงื้อ (มีเครื่องหมาย !) → พุ่งเข้าหา → ปล่อยท่า (สุ่มจากชุดท่าของบอส)
   async function bossAttack(from, to, quick, isUlt = false) {
@@ -270,7 +296,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     else await playFx(id, { from: [to[0] - 30 * S, from[1]], to: [from[0], from[1]], mirror: true, hue: elite ? 330 : 0, onHit: hitHero });
   }
   function ask(idx, q) {
-    state.idx = idx; state.q = q; foot.innerHTML = ""; clearTimeout(state.vineT);
+    state.idx = idx; state.q = q; foot.innerHTML = ""; clearTimeout(state.vineT); clearTimeout(state.autoT);
     if (trait === "blink" && idx > 0) { const opts2 = [-22, -10, 0, 10].filter((v) => v !== state.bxOff); state.bxOff = opts2[Math.floor(Math.random() * opts2.length)]; state.blink = performance.now() + 600; }
     host.querySelector("#btN").textContent = `${idx + 1}/${total}`;
     host.querySelector("#btQ").innerHTML = html`${q.image ? html`<img src="${q.image}" alt="ภาพประกอบโจทย์">` : ""}<div class="bt-qt">${q.prompt}</div>${q.hint ? html`<button class="linkish small" id="g-hint">💡 ขอใบ้</button>` : ""}`.s;
@@ -283,7 +309,14 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
   document.addEventListener("keydown", onKey);
   const ro = new ResizeObserver(() => layout()); ro.observe(stage);
   layout(); setHeroUI(); setHp(); raf = requestAnimationFrame(loop);
-  return { ask, destroy() { alive = false; clearTimeout(state.vineT); cancelAnimationFrame(raf); cancelAnimationFrame(fxBusy); ro.disconnect(); document.removeEventListener("keydown", onKey); }, get bossHp() { return state.hp; }, state };
+  // ระหว่างต่อสู้: ปิดชั้นเบลอ/ผสมสีของฉากหมู่บ้านด้านหลัง (กินแรงการ์ดจอทุกเฟรม ทำให้สกิลกระตุกบนมือถือ)
+  document.body.classList.add("in-battle"); if (perf.lite) document.body.classList.add("fx-lite");
+  // วาดภาพการ์ดสกิลของตัวละครล่วงหน้าตอนเครื่องว่าง (ไม่ไปกระตุกตอนการ์ดโผล่)
+  const idle = globalThis.requestIdleCallback || ((f) => setTimeout(() => f({ timeRemaining: () => 8 }), 60));
+  const warm = [...POOL(HEROES[heroI].id)].filter((id) => !artCache.has(id));
+  const warmStep = (dl) => { while (alive && warm.length && dl.timeRemaining() > 6) art(warm.shift()); if (alive && warm.length) idle(warmStep); };
+  if (warm.length) idle(warmStep);
+  return { ask, destroy() { alive = false; document.body.classList.remove("in-battle", "fx-lite"); clearTimeout(state.vineT); clearTimeout(state.autoT); cancelAnimationFrame(raf); cancelAnimationFrame(fxBusy); ro.disconnect(); document.removeEventListener("keydown", onKey); }, get bossHp() { return state.hp; }, state };
 }
 // ประเภทเอฟเฟกต์ (ยิงจากตัวละครไปหาบอส หรือเกิดที่ตัวบอส)
 const SKILL_CAT = {

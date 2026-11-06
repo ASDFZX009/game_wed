@@ -197,11 +197,25 @@ function howTo(){ message('วิธีเล่น',`<ul>
 /* ------------------------------------------------------------------ */
 /* Fishing                                                              */
 /* ------------------------------------------------------------------ */
+// ปลาที่เพิ่งได้ (กันได้ตัวเดิมซ้ำ ๆ) — ตัวที่อยู่ในรายการนี้มีโอกาสออกน้อยมาก
+const recentFish=[];
+function noteFish(id){ recentFish.push(id); if(recentFish.length>18) recentFish.shift(); }
+function fishPool(s, zi){
+  let pool=D.FISH.filter(f=>f.star===s && f.z[0]<=zi && f.z[1]>=zi);
+  // ดาวนี้ในโซนนี้มีปลาน้อยเกินไป (เช่น เหลือ 1–2 ชนิด) → ยืมปลาดาวเดียวกันจากโซนข้างเคียงมาเติม จะได้ไม่ซ้ำตัวเดิม
+  if(pool.length<8) pool=pool.concat(D.FISH.filter(f=>f.star===s && !pool.includes(f) && f.z[0]<=zi+1 && f.z[1]>=zi-1));
+  if(!pool.length) pool=D.FISH.filter(f=>f.star===s);
+  return pool;
+}
 function rollFish(power){
   const zi=st.zoneIdx, z=D.ZONES[zi]; const w=z.starW.slice(); const tot=w.reduce((a,b)=>a+b,0); let r=Math.random()*tot, star=1;
   for(let i=0;i<5;i++){ if(r<w[i]){ star=i+1; break; } r-=w[i]; }
   if(star<5 && w[star]>0 && Math.random()<power*0.18) star++; // perfect cast bonus
-  for(let s=star;s>=1;s--){ let pool=D.FISH.filter(f=>f.star===s && f.z[0]<=zi && f.z[1]>=zi); if(!pool.length) pool=D.FISH.filter(f=>f.star===s); if(pool.length) return pool[Math.floor(Math.random()*pool.length)]; }
+  const dex=st.stats.dex||{};
+  for(let s=star;s>=1;s--){ const pool=fishPool(s, zi); if(!pool.length) continue;
+    // น้ำหนัก: ตัวที่เพิ่งได้ไม่นาน ×0.05 (ยิ่งเพิ่งได้ยิ่งยาก) · ตัวที่ยังไม่เคยได้ ×2.5 · ได้มาเยอะแล้วลดลงเล็กน้อย
+    const ws=pool.map(f=>{ const rec=recentFish.includes(f.id)?0.05:1, n=dex[f.id]||0; return rec*(n?1/Math.sqrt(1+n*0.15):2.5); });
+    let t=Math.random()*ws.reduce((a,b)=>a+b,0); for(let i=0;i<pool.length;i++){ t-=ws[i]; if(t<=0){ noteFish(pool[i].id); return pool[i]; } } noteFish(pool[pool.length-1].id); return pool[pool.length-1]; }
   return D.FISH[0];
 }
 function startCharge(){ const f=st.fishing; if(!f||f.state!=='idle') return;

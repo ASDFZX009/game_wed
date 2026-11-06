@@ -997,7 +997,14 @@ body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4p
 .bc:hover:not([disabled]), .bc:focus-visible { transform: translateY(-18px) scale(1.04); z-index: 2; outline: none; box-shadow: 0 0 0 3px #2a1608, inset 0 0 0 3px var(--el), 0 0 0 7px #ffd84a, 0 18px 0 2px rgba(0,0,0,.2); }
 .bc-art { position: relative; height: 104px; border-radius: 13px 13px 0 0; background-color: var(--el); background-size: 150% auto; background-position: 55% 40%; background-repeat: no-repeat; image-rendering: pixelated;
   box-shadow: inset 0 -6px 0 rgba(0,0,0,.2), inset 0 0 30px rgba(255,255,255,.25); overflow: hidden; }
-.bc-art::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.35), transparent 60%); mix-blend-mode: screen; }
+.bc-art::before { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 40%, rgba(255,255,255,.22), transparent 60%); }
+/* ระหว่างต่อสู้: ฉากหมู่บ้านด้านหลังไม่ต้องเบลอ/ผสมแสงสด ๆ (ลดงานการ์ดจอ → สกิลลื่นขึ้นบนมือถือ) */
+body.in-battle .hz-dim { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(10,8,4,.9); }
+body.in-battle .w-tilt, body.in-battle .w-warm, body.in-battle .w-rays, body.in-battle .w-haze { display: none; }
+/* เครื่องช้า: ตัดเงาเรืองและแอนิเมชันประดับที่ไม่จำเป็น */
+body.fx-lite .bc, body.fx-lite .bc.right, body.fx-lite .bc:hover:not([disabled]) { box-shadow: 0 0 0 3px #2a1608, inset 0 0 0 3px var(--el); transition: none; }
+body.fx-lite .bc.right { box-shadow: 0 0 0 3px #2a1608, inset 0 0 0 4px #3caa4a, 0 0 0 7px #7cff8a; }
+body.fx-lite .bt-plate.boss.shiny, body.fx-lite .bt-stage.fog::after, body.fx-lite .bt-hand.warping .bc { animation: none; }
 .bc-ic { position: absolute; left: 8px; top: 8px; width: 26px; height: 26px; display: grid; place-items: center; font-size: .9rem; background: #2a1a4a; border-radius: 50%; box-shadow: 0 0 0 2px #fff; }
 .bc-key { position: absolute; right: 8px; top: 8px; min-width: 22px; height: 22px; display: grid; place-items: center; font-weight: 800; font-size: .8rem; background: #fff; color: #2a1608; border-radius: 4px; box-shadow: 0 0 0 2px #2a1608; }
 .bc-type { align-self: center; margin-top: -10px; padding: 1px 10px; font-size: .7rem; font-weight: 800; color: #fff; background: var(--el); border-radius: 4px; box-shadow: 0 0 0 2px #2a1608; position: relative; }
@@ -1013,6 +1020,11 @@ body.shop-world dialog.boxmodal .reveal { border-radius: 0; box-shadow: 0 0 0 4p
 .bt-fb { padding: 8px 14px; font-weight: 700; background: #f4e4bc; color: #3a2412; box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608; max-width: 640px; }
 .bt-fb.ok { box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608, 0 0 0 6px #3caa4a; } .bt-fb.no { box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 3px #2a1608, 0 0 0 6px #d8402a; }
 .bt-next { font-family: "Pixelify Sans", "Kanit", sans-serif; }
+.bt-next.auto { position: relative; overflow: hidden; }
+.bt-next.auto::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: rgba(255,255,255,.85); transform-origin: left; animation: bt-auto var(--auto, 2500ms) linear forwards; }
+@keyframes bt-auto { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+.bt-hold { margin-right: 6px; font-size: .85rem; }
+@media (prefers-reduced-motion: reduce) { .bt-next.auto::after { animation-duration: var(--auto, 2500ms); } }
 @media (max-width: 760px) {
   .bt-hand { margin-top: 12px; gap: 8px; }
   .bc.picked, .bc:hover:not([disabled]), .bc:focus-visible { transform: none; } .bc.wrong { animation: none; }

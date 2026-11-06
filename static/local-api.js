@@ -182,7 +182,13 @@ const gameById = (id) => { const g = GAMES.find((x) => x.id === +id); if (!g) th
 const quizById = (id) => { const q = QUIZZES.find((x) => x.id === +id); if (!q) throw err(404, "ไม่พบแบบทดสอบนี้"); return q; };
 
 // สร้างชุดคำถามของบทเรียนจาก key (ระดับ.รูปแบบ.จำนวน.ชุด.seed) — สร้างซ้ำได้เหมือนเดิมทุกครั้ง จึงตรวจคำตอบได้โดยไม่ต้องเก็บสถานะ
-function lessonSet(g, key) { const L = Lessons.lessonById(g.lesson); return Lessons.build(L, Lessons.parseKey(L, key)); }
+// ชุดคำถามสร้างจากคีย์แบบกำหนดผลได้ → จำชุดล่าสุดไว้ (ตรวจคำตอบทุกข้อไม่ต้องสร้างชุดใหม่ทั้งชุด ซึ่งช้าบนมือถือ)
+const SET_CACHE = new Map();
+function lessonSet(g, key) {
+  const ck = g.lesson + "|" + key; if (SET_CACHE.has(ck)) return SET_CACHE.get(ck);
+  const L = Lessons.lessonById(g.lesson), set = Lessons.build(L, Lessons.parseKey(L, key));
+  SET_CACHE.set(ck, set); if (SET_CACHE.size > 12) SET_CACHE.delete(SET_CACHE.keys().next().value); return set;
+}
 function playable(g) { return playableQs(g.template, g.questions); }
 function playableQs(template, qs) {
   switch (template) {
@@ -358,6 +364,7 @@ on("GET", "/api/story/:cat/:n/play", ({ cat, n }, _b, q) => {
     const fresh = b.questions.filter((q) => !seen.has(qKey(q))).length; if (fresh > bestNew) { best = b; bestNew = fresh; S.rot[rk] = base + k; } if (fresh === b.questions.length) break; }
   if (bestNew === 0) S.seen[sk] = []; // เห็นครบคลังแล้ว → เริ่มรอบใหม่
   const arr = (S.seen[sk] = S.seen[sk] || []); for (const q of best.questions) arr.push(qKey(q)); if (arr.length > 600) arr.splice(0, arr.length - 600);
+  SET_CACHE.set(g.lesson + "|" + best.key, best);
   save();
   const next = (() => { try { return stageOf(P, st.n + 1).st; } catch { return null; } })();
   return { game: { ...gameRow(g), template: best.template, templateName: best.templateName, howTo: best.howTo, timeLimitSec: best.timeLimitSec, questionCount: best.questions.length },

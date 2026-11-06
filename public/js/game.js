@@ -62,7 +62,7 @@ export function startGame(root, data, opts = {}) {
     nb.focus();
     const next = () => { clearTimeout(autoTimer); if (done) return; idx++; idx >= questions.length ? finish() : renderQ(); };
     nb.onclick = next;
-    if (getPrefs().autoNext) autoTimer = setTimeout(next, r.correct ? 1200 : 2500);
+    if (getPrefs().autoGo !== false) autoTimer = setTimeout(next, r.correct ? 2200 : 3000);
   }
   function hintBtn(q) {
     return q.hint ? html`<button class="linkish small" id="g-hint">💡 ขอใบ้</button>` : "";
@@ -83,9 +83,9 @@ export function startGame(root, data, opts = {}) {
         total: questions.length, lesson: game.title, category: game.category?.slug, reduced: reducedMotion(), boss, playerLv: state.me?.level || 1,
         getTimerHtml: () => (game.timeLimitSec ? '<span class="timer" id="g-timer" role="timer" aria-live="off">⏱ --:--</span>' : ""),
         onAnswer: async (a) => { answers[idx] = a; const r = await check(a).catch((e) => { toast(e.message, "bad"); return null; }); if (r) playSound(r.correct ? "correct" : "wrong"); return r; },
+        autoNext: () => getPrefs().autoGo !== false && !done,
         onNext: () => { clearTimeout(autoTimer); if (done) return; idx++; idx >= questions.length ? finish() : renderQ(); },
       });
-      battle.state.after = (r) => { if (getPrefs().autoNext) autoTimer = setTimeout(() => root.querySelector("#g-next")?.click(), r.correct ? 1400 : 2600); };
     }
     battle.ask(idx, questions[idx]); tick();
   }

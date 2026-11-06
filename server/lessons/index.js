@@ -45,6 +45,7 @@ const G1 = (g) => (g === 0 ? "อนุบาล" : g <= 6 ? `ป.${g}` : `ม.$
 const gradeLabel = ([a, b]) => (a === b ? G1(a) : `${G1(a)}–${G1(b)}`);
 // คำถามที่เคยอยู่ในบทเรียน "คลังรวม" ส่งไปบทเรียนหัวข้อที่ตรงเรื่องตามตาราง routes.js
 const ROUTE = require("./routes");
+const BAL = require("./balance"); // ตัวลวงที่ปรับให้ยาวใกล้เคียงคำตอบ (กันเดาจากความยาว)
 const ROUTED_FISH = ["คณิต", "วิทย์", "ไทย", "อังกฤษ", "สังคม", "สุขศึกษา"];
 const ROUTED_LEGACY = ["บวกเลขง่าย ๆ", "สูตรคูณแม่ 2–12", "เศษส่วนและทศนิยม", "วิทย์ถูกหรือผิด", "เรียงลำดับวิทยาศาสตร์"];
 const FISH = require("./fishing");
@@ -86,6 +87,7 @@ function prep(L) {
     } }
   // ตัดข้อซ้ำ (คำถาม + คำตอบเดียวกันจากหลายแหล่ง)
   const uniq = (arr, key) => { const seen = new Set(); return arr.filter((x) => { const k = key(x); if (seen.has(k)) return false; seen.add(k); return true; }); };
+  for (const it of qa) if (BAL[it.q]) it.w = BAL[it.q].slice();
   const P = { qa: uniq(qa, (x) => x.q + "|" + x.a), tf: uniq(tf, (x) => x.s), seq: uniq(seq, (x) => x.q) };
   P.matchable = P.qa.filter((i) => (i.mq || i.q).length <= 32 && (i.ma || i.a).length <= 26);
   P.scramble = P.qa.filter((i) => !/\s/.test(i.a) && graphemes(i.a).length >= 2 && graphemes(i.a).length <= 14 && !/^\d+$/.test(i.a) && /[A-Za-z฀-๿]/.test(i.a));
@@ -112,6 +114,22 @@ function numDistractors(a, r, n) {
   const cands = [v + step, v - step, v + 2 * step, v - 2 * step, v + 10 * (dec ? step : 1), v - 10 * (dec ? step : 1), v * 2, Math.round(v / 2), v + 1, v - 1];
   for (const c of shuffle(cands, r)) { if (out.size >= n) break; const f = dec ? c.toFixed(dec) : String(Math.round(c)); if (f !== a && !(v >= 0 && Number(f) < 0)) out.add(Number(f).toLocaleString("en-US", { maximumFractionDigits: dec }).replace(/,/g, a.includes(",") ? "," : "")); }
   return [...out];
+}
+// ตัวเลือกตัวเลข: เดิมตัวลวงมักอยู่ "รอบ ๆ" คำตอบ → คำตอบจึงเป็นค่ากลาง ๆ เกือบทุกข้อ (เดาได้)
+// สุ่มตำแหน่งลำดับของคำตอบ (น้อยสุด…มากสุด) ให้เท่า ๆ กัน โดยเติมตัวลวงด้านที่ขาด
+const NUM_FREE = /ใด|ไหน|มากที่สุด|น้อยที่สุด|มากกว่า|น้อยกว่า|ใกล้|ประมาณ|ปัด|คู่|คี่|ไม่|เฉพาะ|ระหว่าง/;
+function balanceNum(item, ds, r) {
+  const a = String(item.a), num = (x) => Number(String(x).replace(/,/g, "")), v = num(a);
+  if (NUM_FREE.test(item.q) || ds.length !== 3 || !ds.every(isNum) || !Number.isFinite(v)) return ds;
+  const dec = (a.split(".")[1] || "").length, comma = a.includes(",") || Math.abs(v) >= 10000;
+  const fmt = (c) => Number(dec ? c.toFixed(dec) : Math.round(c)).toLocaleString("en-US", { maximumFractionDigits: dec, minimumFractionDigits: dec }).replace(/,/g, comma && a.includes(",") ? "," : "");
+  const t = Math.floor(r() * 4), below = ds.filter((x) => num(x) < v), above = ds.filter((x) => num(x) > v);
+  if (below.length === t) return ds;
+  const step = dec ? Math.pow(10, -dec) : Math.max(1, Math.round(Math.abs(v) * 0.1));
+  const near = (sg) => { const ks = shuffle([1, 2, 3], r).concat(shuffle([4, 5, 10], r)), c = ks.map((k) => v + sg * k * step); if (step > 1) c.push(v + sg); c.push(sg < 0 ? Math.round(v / 2) : v * 2); return c; };
+  const B = shuffle(below, r).slice(0, t), A = shuffle(above, r).slice(0, 3 - t), have = new Set([a, ...B, ...A]);
+  for (const [arr, want, sg] of [[B, t, -1], [A, 3 - t, 1]]) for (const c of near(sg)) { if (arr.length >= want) break; const f = fmt(c); if (have.has(f) || (v >= 0 && num(f) < 0) || num(f) === v) continue; have.add(f); arr.push(f); }
+  return B.length + A.length === 3 ? [...B, ...A] : ds;
 }
 function distractors(item, P, r, n = 3) {
   const out = []; const seen = new Set([item.a]);
@@ -223,7 +241,7 @@ function build(L, opts) {
   const genP = L.gen || L.ggen ? { qa: items.concat(P.qa) } : P;
   const questions = items.map((it) => {
     if (o.mode === "mcq" || o.mode === "timed") {
-      const opts2 = shuffle([it.a, ...distractors(it, genP, r)], r);
+      const opts2 = shuffle([it.a, ...balanceNum(it, distractors(it, genP, r), r)], r);
       return { prompt: it.q, options: opts2, answer: opts2.indexOf(it.a), ...(it.ex ? { explain: it.ex } : {}), ...(it.hint ? { hint: it.hint } : {}), ...(it.img ? { image: it.img } : {}) };
     }
     if (o.mode === "truefalse") {

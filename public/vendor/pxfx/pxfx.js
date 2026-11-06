@@ -289,14 +289,16 @@
       const W = this.W, H = this.H, gs = groundSet(st.ground || 'stone', this.night);
       const R = st.r || (v.r || 3) * .92, shape = st.shape || 'round', tiles = st.tiles;
       const bg = this.transparent ? 0 : this.night ? rgb(20, 19, 26) : rgb(255, 255, 255), flat = this.mode === '2d';
-      const pix = this.basePix, zb = this.baseZ, kind = this.baseKind, tex = groundTex(def, R, shape, tiles);
+      const pix = this.basePix, zb = this.baseZ, kind = this.baseKind, noGround = st.ground === 'none' || this.transparent;
+      // QUIZ ODYSSEY: transparent views never draw the ground, so skip building its texture (was a 100–300 ms hitch on slow phones)
+      const tex = noGround ? null : groundTex(def, R, shape, tiles);
       for (let iy = 0; iy < H; iy++) for (let ix = 0; ix < W; ix++) {
         const i = iy * W + ix;
         pix[i] = bg; zb[i] = -1e9; kind[i] = 0;
         if (!this.Q(ix + .5, iy + .5, 0)) { this.ghit[i] = 0; continue; }
         const x = this.qx, y = this.qy;
         this.ghit[i] = 1; this.gx[i] = x; this.gy[i] = y; this.gd[i] = this.qd;
-        if (st.ground === 'none' || this.transparent) continue;
+        if (noGround) continue;
         // ground material comes from a world-space texture cached per stage, so re-baking every frame
         // (the orbiting 3D camera) costs one lookup per pixel
         const gt = tex, u = Math.floor((x + gt.ext) * gt.inv), w = Math.floor((y + gt.ext) * gt.inv);
