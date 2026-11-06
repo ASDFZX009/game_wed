@@ -328,7 +328,8 @@ on("POST", "/api/progress/claim", (_p, b) => {
   return { coins: S.coins, got: m.coins, rewardsReady: rewardsReady() };
 });
 // ---------- โหมดเรื่องราว ----------
-const TRACK_RANGE = { all: [0, 12], k: [0, 0], p1: [1, 3], p4: [4, 6], m1: [7, 9], m4: [10, 12] };
+const TRACK_RANGE = { all: [0, 12], ...Object.fromEntries(Array.from({ length: 13 }, (_, g) => [`g${g}`, [g, g]])) };
+const gradeOfTrack = (t) => (/^g\d+$/.test(t || "") ? +t.slice(1) : -1);
 function planOf(cat, track = "all") {
   const [ta, tb] = TRACK_RANGE[track] || TRACK_RANGE.all, inTrack = (gr) => gr[0] <= tb && gr[1] >= ta;
   // เรียงบทเรียนในบ้านตามช่วงชั้น (ป.ต้น → ม.ปลาย) ให้เส้นทางค่อย ๆ ยากขึ้นตามสายชั้น
@@ -348,13 +349,15 @@ on("GET", "/api/story/:cat", ({ cat }, _b, q) => planOf(cat, q.get("track") || "
 on("GET", "/api/story/:cat/:n/play", ({ cat, n }, _b, q) => {
   const P = planOf(cat, q.get("track") || "all"), { ch, st } = stageOf(P, n);
   if (!st.unlocked) throw err(403, "ด่านนี้ยังล็อกอยู่ ผ่านด่านก่อนหน้าก่อนนะ");
-  const g = gameById(st.gid), L = Lessons.lessonById(g.lesson), rk = `${g.id}:${st.mode}`, seen = new Set(S.seen[g.lesson] || []);
+  const g = gameById(st.gid), L = Lessons.lessonById(g.lesson);
+  const gG = gradeOfTrack(q.get("track")), sk = gG >= 0 ? `${g.lesson}@${gG}` : g.lesson; // ประวัติข้อที่เห็นแยกตามชั้น
+  const rk = `${g.id}:${st.mode}` + (gG >= 0 ? `@${gG}` : ""), seen = new Set(S.seen[sk] || []);
   // เลือกหน้าต่างคำถามที่ "ยังไม่เคยเห็น" มากที่สุด (ลองหลายหน้าต่างถัดไป) → ไม่ซ้ำวนจนกว่าจะเล่นครบคลัง
   let best = null, bestNew = -1; const base = (S.rot[rk] || 0) + 1;
-  for (let k = 0; k < 14; k++) { const b = Lessons.build(L, { level: st.level, mode: st.mode, count: st.count, set: Lessons.SETS + base + k });
+  for (let k = 0; k < 14; k++) { const b = Lessons.build(L, { level: st.level, mode: st.mode, count: st.count, set: Lessons.SETS + base + k, g: gG });
     const fresh = b.questions.filter((q) => !seen.has(qKey(q))).length; if (fresh > bestNew) { best = b; bestNew = fresh; S.rot[rk] = base + k; } if (fresh === b.questions.length) break; }
-  if (bestNew === 0) S.seen[g.lesson] = []; // เห็นครบคลังแล้ว → เริ่มรอบใหม่
-  const arr = (S.seen[g.lesson] = S.seen[g.lesson] || []); for (const q of best.questions) arr.push(qKey(q)); if (arr.length > 600) arr.splice(0, arr.length - 600);
+  if (bestNew === 0) S.seen[sk] = []; // เห็นครบคลังแล้ว → เริ่มรอบใหม่
+  const arr = (S.seen[sk] = S.seen[sk] || []); for (const q of best.questions) arr.push(qKey(q)); if (arr.length > 600) arr.splice(0, arr.length - 600);
   save();
   const next = (() => { try { return stageOf(P, st.n + 1).st; } catch { return null; } })();
   return { game: { ...gameRow(g), template: best.template, templateName: best.templateName, howTo: best.howTo, timeLimitSec: best.timeLimitSec, questionCount: best.questions.length },

@@ -168,6 +168,19 @@ const lessons = [
       [4, "ภูเขาไฟฟูจิอยู่ในประเทศจีน", false, "ภูเขาไฟฟูจิอยู่ในประเทศญี่ปุ่น"], [5, "เส้นแบ่งเขตวันสากลเป็นเส้นตรงตลอดแนว", false, "เส้นนี้คดเคี้ยวเพื่อไม่ให้แบ่งประเทศหรือหมู่เกาะเดียวกันออกจากกัน"]] },
 ];
 
+// ===== บทเรียนตามชั้นเรียน (เลือกชั้น ป.1–ม.6 แล้วได้คำถามของชั้นนั้นโดยตรง) =====
+const { mathGrade } = require("./grade-math");
+const { thaiGrade, englishGrade } = require("./grade-lang");
+const { SCI, SOC, HL } = require("./grade-banks");
+lessons.push(
+  { id: "math-grade", cat: "math", icon: "🎓", title: "คณิตตามชั้นเรียน", desc: "โจทย์ตามหลักสูตรของแต่ละชั้น ป.1–ม.6 สุ่มใหม่ทุกครั้ง ไม่ซ้ำ", age: [6, 18], grade: [1, 12], modes: ["mcq", "timed", "truefalse"], ggen: (g, r) => mathGrade(g, r) },
+  { id: "th-grade", cat: "thai", icon: "🎓", title: "ภาษาไทยตามชั้นเรียน", desc: "พยัญชนะ มาตราตัวสะกด อักษรสามหมู่ ลักษณนาม ราชาศัพท์ สำนวน คำสมาส–สนธิ และวรรณคดี ตามชั้น", age: [6, 18], grade: [1, 12], modes: ["mcq", "timed", "truefalse"], ggen: (g, r) => thaiGrade(g, r) },
+  { id: "en-grade", cat: "english", icon: "🎓", title: "คำศัพท์อังกฤษตามชั้นเรียน", desc: "คำศัพท์ที่ควรรู้ของแต่ละชั้น ป.1–ม.6 ทั้งแปลความหมาย เติมตัวอักษร และเรียงคำ", age: [6, 18], grade: [1, 12], modes: ["mcq", "timed", "truefalse", "match", "scramble"], scramble: true, ggen: (g, r) => englishGrade(g, r) },
+  { id: "sci-grade", cat: "science", icon: "🎓", title: "วิทยาศาสตร์ตามชั้นเรียน", desc: "คำถามตามสาระวิทยาศาสตร์ของแต่ละชั้น ป.1–ม.6", age: [6, 18], grade: [1, 12], byGrade: SCI },
+  { id: "soc-grade", cat: "social", icon: "🎓", title: "สังคมศึกษาตามชั้นเรียน", desc: "หน้าที่พลเมือง ศาสนา ประวัติศาสตร์ ภูมิศาสตร์ และเศรษฐศาสตร์ตามชั้น ป.1–ม.6", age: [6, 18], grade: [1, 12], byGrade: SOC },
+  { id: "hl-grade", cat: "health", icon: "🎓", title: "สุขศึกษาตามชั้นเรียน", desc: "สุขนิสัย ความปลอดภัย โภชนาการ สารเสพติด และสุขภาพจิตตามชั้น ป.1–ม.3", age: [6, 15], grade: [1, 9], byGrade: HL },
+);
+
 // คำถามเพิ่มเติมของบทเรียนเดิมที่ยังมีข้อน้อย
 lessons.ADD = {
   "hl-safety": {

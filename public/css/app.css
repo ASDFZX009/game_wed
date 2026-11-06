@@ -1577,6 +1577,12 @@ body.has-hud.immersive:not(.home-world) { background: #07060a; }
 .hz-gr { display: inline-block; padding: 0 6px; font-size: .66rem; font-weight: 800; line-height: 1.5; color: #2a1608; background: #cfe8f8; box-shadow: 0 0 0 1px #2a1608; white-space: nowrap; }
 .hz-node.off { opacity: .38; filter: saturate(.4); } .hz-node.off:hover { opacity: .75; }
 @media (max-width: 480px) { .xch-strip .grow { flex: 1 1 calc(100% - 56px); } .xch-strip > .btn { flex: 1 1 100%; } }
+.hz-grades { display: flex; flex-wrap: wrap; gap: 5px; flex: 1 1 260px; }
+.hz-grades button { min-width: 44px; }
+.hz-grades button.all { min-width: 64px; }
+.hz-gnote { flex-basis: 100%; margin: 4px 0 0; font-size: .78rem; color: #ffe9a8; opacity: .9; }
+.hz-gnote b { color: #ffd84a; }
+@media (max-width: 420px) { .hz-grades button { min-width: 0; padding: 4px 7px; font-size: .74rem; } }
 .hz-track.ask { box-shadow: inset 0 0 0 2px #ffd84a, 0 0 16px rgba(255,216,74,.35); animation: hz-ask 1.6s ease-in-out infinite; }
 .hz-ask { flex: 1 1 100%; margin: 0 0 4px; font-weight: 800; color: #ffe9a8; }
 @keyframes hz-ask { 50% { box-shadow: inset 0 0 0 2px #ffd84a, 0 0 26px rgba(255,216,74,.6); } }
