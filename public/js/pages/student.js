@@ -185,7 +185,7 @@ export async function settings({ main, me }) {
     <section class="card" id="s-read"><h2 style="margin-top:0">👓 การอ่านและการเข้าถึง</h2>
       ${sw("contrast", "ความต่างสีสูง", "ตัวอักษรรองเข้มขึ้น เส้นขอบชัดขึ้น อ่านง่ายในที่แสงจ้า")}
       ${sw("dyslexic", "เว้นระยะตัวอักษร", "เพิ่มระยะห่างระหว่างตัวอักษร คำ และบรรทัด ช่วยให้อ่านง่ายขึ้น")}
-      <div class="set-row"><div class="t"><b>การเคลื่อนไหว</b><span class="small muted">ลดแอนิเมชันสำหรับผู้ที่ไวต่อการเคลื่อนไหว (ปิดพลุฉลองด้วย)</span></div>${seg("motion", [["auto", "ปกติ"], ["reduce", "ลดการเคลื่อนไหว"]])}</div></section>
+      <div class="set-row"><div class="t"><b>การเคลื่อนไหว</b><span class="small muted">“ปกติ” เล่นแอนิเมชันเกมตามปกติ (ถ้าเครื่องตั้งลดการเคลื่อนไหวไว้ จะตัดเฉพาะจอสั่น) · “ลดการเคลื่อนไหว” หยุดแอนิเมชันและพลุฉลองทั้งหมด</span></div>${seg("motion", [["auto", "ปกติ"], ["reduce", "ลดการเคลื่อนไหว"]])}</div></section>
 
     <section class="card" id="s-game"><h2 style="margin-top:0">🎮 เกมและเสียง</h2>
       <div class="set-row"><div class="t"><b id="l-sound">เสียงประกอบ</b><span class="small muted">เสียงเมื่อตอบถูก ตอบผิด พลิกการ์ด และจบเกม</span></div>

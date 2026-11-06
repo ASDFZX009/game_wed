@@ -158,7 +158,7 @@ export function barChart(rows, { label = (r) => r.label, value = (r) => r.value,
 // ---------- พลุฉลอง ----------
 export function confetti() {
   const r = document.documentElement.dataset;
-  if (r.confetti === "off" || r.motion === "reduce" || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (r.confetti === "off" || r.motion === "reduce") return;
   const c = document.createElement("div");
   c.className = "confetti";
   const emo = state.me?.equipped?.effect ? [...new Intl.Segmenter("th", { granularity: "grapheme" }).segment(state.me.equipped.effect)].map((x) => x.segment) : null;

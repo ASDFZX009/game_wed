@@ -321,7 +321,7 @@ dialog.modal::backdrop { background: rgba(10, 8, 25, .55); }
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 200; overflow: hidden; }
 .confetti i { position: absolute; top: -12px; width: 9px; height: 14px; border-radius: 2px; animation: fall 2.8s ease-in forwards; }
 @keyframes fall { to { transform: translateY(105vh) rotate(720deg); } }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+/* ระบบปฏิบัติการตั้ง "ลดการเคลื่อนไหว" (เช่น Windows ปิด Animation effects) → ไม่ปิดทั้งเกม แต่โหมด soft ตัดเฉพาะจอสั่น/แฟลช (ดูด้านล่าง) · ปิดทั้งหมดเมื่อผู้เล่นเลือกเองในตั้งค่า */
 .prose { max-width: 720px; margin: 0 auto; }
 .prose li { margin: 4px 0; }
 code, pre { font-family: ui-monospace, Consolas, monospace; }
@@ -842,7 +842,7 @@ body.immersive main.wrap { max-width: none; padding: 0; }
   -webkit-mask-image: linear-gradient(160deg, #000 10%, transparent 70%); mask-image: linear-gradient(160deg, #000 10%, transparent 70%); animation: w-rays 26s linear infinite; }
 @keyframes w-rays { to { transform: translateX(420px); } }
 .w-haze { left: 0; right: 0; top: 0; height: 45%; mix-blend-mode: screen; background: linear-gradient(rgba(255,226,180,.32), rgba(255,226,180,0)); }
-@media (prefers-reduced-motion: reduce) { .w-rays { animation: none; } }
+:root[data-motion="reduce"] .w-rays { animation: none; }
 .w-vignette { inset: 0; background: radial-gradient(ellipse 75% 70% at 50% 48%, transparent 58%, rgba(18,12,4,.42) 100%); }
 .world-labels { position: absolute; left: 0; top: 0; pointer-events: none; }
 .world-full .world { border-radius: 0; box-shadow: none; }
@@ -1024,7 +1024,7 @@ body.fx-lite .bt-plate.boss.shiny, body.fx-lite .bt-stage.fog::after, body.fx-li
 .bt-next.auto::after { content: ""; position: absolute; left: 0; bottom: 0; height: 4px; width: 100%; background: rgba(255,255,255,.85); transform-origin: left; animation: bt-auto var(--auto, 2500ms) linear forwards; }
 @keyframes bt-auto { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 .bt-hold { margin-right: 6px; font-size: .85rem; }
-@media (prefers-reduced-motion: reduce) { .bt-next.auto::after { animation-duration: var(--auto, 2500ms); } }
+:root[data-motion="reduce"] .bt-next.auto::after { animation-duration: var(--auto, 2500ms); }
 @media (max-width: 760px) {
   .bt-hand { margin-top: 12px; gap: 8px; }
   .bc.picked, .bc:hover:not([disabled]), .bc:focus-visible { transform: none; } .bc.wrong { animation: none; }
@@ -1034,7 +1034,7 @@ body.fx-lite .bt-plate.boss.shiny, body.fx-lite .bt-stage.fog::after, body.fx-li
   .bt-plate { min-width: 0; padding: 3px 6px; } .bt-plate .nm { font-size: .9rem; } .bt-plate.boss { min-width: 44%; }
   .bt-hero { width: 32px; height: 32px; font-size: 1rem; }
 }
-@media (prefers-reduced-motion: reduce) { .bt-stage.shake, .bc.wrong, .bt-num { animation: none; } }
+:root[data-motion="reduce"] .bt-stage.shake, :root[data-motion="reduce"] .bc.wrong, :root[data-motion="reduce"] .bt-num, :root[data-motion="soft"] .bt-stage.shake { animation: none; }
 
 /* 📜 คลังเกม = ลานกระดานภารกิจ (เข้ากับหมู่บ้าน/ร้านค้า) + หน้าเล่นเกมพื้นไม้ */
 body.quest-world { --wood: #6e4224; --wood-d: #3a2210; --parch: #f4e4bc; --parch-d: #e2c992; --ink-w: #3a2412; --px-font: "Pixelify Sans", "Chakra Petch", "Kanit", "Noto Sans Thai", sans-serif;
@@ -1163,7 +1163,9 @@ label.cc-row { grid-template-columns: 128px 1fr; }
   .w-hud { top: 100px; right: 10px; gap: 8px; } .w-title-btn { font-size: .8rem; }
   .ti-menu { top: 54%; } .ti-logo { top: 18%; } .ti-title { font-size: 14vw; } .ti[data-stage="menu"] .ti-logo { top: 9%; }
 }
-@media (prefers-reduced-motion: reduce) { .ti-bg, .ti-logo, .ti-menu { transition: none; } .ti-title .l, .ti-compass { animation-duration: .01s !important; animation-delay: 0s !important; } .ti-press { animation: none; } }
+:root[data-motion="reduce"] .ti-bg, :root[data-motion="reduce"] .ti-logo, :root[data-motion="reduce"] .ti-menu { transition: none; }
+:root[data-motion="reduce"] .ti-title .l, :root[data-motion="reduce"] .ti-compass { animation-duration: .01s !important; animation-delay: 0s !important; }
+:root[data-motion="reduce"] .ti-press { animation: none; }
 
 /* 🪵 หน้าแนวพิกเซล (สมุดผจญภัย แบบทดสอบ โปรไฟล์ ตั้งค่า) — ใช้คู่กับ body.quest-world */
 body.px-page { --mute: #d6c29c; }
@@ -1284,7 +1286,7 @@ body.px-page .jr-boss.unseen h3 { color: #6a5a4a; }
 .bt-plate.boss.rage .bt-hp { animation: bt-rage .5s steps(2) infinite; } @keyframes bt-rage { 50% { box-shadow: 0 0 0 2px #ff6060, 0 0 0 4px #2a1608, 0 0 12px #ff3030; } }
 .bt-num.rage { color: #ff5a4a; font-size: 1.5rem; }
 @media (max-width: 560px) { .bt-atk { top: auto; bottom: 46px; right: 6px; max-width: 70%; font-size: .78rem; } }
-@media (prefers-reduced-motion: reduce) { .jr-ms.ready .ic, .rs-stars i.on, .vs-stars i.on, .bt-plate.boss.rage .bt-hp { animation: none; } }
+:root[data-motion="reduce"] .jr-ms.ready .ic, :root[data-motion="reduce"] .rs-stars i.on, :root[data-motion="reduce"] .vs-stars i.on, :root[data-motion="reduce"] .bt-plate.boss.rage .bt-hp { animation: none; }
 @media (max-width: 640px) { .jr-bosses { grid-template-columns: 1fr 1fr; gap: 12px; } .jr-boss { padding: 8px; } .jr-boss canvas { width: 96px; } .jr-boss p { display: none; } .jr-boss h3 { font-size: .9rem; } .jr-bs { font-size: .7rem; } }
 
 /* 📜 เป้าหมายของเกม (หน้าเริ่มเกม) */
@@ -1391,7 +1393,7 @@ body.hz-open { overflow: hidden; }
   .hz-body { padding: 12px 10px 30px; } .hz-path { grid-template-columns: repeat(3, 1fr); gap: 16px 6px; } .hz-node button { width: 56px; height: 56px; } .hz-node.boss button { width: 66px; height: 66px; }
   .hz-grid { grid-template-columns: 1fr 1fr; gap: 10px; } .hz-house img { width: 110px; } .hz-house b { font-size: .95rem; }
 }
-@media (prefers-reduced-motion: reduce) { .hz-node.cur button, .hz-box, .hz-card { animation: none; } }
+:root[data-motion="reduce"] .hz-node.cur button, :root[data-motion="reduce"] .hz-box, :root[data-motion="reduce"] .hz-card { animation: none; }
 
 /* 🎁 ฉากเปิดกล่องสุ่ม */
 body.bx-open { overflow: hidden; }
@@ -1444,7 +1446,8 @@ body.bx-open { overflow: hidden; }
   .bx-in { inset: 5px; padding: 6px 4px; gap: 2px; } .bx-cards.multi .bx-prize { min-height: 0; height: 52px; } .bx-cards.multi .bx-prize > * { transform: scale(.55); } .bx-cards.multi .bx-name { font-size: .78rem; } .bx-cards.multi .bx-type { display: none; }
   .bx-cards.multi .bx-use { font-size: .66rem; padding: 3px 6px; } .bx-cards.multi .bx-rar { font-size: .66rem; padding: 1px 6px; }
 }
-@media (prefers-reduced-motion: reduce) { .bx-card, .bx-banner { transition: none; } .bx-foil, .bx-in::after, .bx-prize, .bx-card::before { animation: none; } }
+:root[data-motion="reduce"] .bx-card, :root[data-motion="reduce"] .bx-banner { transition: none; }
+:root[data-motion="reduce"] .bx-foil, :root[data-motion="reduce"] .bx-in::after, :root[data-motion="reduce"] .bx-prize, :root[data-motion="reduce"] .bx-card::before { animation: none; }
 
 /* 💱 แลกเงินเกมตกปลา → เหรียญ */
 .xch-btn { background: #ffd84a !important; color: #2a1608 !important; font-weight: 800; }
@@ -1510,7 +1513,7 @@ body.gh-scrolled:not(.home-world) .gh-top { background: linear-gradient(rgba(20,
 .gh-slot:active { transform: translateY(0); }
 .gh-slot.on { color: #2a1608 !important; background: linear-gradient(#ffe680, #f0b830); box-shadow: inset 0 0 0 2px #fff4b0, inset 0 -4px 0 #c8961a; }
 .gh-slot.on::after { content: ""; position: absolute; left: 50%; top: -11px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: #ffd84a; }
-@media (prefers-reduced-motion: reduce) { .gh-slot, .gh-slot:hover { transform: none; transition: none; } }
+:root[data-motion="reduce"] .gh-slot, :root[data-motion="reduce"] .gh-slot:hover { transform: none; transition: none; }
 @media (max-width: 900px) { .gh-stars { display: none; } }
 @media (max-width: 640px) {
   .gh-top { gap: 8px; padding: calc(6px + env(safe-area-inset-top)) 8px 6px 10px; }
@@ -1559,7 +1562,7 @@ body.has-hud.immersive:not(.home-world) { background: #07060a; }
 .bt-hand.vined .bc::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
   background: repeating-linear-gradient(35deg, transparent 0 12px, rgba(40,110,40,.85) 12px 16px, transparent 16px 28px), repeating-linear-gradient(-40deg, transparent 0 16px, rgba(70,140,50,.8) 16px 19px, transparent 19px 34px); animation: bt-vine 1.3s linear forwards; }
 @keyframes bt-vine { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .bt-plate.boss.shiny, .bt-stage.fog::after, .bt-hand.warping .bc { animation: none; } }
+:root[data-motion="reduce"] .bt-plate.boss.shiny, :root[data-motion="reduce"] .bt-stage.fog::after, :root[data-motion="reduce"] .bt-hand.warping .bc { animation: none; }
 /* ป้ายพบบอสก่อนเริ่มสู้ */
 .st-enc { margin: 12px 0 0; padding: 10px 12px; text-align: left; background: rgba(0,0,0,.06); box-shadow: inset 0 0 0 2px var(--rc, #ccc); }
 .st-enc .enc-alert { margin: -2px 0 8px; padding: 6px 10px; font-weight: 800; text-align: center; color: #1a1020; background: var(--rc); animation: enc-pop .6s cubic-bezier(.3,1.8,.5,1); }

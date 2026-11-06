@@ -2,7 +2,7 @@
 import { html, raw } from "./core.js";
 import { playSound, playTick, preloadTick, getPrefs } from "./prefs.js";
 
-const reduced = () => getPrefs().motion === "reduce" || (getPrefs().motion !== "full" && matchMedia("(prefers-reduced-motion: reduce)").matches);
+const reduced = () => getPrefs().motion === "reduce";
 
 export function rankOf(score, max, passed) {
   const p = max ? score / max : 0;

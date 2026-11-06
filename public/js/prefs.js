@@ -81,7 +81,7 @@ export function applyPrefs(p = current) {
   r.dataset.theme = p.mode === "auto" ? "" : p.mode;
   r.dataset.palette = p.palette;
   r.dataset.font = p.fontSize;
-  r.dataset.motion = p.motion;
+  r.dataset.motion = p.motion === "auto" && osReducedMotion() ? "soft" : p.motion;
   r.dataset.contrast = p.contrast ? "high" : "";
   r.dataset.dyslexic = p.dyslexic ? "1" : "";
   r.dataset.confetti = p.confetti ? "" : "off";
@@ -119,7 +119,11 @@ addEventListener("visibilitychange", () => { if (document.visibilityState === "h
 export function isDark() {
   return current.mode === "dark" || (current.mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
 }
-export const reducedMotion = () => current.motion === "reduce" || matchMedia("(prefers-reduced-motion: reduce)").matches;
+// "ลดการเคลื่อนไหว" ของระบบปฏิบัติการ (เช่น Windows ปิด Animation effects ซึ่งเครื่องโรงเรียนหลายเครื่องตั้งไว้)
+// ไม่หยุดทั้งเกมอีกต่อไป — เดิมทำให้ฉาก/สกิล/เอฟเฟกต์ไม่ขยับเลย · หยุดทั้งหมดเฉพาะเมื่อผู้เล่นเลือก "ลด" ในตั้งค่าเอง
+export const osReducedMotion = () => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } };
+export const reducedMotion = () => current.motion === "reduce";
+export const softMotion = () => current.motion === "reduce" || (current.motion === "auto" && osReducedMotion());
 
 // ---------- เสียงประกอบ (สร้างด้วย Web Audio ไม่ต้องโหลดไฟล์) ----------
 let ctx = null;
