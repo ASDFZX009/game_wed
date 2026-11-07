@@ -1,5 +1,5 @@
 // เครื่องเล่นเกม 5 แบบ: ถูก/ผิด, ปรนัย, เรียงลำดับ, เรียงคำ, จับคู่ (พลิกการ์ด)
-import { api, html, raw, esc, toast, confetti, state } from "./core.js";
+import { api, html, raw, esc, toast, confetti, state, richQ, emojiOnly } from "./core.js";
 import { playSound, getPrefs } from "./prefs.js";
 import { refreshMe } from "./app.js";
 import { showResultSplash, resultMeta, fmtTime } from "./result-splash.js";
@@ -108,7 +108,7 @@ export function startGame(root, data, opts = {}) {
     if (t === "truefalse") {
       body = html`<div class="tf"><button class="btn btn-lg" data-a="true">✔ ถูก</button><button class="btn btn-lg btn-no" data-a="false">✖ ผิด</button></div>`;
     } else if (t === "mcq") {
-      body = html`<div class="opts">${q.options.map((o, i) => html`<button class="opt" data-i="${i}">${o}</button>`)}</div>`;
+      body = html`<div class="opts">${q.options.map((o, i) => html`<button class="opt ${emojiOnly(o) ? "emo" : ""}" data-i="${i}">${o}</button>`)}</div>`;
     } else if (t === "order") {
       body = html`<p class="muted small">กดลูกศรเพื่อสลับลำดับ แล้วกดยืนยัน</p><ol class="order-list" id="g-order"></ol>
         <div class="row" style="margin-top:12px"><button class="btn" id="g-submit">ยืนยันลำดับ</button></div>`;
@@ -123,7 +123,7 @@ export function startGame(root, data, opts = {}) {
       <div class="card" id="g-card">${header()}
         <div class="row between">${q.image ? "" : ""}<span></span>${hintBtn(q)}</div>
         ${q.image ? html`<img class="q-img" src="${q.image}" alt="ภาพประกอบโจทย์">` : ""}
-        <div class="q-prompt">${q.prompt}</div>${body}</div></div>`.s;
+        <div class="q-prompt">${richQ(q.prompt)}</div>${body}</div></div>`.s;
     tick();
     const card = root.querySelector("#g-card");
     bindHint(card, q);

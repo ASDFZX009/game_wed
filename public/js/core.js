@@ -12,6 +12,21 @@ export function html(strings, ...vals) {
   return new Raw(out);
 }
 
+// ---------- คำถามที่มีภาพ (อีโมจิ) ----------
+// อีโมจิหลายตัวติดกัน (เช่น 🍎🍎🍎 ให้นับ) → แถวรูปใหญ่แยกบรรทัด ทีละรูปชัด ๆ · อีโมจิตัวเดียวในประโยค → ขยายใหญ่ในบรรทัด
+const EMO1 = /\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*/gu;
+const EMORUN = /(?:\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*\s*)+/gu;
+export const emojiOnly = (t) => { const s = String(t ?? "").trim(); return !!s && s.replace(EMORUN, "").trim() === ""; };
+export function richQ(text) {
+  const t = String(text ?? ""); let out = "", last = 0;
+  for (const m of t.matchAll(EMORUN)) {
+    const icons = m[0].match(EMO1) || []; out += esc(t.slice(last, m.index));
+    out += icons.length >= 2 || t.slice(0, m.index).trim() ? `<span class="qpic" role="img" aria-label="${icons.length} รูป">${icons.map((x) => `<i>${x}</i>`).join("")}</span>` : `<span class="qemo">${esc(m[0].trim())}</span> `;
+    last = m.index + m[0].length;
+  }
+  return raw(out + esc(t.slice(last)));
+}
+
 // ---------- API ----------
 export async function api(path, opts = {}) {
   if (window.__LOCAL_API) return window.__LOCAL_API(path, opts); // เวอร์ชันเล่นบนเว็บ (ไม่มีเซิร์ฟเวอร์)

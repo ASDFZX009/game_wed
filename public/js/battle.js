@@ -12,7 +12,7 @@ import "../vendor/pxfx/fx/spiral-gale.js"; import "../vendor/pxfx/fx/wind-vortex
 import "../vendor/pxfx/fx/venom-pool.js"; import "../vendor/pxfx/fx/dust-devil.js";
 import "../vendor/pxfx/fx/arcane-missile.js"; import "../vendor/pxfx/fx/shadow-glaive.js"; import "../vendor/pxfx/fx/astral-convergence.js"; import "../vendor/pxfx/fx/black-hole.js";
 import "../vendor/pxfx/fx/soul-siphon.js"; import "../vendor/pxfx/fx/starblade-cataclysm.js"; import "../vendor/pxfx/fx/golden-chain-rain.js"; import "../vendor/pxfx/fx/azure-sweep.js";
-import { html, raw, esc, toast, api, state as appState } from "./core.js";
+import { html, raw, esc, toast, api, state as appState, richQ, emojiOnly } from "./core.js";
 import { ROSTER, PASSIVE, ITEMS as GITEMS, hasPas } from "../gacha/data.js";
 import { myTeam, frameImg, frameUrl } from "./gacha-client.js";
 import { shout } from "./talk.js";
@@ -252,7 +252,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       return html`<button type="button" class="bc el-${c.th || "x"} ${awake ? "ult" : ""}" data-i="${i}" data-oi="${o.oi}" data-skill="${id}" style="--el:${c.col};--d:${(i - (opts.length - 1) / 2)}" aria-label="ตัวเลือก ${i + 1}: ${o.text} (สกิล ${nm})">
         <span class="bc-art" style="background-image:url('${art(id, c.hue)}')"><span class="bc-ic">${c.ic}</span><span class="bc-key">${i + 1}</span></span>
         <span class="bc-type">${awake ? "✦ ท่าไม้ตาย" : "ธาตุ" + c.el}</span><span class="bc-name">${nm}</span>
-        <span class="bc-ans">${o.text}</span><span class="bc-foot">${c.n}</span></button>`.s; }).join("");
+        <span class="bc-ans ${emojiOnly(o.text) ? "emo" : ""}">${o.text}</span><span class="bc-foot">${c.n}</span></button>`.s; }).join("");
     hand.style.setProperty("--n", opts.length);
     hand.querySelectorAll(".bc").forEach((b) => b.onclick = () => pickCard(b, opts[+b.dataset.i].a));
     if (deb === "vines") { hand.querySelectorAll(".bc").forEach((b) => (b.disabled = true)); state.vineT = setTimeout(() => { hand.classList.remove("vined"); hand.querySelectorAll(".bc").forEach((b) => (b.disabled = state.blown.includes(+b.dataset.oi))); hand.querySelector(".bc:not([disabled])")?.focus({ preventScroll: true }); }, reduced ? 600 : 1300); }
@@ -340,7 +340,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     state.idx = idx; state.q = q; state.hinted = false; state.blown = []; foot.innerHTML = ""; clearTimeout(state.vineT); clearTimeout(state.autoT);
     if (trait === "blink" && idx > 0) { const opts2 = [-22, -10, 0, 10].filter((v) => v !== state.bxOff); state.bxOff = opts2[Math.floor(Math.random() * opts2.length)]; state.blink = performance.now() + 600; }
     host.querySelector("#btN").textContent = `${idx + 1}/${total}`;
-    host.querySelector("#btQ").innerHTML = html`<span class="bt-qtag">❓ คำถามข้อ ${idx + 1}</span>${q.image ? html`<img src="${q.image}" alt="ภาพประกอบโจทย์">` : ""}<div class="bt-qt">${q.prompt}</div>${q.hint ? html`<button class="linkish small" id="g-hint">💡 ขอใบ้</button>` : ""}`.s;
+    host.querySelector("#btQ").innerHTML = html`<span class="bt-qtag">❓ คำถามข้อ ${idx + 1}</span>${q.image ? html`<img src="${q.image}" alt="ภาพประกอบโจทย์">` : ""}<div class="bt-qt">${richQ(q.prompt)}</div>${q.hint ? html`<button class="linkish small" id="g-hint">💡 ขอใบ้</button>` : ""}`.s;
     const hb = host.querySelector("#g-hint"); if (hb) hb.onclick = () => { hb.replaceWith(Object.assign(document.createElement("div"), { className: "small bt-hint", textContent: "💡 " + q.hint })); onHintClick?.(); };
     cards();
     hand.querySelector(".bc")?.focus({ preventScroll: true });

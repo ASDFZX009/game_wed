@@ -4,17 +4,19 @@ const ri = (r, a, b) => a + Math.floor(r() * (b - a + 1));
 const pk = (r, arr) => arr[Math.floor(r() * arr.length)];
 const pickN = (r, arr, n, not = []) => { const out = []; for (let t = 0; out.length < n && t < 200; t++) { const x = pk(r, arr); if (!not.includes(x) && !out.includes(x)) out.push(x); } return out; };
 const ICONS = ["🍎", "🐟", "⭐", "🎈", "🐥", "🌸", "🚗", "🍓", "⚽", "🐞"];
+// ชื่อและลักษณนามของรูป → โจทย์บอกชัดว่านับอะไร (เช่น "มีเต่าทองกี่ตัว")
+const NAME = { "🍎": ["แอปเปิล", "ลูก"], "🐟": ["ปลา", "ตัว"], "⭐": ["ดาว", "ดวง"], "🎈": ["ลูกโป่ง", "ลูก"], "🐥": ["ลูกเจี๊ยบ", "ตัว"], "🌸": ["ดอกไม้", "ดอก"], "🚗": ["รถ", "คัน"], "🍓": ["สตรอว์เบอร์รี", "ลูก"], "⚽": ["ลูกบอล", "ลูก"], "🐞": ["เต่าทอง", "ตัว"] };
 // ตัวเลือกตัวเลขใกล้คำตอบ อยู่ในช่วงที่เด็กนับได้ (ไม่มี 0 ไม่มีเลขสองหลักแปลก ๆ)
 const nearNums = (r, a, lo, hi) => pickN(r, [a - 2, a - 1, a + 1, a + 2, a + 3].filter((x) => x >= lo && x <= hi && x !== a).map(String), 3);
 
 function count(lv, r) {
-  const ic = pk(r, ICONS);
-  if (lv === 1) { const n = ri(r, 1, 5); return { q: `${ic.repeat(n)} — มีกี่อัน`, a: String(n), w: nearNums(r, n, 1, 6), mq: ic.repeat(n), nofill: true }; }
-  if (lv === 2) { const n = ri(r, 6, 10); return { q: `${ic.repeat(n)} — มีกี่อัน`, a: String(n), w: nearNums(r, n, 3, 10), mq: ic.repeat(n), nofill: true }; }
-  if (lv === 3) { const a = ri(r, 1, 5), b = ri(r, 1, 5); return { q: `${ic.repeat(a)} ➕ ${ic.repeat(b)} — รวมกันได้กี่อัน`, a: String(a + b), w: nearNums(r, a + b, 1, 10), mq: `${ic.repeat(a)}+${ic.repeat(b)}`, nofill: true }; }
-  if (lv === 4) { const a = ri(r, 4, 9), b = ri(r, 1, a - 1); return { q: `มี ${ic.repeat(a)} หายไป ${b} อัน — เหลือกี่อัน`, a: String(a - b), w: nearNums(r, a - b, 1, 9), mq: `${a} หายไป ${b}`, nofill: true }; }
+  const ic = pk(r, ICONS), [nm, cl] = NAME[ic];
+  if (lv === 1) { const n = ri(r, 1, 5); return { q: `นับดูนะ มี${nm}กี่${cl} ${ic.repeat(n)}`, a: String(n), w: nearNums(r, n, 1, 6), mq: ic.repeat(n), nofill: true }; }
+  if (lv === 2) { const n = ri(r, 6, 10); return { q: `นับดูนะ มี${nm}กี่${cl} ${ic.repeat(n)}`, a: String(n), w: nearNums(r, n, 3, 10), mq: ic.repeat(n), nofill: true }; }
+  if (lv === 3) { const a = ri(r, 1, 5), b = ri(r, 1, 5); return { q: `นับรวมกัน มี${nm}ทั้งหมดกี่${cl} ${ic.repeat(a)} กับ ${ic.repeat(b)}`, a: String(a + b), w: nearNums(r, a + b, 1, 10), mq: `${ic.repeat(a)}+${ic.repeat(b)}`, nofill: true }; }
+  if (lv === 4) { const a = ri(r, 4, 9), b = ri(r, 1, a - 1); return { q: `มี${nm}อยู่ ${a} ${cl} ${ic.repeat(a)} หายไป ${b} ${cl} เหลือ${nm}กี่${cl}`, a: String(a - b), w: nearNums(r, a - b, 1, 9), mq: `${a} หายไป ${b}`, nofill: true }; }
   const a = ri(r, 2, 9), b = ri(r, 2, 9); if (a === b) return count(5, r); const ic2 = pk(r, ICONS.filter((x) => x !== ic));
-  return { q: `กลุ่มที่ 1: ${ic.repeat(a)}  กลุ่มที่ 2: ${ic2.repeat(b)} — กลุ่มไหนมีมากกว่า`, a: a > b ? "กลุ่มที่ 1" : "กลุ่มที่ 2", w: [a > b ? "กลุ่มที่ 2" : "กลุ่มที่ 1", "เท่ากัน"], mq: `${a} กับ ${b}`, nofill: true };
+  return { q: `กลุ่มไหนมีมากกว่ากัน · กลุ่มที่ 1 ${ic.repeat(a)} กลุ่มที่ 2 ${ic2.repeat(b)}`, a: a > b ? "กลุ่มที่ 1" : "กลุ่มที่ 2", w: [a > b ? "กลุ่มที่ 2" : "กลุ่มที่ 1", "เท่ากัน"], mq: `${a} กับ ${b}`, nofill: true };
 }
 const LETTERS = [["ก", "ไก่"], ["ข", "ไข่"], ["ค", "ควาย"], ["ง", "งู"], ["จ", "จาน"], ["ฉ", "ฉิ่ง"], ["ช", "ช้าง"], ["ซ", "โซ่"], ["ด", "เด็ก"], ["ต", "เต่า"], ["ถ", "ถุง"], ["ท", "ทหาร"], ["น", "หนู"], ["บ", "ใบไม้"], ["ป", "ปลา"], ["ผ", "ผึ้ง"], ["ฝ", "ฝา"], ["พ", "พาน"], ["ฟ", "ฟัน"], ["ม", "ม้า"], ["ย", "ยักษ์"], ["ร", "เรือ"], ["ล", "ลิง"], ["ว", "แหวน"], ["ส", "เสือ"], ["ห", "หีบ"], ["อ", "อ่าง"], ["ฮ", "นกฮูก"]];
 // ลำดับพยัญชนะครบ 44 ตัว (ใช้กับโจทย์ "ตัวถัดไป" → ไม่ข้ามตัวที่ไม่ได้ใช้ในชุดคำง่าย)

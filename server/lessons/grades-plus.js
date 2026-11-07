@@ -7,14 +7,16 @@ const pickN = (r, arr, n, not = []) => { const out = []; for (let t = 0; out.len
 const shuf = (r, a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 const nearNums = (r, a, lo, hi) => pickN(r, [a - 2, a - 1, a + 1, a + 2, a + 3].filter((x) => x >= lo && x <= hi && x !== a).map(String), 3);
 const ICONS = ["🍎", "🐟", "⭐", "🎈", "🐥", "🌸", "🚗", "🍓", "⚽", "🐞"];
+// ชื่อและลักษณนามของรูป → โจทย์บอกชัดว่านับอะไร (เช่น "มีเต่าทองกี่ตัว")
+const NAME = { "🍎": ["แอปเปิล", "ลูก"], "🐟": ["ปลา", "ตัว"], "⭐": ["ดาว", "ดวง"], "🎈": ["ลูกโป่ง", "ลูก"], "🐥": ["ลูกเจี๊ยบ", "ตัว"], "🌸": ["ดอกไม้", "ดอก"], "🚗": ["รถ", "คัน"], "🍓": ["สตรอว์เบอร์รี", "ลูก"], "⚽": ["ลูกบอล", "ลูก"], "🐞": ["เต่าทอง", "ตัว"] };
 
 // ---------- อนุบาล: คณิต ----------
 function mathK(lv, r) {
-  const ic = pk(r, ICONS);
-  if (lv === 1) { const n = ri(r, 1, 5); return { q: `${ic.repeat(n)} — มีกี่อัน`, a: String(n), w: nearNums(r, n, 1, 6), mq: ic.repeat(n), nofill: true }; }
+  const ic = pk(r, ICONS), [nm, cl] = NAME[ic];
+  if (lv === 1) { const n = ri(r, 1, 5); return { q: `นับดูนะ มี${nm}กี่${cl} ${ic.repeat(n)}`, a: String(n), w: nearNums(r, n, 1, 6), mq: ic.repeat(n), nofill: true }; }
   if (lv === 2) { const n = ri(r, 1, 9), after = r() < 0.5, ans = after ? n + 1 : n, q = after ? `ตัวเลขที่อยู่ถัดจาก ${n} คือ` : `ตัวเลขที่อยู่ก่อน ${n + 1} คือ`; return { q: `🔢 ${q}`, a: String(ans), w: nearNums(r, ans, 1, 10), mq: q, nofill: true }; }
-  if (lv === 3) { const n = ri(r, 6, 10); return { q: `${ic.repeat(n)} — มีกี่อัน`, a: String(n), w: nearNums(r, n, 3, 10), mq: ic.repeat(n), nofill: true }; }
-  if (lv === 4) { const a = ri(r, 1, 5), b = ri(r, 1, 4); return { q: `${ic.repeat(a)} ➕ ${ic.repeat(b)} — รวมกันได้กี่อัน`, a: String(a + b), w: nearNums(r, a + b, 1, 10), mq: `${ic.repeat(a)}+${ic.repeat(b)}`, nofill: true }; }
+  if (lv === 3) { const n = ri(r, 6, 10); return { q: `นับดูนะ มี${nm}กี่${cl} ${ic.repeat(n)}`, a: String(n), w: nearNums(r, n, 3, 10), mq: ic.repeat(n), nofill: true }; }
+  if (lv === 4) { const a = ri(r, 1, 5), b = ri(r, 1, 4); return { q: `นับรวมกัน มี${nm}ทั้งหมดกี่${cl} ${ic.repeat(a)} กับ ${ic.repeat(b)}`, a: String(a + b), w: nearNums(r, a + b, 1, 10), mq: `${ic.repeat(a)}+${ic.repeat(b)}`, nofill: true }; }
   const xs = pickN(r, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 3), big = r() < 0.5, ans = big ? Math.max(...xs) : Math.min(...xs);
   return { q: `${xs.join("   ")} — เลขใด${big ? "มากที่สุด" : "น้อยที่สุด"}`, a: String(ans), w: xs.filter((x) => x !== ans).map(String), mq: `${xs.join(" ")} ${big ? "มากสุด" : "น้อยสุด"}`, nofill: true };
 }
@@ -38,7 +40,7 @@ function engK(lv, r) {
   if (lv === 1) { const [l, w, e] = pk(r, ABC); return { q: `${e} ${w} ขึ้นต้นด้วยตัวอักษรใด`, a: l, w: pickN(r, ABC.map((x) => x[0]), 3, [l]), mq: `${e} ${w}`, nofill: true }; }
   if (lv === 2) { const [e, th, en] = pk(r, WORDS); return { q: `${e} ${th} ภาษาอังกฤษคือคำใด`, a: en, w: pickN(r, WORDS.map((x) => x[2]), 3, [en]), mq: `${e} ${th}`, nofill: true }; }
   if (lv === 3) { const AL = "ABCDEFGHIJ", i = ri(r, 0, 6); return { q: `${AL[i]} ${AL[i + 1]} ${AL[i + 2]} … ตัวถัดไปคือ`, a: AL[i + 3], w: pickN(r, [...AL], 3, [AL[i + 3], AL[i + 2]]), mq: `${AL[i]} ${AL[i + 1]} ${AL[i + 2]} …`, nofill: true }; }
-  if (lv === 4) { const n = ri(r, 1, 5), ic = pk(r, ICONS); return { q: `${ic.repeat(n)} — นับเป็นภาษาอังกฤษว่าอะไร`, a: NUM_EN[n - 1], w: pickN(r, NUM_EN, 3, [NUM_EN[n - 1]]), mq: ic.repeat(n), nofill: true }; }
+  if (lv === 4) { const n = ri(r, 1, 5), ic = pk(r, ICONS), [nm, cl] = NAME[ic]; return { q: `มี${nm}กี่${cl} นับเป็นภาษาอังกฤษว่าอะไร ${ic.repeat(n)}`, a: NUM_EN[n - 1], w: pickN(r, NUM_EN, 3, [NUM_EN[n - 1]]), mq: ic.repeat(n), nofill: true }; }
   const [e, c] = pk(r, COL_EN); return { q: `${e} สีนี้ภาษาอังกฤษคือคำใด`, a: c, w: COL_EN.map((x) => x[1]).filter((x) => x !== c), mq: e, nofill: true };
 }
 // ---------- อนุบาล: ฝึกสมอง ----------
@@ -46,11 +48,11 @@ const GROUPS = [["🍎", "🍌", "🍇", "🍉", "🍓", "🍊"], ["🐶", "🐱
 const DOTS = ["🔴", "🔵", "🟡", "🟢", "⭐", "❤️"];
 function brainK(lv, r) {
   if (lv === 1 || lv === 4) { const gi = ri(r, 0, GROUPS.length - 1), oi = pk(r, [0, 1, 2, 3].filter((x) => x !== gi)), three = pickN(r, GROUPS[gi], 3), odd = pk(r, GROUPS[oi]), all = shuf(r, [...three, odd]);
-    return { q: `${all.join("  ")} — อันไหนไม่เข้าพวก`, a: odd, w: three, mq: all.join(" "), nofill: true }; }
+    return { q: `รูปไหนไม่เข้าพวก ${all.join("")}`, a: odd, w: three, mq: all.join(" "), nofill: true }; }
   const [A, B, C] = pickN(r, DOTS, 3);
-  if (lv === 2) { const s = [A, B, A, B, A]; return { q: `${s.join(" ")} … ตัวถัดไปคือ`, a: B, w: [A, C], mq: s.join(""), nofill: true }; }
-  if (lv === 3) { const s = [A, A, B, A, A]; return { q: `${s.join(" ")} … ตัวถัดไปคือ`, a: B, w: [A, C], mq: s.join(""), nofill: true }; }
-  const s = [A, B, C, A, B]; return { q: `${s.join(" ")} … ตัวถัดไปคือ`, a: C, w: [A, B], mq: s.join(""), nofill: true };
+  if (lv === 2) { const s = [A, B, A, B, A]; return { q: `ต่อแบบรูป ช่อง ❓ คือรูปอะไร ${s.join("")}❓`, a: B, w: [A, C], mq: s.join(""), nofill: true }; }
+  if (lv === 3) { const s = [A, A, B, A, A]; return { q: `ต่อแบบรูป ช่อง ❓ คือรูปอะไร ${s.join("")}❓`, a: B, w: [A, C], mq: s.join(""), nofill: true }; }
+  const s = [A, B, C, A, B]; return { q: `ต่อแบบรูป ช่อง ❓ คือรูปอะไร ${s.join("")}❓`, a: C, w: [A, B], mq: s.join(""), nofill: true };
 }
 // ---------- ม.4–6: ฝึกสมองขั้นสูง ----------
 function brainAdv(lv, r) {
