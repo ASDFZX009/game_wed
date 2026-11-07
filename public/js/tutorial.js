@@ -5,10 +5,11 @@ import { refreshMe } from "./app.js";
 import { talk } from "./talk.js";
 import { ROSTER, STARTERS, PASSIVE, GUIDE, GEM, COST } from "../gacha/data.js";
 import { myGacha, needsStarter } from "./gacha-client.js";
+import { loadProfile } from "./look.js";
 
 const M = (text, extra = {}) => ({ who: GUIDE, text, ...extra });
 const seen = (k) => !!myGacha()?.tut?.[k];
-async function mark(k) { try { await api("/api/gacha/tut", { method: "POST", body: { key: k } }); await refreshMe(); } catch { /* เวอร์ชันที่ไม่มีระบบนี้ */ } }
+async function mark(...keys) { try { await api("/api/gacha/tut", { method: "POST", body: { keys } }); await refreshMe(); } catch { /* เวอร์ชันที่ไม่มีระบบนี้ */ } }
 const pasText = (id) => ROSTER[id].pas.map((p) => `${PASSIVE[p].n}: ${PASSIVE[p].d}`).join(" · ");
 export const hasGacha = () => !!myGacha();
 
@@ -27,9 +28,23 @@ export async function pickStarter() {
 /** บทสอนเล่นตอนเข้าเกมครั้งแรก (หมู่บ้าน) */
 export async function runIntro({ go, force = false } = {}) {
   if (!hasGacha() || (!force && seen("intro"))) return;
-  const narrow = innerWidth < 760;
+  const narrow = innerWidth < 760, who = loadProfile()?.name || state.me?.displayName || "";
+  // ถามก่อน (เฉพาะครั้งแรกหลังสร้างตัวละคร): อยากฟังบทสอนเล่นไหม · เลือกข้ามได้ (ยังต้องเลือกคู่หู)
+  if (!force) {
+    const want = await talk([M(`ยินดีต้อนรับ${who ? ` *${who}*` : ""}! ฉันชื่อ *มิระ* ผู้นำทางในโลก *QUIZ ODYSSEY* อยากให้ฉันสอนวิธีเล่นก่อนไหม?`, { choices: [
+      { value: "learn", label: "📖 สอนเล่นเลย (แนะนำ)", sub: "ประมาณ 1 นาที · หมู่บ้าน เพชร คู่หู การสู้บอส การอัญเชิญ" },
+      { value: "skip", label: "⏩ ข้ามบทสอน", sub: "เล่นเป็นแล้ว · เปิดดูทีหลังได้ที่ปุ่ม ❔ วิธีเล่น", def: true },
+    ] })], { canSkip: true });
+    if (want !== "learn") {
+      if (needsStarter()) await pickStarter();
+      await mark("intro", "battle", "gacha");
+      const g = myGacha();
+      await talk([M(`โอเค! ตอนนี้มีเพชร *${(g?.gems || 0).toLocaleString("th-TH")}* เม็ด ไปอัญเชิญได้ที่ปุ่ม *✨ อัญเชิญ* ด้านล่าง ถ้าสงสัยอะไร กด *❔ วิธีเล่น* ได้ทุกเมื่อนะ`, { spot: "#wHelp" })]);
+      return;
+    }
+  }
   await talk([
-    M("สวัสดี! ฉันชื่อ *มิระ* จอมเวทแห่งดวงดาว จะเป็นผู้นำทางของเธอในโลก *QUIZ ODYSSEY* เอง"),
+    M(force ? "สวัสดีอีกครั้ง! ฉัน *มิระ* จะเล่าให้ฟังใหม่ตั้งแต่ต้นนะ" : "เยี่ยม! งั้นมาเริ่มกันเลย ฉันจะเป็นผู้นำทางของเธอเอง"),
     M(narrow ? "ที่นี่คือ *หมู่บ้านแห่งการเรียนรู้* บ้านแต่ละหลังคือวิชาหนึ่งวิชา แตะที่บ้านแล้วตัวละครจะเดินไปเข้าเอง"
       : "ที่นี่คือ *หมู่บ้านแห่งการเรียนรู้* บ้านแต่ละหลังคือวิชาหนึ่งวิชา เดินด้วย *ลูกศร* หรือ *WASD* แล้วกด *E* เข้าบ้าน หรือคลิกที่บ้านก็ได้"),
     M("ในบ้านมีบทเรียนให้เลือก พอเริ่มเล่น *บอส* จะโผล่มา! ตอบคำถามถูก คู่หูของเธอจะร่ายสกิลโจมตีบอส"),

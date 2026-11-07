@@ -519,7 +519,7 @@ on("POST", "/api/gacha/pull", (_p, b) => {
 });
 on("POST", "/api/gacha/party", (_p, b) => { const g = GS(); if (g.own[b.id] == null) throw err(400, "ยังไม่มีตัวละครนี้"); g.party = b.id; save(); return gachaView(); });
 on("POST", "/api/gacha/use", (_p, b) => { const g = GS(); if (!["hint", "pot"].includes(b.item)) throw err(400, "ใช้ไอเทมนี้ตอนสู้ไม่ได้"); if (!(g.inv[b.item] > 0)) throw err(400, "ไอเทมหมดแล้ว"); g.inv[b.item]--; save(); return gachaView(); });
-on("POST", "/api/gacha/tut", (_p, b) => { const g = GS(); if (b.reset) g.tut = {}; else if (/^[a-z]{2,16}$/.test(b.key || "")) g.tut[b.key] = now(); save(); return gachaView(); });
+on("POST", "/api/gacha/tut", (_p, b) => { const g = GS(); if (b.reset) g.tut = {}; else for (const k of [b.key, ...(Array.isArray(b.keys) ? b.keys : [])]) if (/^[a-z]{2,16}$/.test(k || "")) g.tut[k] = now(); save(); return gachaView(); });
 on("POST", "/api/shop/box", (_p, b) => {
   const box = BOXES.find((x) => x.id === b.boxId);
   if (!box) throw err(404, "ไม่พบกล่องนี้");
