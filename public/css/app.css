@@ -1719,3 +1719,9 @@ body.has-hud .gc { height: calc(100dvh - var(--hud-top) - var(--dock-h)); }
 }
 :root[data-motion="reduce"] .bc.ult .bc-art::after { animation: none; }
 .bt-items { pointer-events: auto; }
+
+/* ===== 🏡 หมู่บ้านโฉมใหม่ 64px (world64) ===== */
+.world.w64 { position: absolute; inset: 0; border-radius: 0; box-shadow: none; }
+.w64 .world-canvas { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
+.w64 .w-haze { top: 0; height: 45%; mix-blend-mode: screen; background: linear-gradient(rgba(255,226,180,.24), rgba(255,226,180,0)); }
+.w64.w-is-night .w-haze, .w64.w-is-night .w-rays { display: none; }

@@ -4,6 +4,7 @@ import { go, refreshMe, homeFor, onLeave } from "../app.js";
 import { startGame } from "../game.js";
 import { renderQuestion, bindQuestions, readAnswers, countUnanswered } from "../quizform.js";
 import { mountWorld } from "./world.js";
+import { mountWorld64 } from "../world64/index.js";
 import { mountQuestScene } from "./questscene.js";
 import { openTitle, titleSeen } from "./title.js";
 import { myLook, loadProfile } from "../look.js";
@@ -37,7 +38,7 @@ export async function home({ main }) {
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
-      <div class="w-hud"><button type="button" class="w-title-btn w-time" id="wTime" aria-pressed="false" title="สลับเวลาในหมู่บ้าน กลางวัน/กลางคืน"></button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button><button type="button" class="w-title-btn" id="wHelp">❔ วิธีเล่น</button></div>
+      <div class="w-hud"><button type="button" class="w-title-btn w-time" id="wTime" aria-pressed="false" title="สลับเวลาในหมู่บ้าน กลางวัน/กลางคืน"></button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button><button type="button" class="w-title-btn" id="wHelp">❔ วิธีเล่น</button><button type="button" class="w-title-btn" id="wMap" title="สลับแผนที่หมู่บ้าน"></button></div>
       <div class="world" id="world"></div>
       <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
         ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
@@ -51,7 +52,13 @@ export async function home({ main }) {
   const house = (cat) => { overlay?.close(); w.pause(true); overlay = openHouse({ cat, onClose: () => { overlay = null; w.pause(false); refreshMe().catch(() => {}); } }); };
   const picker = () => { overlay?.close(); w.pause(true); overlay = openPicker({ onPick: house, onClose: (picked) => { overlay = null; if (!picked) w.pause(false); } }); };
   let night = false; try { night = localStorage.getItem("qo:night") === "1"; } catch { /* ignore */ }
-  const w = mountWorld(main.querySelector("#world"), { go, fill: true, night, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net, onHouse: house });
+  // แผนที่หมู่บ้าน: โฉมใหม่ 64px (ค่าเริ่มต้น) หรือแบบเดิม 32px (มีระบบเจอผู้เล่นออนไลน์)
+  let mapKind = "new"; try { mapKind = localStorage.getItem("qo:map") === "old" ? "old" : "new"; } catch { /* ignore */ }
+  const w = mapKind === "new"
+    ? mountWorld64(main.querySelector("#world"), { go, night, playerName: nameOf(loadProfile()), reduced: reducedMotion(), onHouse: house, heroId: state.me?.gacha?.party || "wayu" })
+    : mountWorld(main.querySelector("#world"), { go, fill: true, night, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net, onHouse: house });
+  { const mb = main.querySelector("#wMap"); mb.textContent = mapKind === "new" ? "🗺️ แผนที่เดิม" : "✨ แผนที่ใหม่";
+    mb.addEventListener("click", () => { try { localStorage.setItem("qo:map", mapKind === "new" ? "old" : "new"); sessionStorage.setItem("qo:titleSeen", "1"); } catch { /* ignore */ } go("/", true); }); }
   // หน้าเริ่มเกม: เปิดครั้งแรกของแต่ละรอบการใช้งาน หรือกด "เมนูหลัก"
   let title = null;
   const showTitle = (startAt) => { title = openTitle({ go, me: state.me, reduced: reducedMotion(), startAt, onEnter: (p) => { title = null; w.setLook(myLook(shirt), nameOf(p)); main.querySelector(".world-canvas")?.focus({ preventScroll: true }); intro(); } }); };

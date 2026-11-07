@@ -643,3 +643,4 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     walkToPlace(id) { const p = PLACES.find((x) => x.id === id); if (p) walkTo(p.ex, p.ey, p); },
   };
 }
+export { buildMap, findPath, PLACES, PLAZA, SPOTS, SUN, MW, MH };
