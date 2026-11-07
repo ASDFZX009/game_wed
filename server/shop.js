@@ -47,7 +47,7 @@ const CATALOG = [
   I("snd-coins", "sound", "เหรียญหล่นบนจาน", "coins", "common", { icon: "🪙" }), I("snd-service-bell", "sound", "กริ่งเคาน์เตอร์", "service-bell", "rare", { icon: "🔔" }),
   I("snd-register-ding", "sound", "ลิ้นชักเงิน + ติ๊ง", "register-ding", "rare", { icon: "🛎️" }), I("snd-thank-you-bits", "sound", "Thank you for the bits", "thank-you-bits", "epic", { icon: "💎" }),
   // รูปโปรไฟล์วงกลม "ร่างเอ็มออนิว" (ไฟล์ใน public/pfp) ได้จากกล่องสุ่มโปรไฟล์เท่านั้น
-  I("pf-robux", "pfp", "ร่างrobux", "robux", "rare"),
+  I("pf-robux", "pfp", "ร่างRoblox", "robux", "rare"),
   I("pf-kanjing", "pfp", "ร่างคันจริง", "kanjing", "rare"),
   I("pf-shibuden", "pfp", "ร่างชิบุเดน", "shibuden", "rare"),
   I("pf-darkpong", "pfp", "ร่างดาร์กพี่โป่งหินเหล็กไฟ", "darkpong", "epic"),
@@ -62,7 +62,7 @@ const CATALOG = [
   I("pf-richboss", "pfp", "ร่างเสี่ยคนรวย2067", "richboss", "epic"),
   I("pf-blocky", "pfp", "ร่างเหลี่ยมจริงๆ", "blocky", "rare"),
   I("pf-coconat", "pfp", "ร่างโคโค่นัด", "coconat", "common"),
-  I("pf-ij", "pfp", "ร่างไอเจแม่กู", "ij", "common"),
+  I("pf-ij", "pfp", "ร่างปีศาจอุดร", "ij", "common"),
 ];
 CATALOG.forEach((it) => { it.price = it.type === "pfp" ? null : RARITY[it.rarity].price; it.boxOnly = it.price == null; });
 const BY_ID = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
