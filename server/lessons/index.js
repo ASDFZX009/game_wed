@@ -41,7 +41,15 @@ const GRADE = {
   "brain-odd": [1, 6], "brain-quick": [2, 9], "brain-logic": [2, 9], "brain-seq": [3, 9],
   "gen-animals": [1, 6], "gen-thailand": [2, 9], "gen-tech": [3, 9], "gen-world": [5, 12],
 };
-for (const L of LESSONS) L.grade = L.grade || GRADE[L.id] || [1, 12];
+for (const L of LESSONS) { L.grade = L.grade || GRADE[L.id] || [1, 12]; L.grade0 = L.grade.slice(); }
+// ชั้นเรียนที่ตรวจแล้วรายข้อ (grade-fix.js) · ขยายช่วงชั้นของบทเรียนให้ครอบคลุมข้อที่ย้ายชั้น
+const FIX = require("./grade-fix");
+for (const [id, byG] of Object.entries(FIX)) { const L = BY_ID[id]; if (!L) throw new Error("grade-fix: ไม่พบบทเรียน " + id); const gs = Object.keys(byG).map(Number); L.grade = [Math.min(L.grade[0], ...gs), Math.max(L.grade[1], ...gs)]; }
+function fixGrade(L, it) {
+  const byG = FIX[L.id]; if (!byG) return;
+  for (const [g, keys] of Object.entries(byG)) for (const k of keys)
+    if (k[0] === "=" ? String(it.a) === k.slice(1) : it.mq === k || it.ma === k || (it.q || it.s || "").startsWith(k)) { it.gr = +g; it.fixed = true; return; }
+}
 const G1 = (g) => (g === 0 ? "อนุบาล" : g <= 6 ? `ป.${g}` : `ม.${g - 6}`);
 const gradeLabel = ([a, b]) => (a === b ? G1(a) : `${G1(a)}–${G1(b)}`);
 // คำถามที่เคยอยู่ในบทเรียน "คลังรวม" ส่งไปบทเรียนหัวข้อที่ตรงเรื่องตามตาราง routes.js
@@ -65,7 +73,7 @@ function prep(L) {
   const qa = [], tf = [], seq = [];
   for (const row of L.qa || []) qa.push(qaRow(row));
   if (L.pairs) for (const [lv, x, y, ex] of L.pairs.list) {
-    qa.push({ lv, q: L.pairs.q.replace("{x}", x), a: String(y), w: [], mq: x, ...(ex ? { ex } : {}) });
+    qa.push({ lv, q: L.pairs.q.replace("{x}", x), a: String(y), w: [], mq: x, grp: "pair", ...(ex ? { ex } : {}) });
     if (L.pairs.rev) qa.push({ lv: Math.min(5, lv + (L.pairs.revLift ?? 1)), q: L.pairs.rev.replace("{y}", y), a: String(x), w: [], mq: String(y), ma: x, rev: true, ...(ex ? { ex } : {}) });
   }
   for (const [lv, s, t, ex] of L.tf || []) tf.push({ lv, s, t, ex });
@@ -83,7 +91,7 @@ function prep(L) {
       if (g.template === "mcq") qa.push({ lv, q: q.prompt, a: q.options[q.answer], w: q.options.filter((_, i) => i !== q.answer), ex: q.explain, hint: q.hint, img: q.image });
       else if (g.template === "truefalse") tf.push({ lv, s: q.prompt, t: q.answer, ex: q.explain });
       else if (g.template === "order") seq.push({ lv, q: q.prompt, items: q.items });
-      else if (g.template === "scramble") qa.push({ lv, q: q.prompt, a: q.word, w: [], hint: q.hint });
+      else if (g.template === "scramble") qa.push({ lv, q: q.prompt, a: q.word, w: [], hint: q.hint, grp: title });
       else if (g.template === "match" && L.legacyPair) qa.push({ lv, q: L.legacyPair.replace("{x}", q.a), a: q.b, w: [], mq: q.a });
     } }
   // ตัดข้อซ้ำ (คำถาม + คำตอบเดียวกันจากหลายแหล่ง)
@@ -102,7 +110,7 @@ function prep(L) {
     return false;
   });
   // ทุกข้อมีชั้นเรียน (gr): ข้อที่ไม่ได้ระบุชั้น → เทียบจากช่วงชั้นของบทเรียนกับระดับความยาก
-  { const [a, b] = L.grade || [1, 12]; for (const it of [...P.qa, ...P.tf, ...P.seq]) if (it.gr == null) it.gr = Math.round(a + (((it.lv || 3) - 1) / 4) * (b - a)); }
+  { const [a, b] = L.grade0 || L.grade || [1, 12]; for (const it of [...P.qa, ...P.tf, ...P.seq]) { if (it.gr == null) it.gr = Math.round(a + (((it.lv || 3) - 1) / 4) * (b - a)); fixGrade(L, it); } }
   P.size = L.gen || L.ggen ? 0 : P.qa.length + P.tf.length + P.seq.length;
   prepared.set(L.id, P); return P;
 }
@@ -132,30 +140,38 @@ function balanceNum(item, ds, r) {
   for (const [arr, want, sg] of [[B, t, -1], [A, 3 - t, 1]]) for (const c of near(sg)) { if (arr.length >= want) break; const f = fmt(c); if (have.has(f) || (v >= 0 && num(f) < 0) || num(f) === v) continue; have.add(f); arr.push(f); }
   return B.length + A.length === 3 ? [...B, ...A] : ds;
 }
+// ตัวลวงที่ "อาจถูกด้วย" ต้องไม่หลุดเข้ามา: คำเดียวกันต่างรูป (โฮ่ง / โฮ่ง ๆ) หรือคำหนึ่งอยู่ในอีกคำ (รัง / รังนก)
+const normA = (t) => String(t).toLowerCase().replace(/[\s ๆ.,!?()“”"'’]/g, "");
+const tooClose = (a, b) => { const x = normA(a), y = normA(b); return !x || !y || x === y || (Math.min(x.length, y.length) >= 2 && (x.includes(y) || y.includes(x))); };
 function distractors(item, P, r, n = 3) {
   const out = []; const seen = new Set([item.a]);
   for (const w of shuffle(item.w || [], r)) { if (out.length >= n) break; if (!seen.has(w)) { seen.add(w); out.push(w); } }
+  if (item.nofill) return out; // คำถามสองทางเลือก (เช่น คำเป็น/คำตาย) ไม่เติมตัวลวงอื่น
   if (out.length < n && isNum(item.a)) for (const w of numDistractors(item.a, r, n * 2)) { if (out.length >= n) break; if (!seen.has(w)) { seen.add(w); out.push(w); } }
   if (out.length < n) { // คำตอบของข้ออื่นในบทเรียนเดียวกัน (เลือกระดับใกล้เคียงและชนิดคำตอบเดียวกันก่อน)
     // ตัวลวงต้องเป็นภาษาเดียวกับคำตอบ (คำตอบอังกฤษ → ตัวลวงอังกฤษ) ไม่อย่างนั้นเดาถูกได้ทันที
     // ตัวลวงจากข้อของชั้นใกล้เคียงก่อน (ม.ปลาย ไม่ควรมีตัวลวงเป็นคำศัพท์ ป.1)
     const near = (x) => (x.gr != null && item.gr != null ? Math.abs(x.gr - item.gr) : Math.abs(x.lv - item.lv));
     const lat = (t) => /^[\x00-\x7F]*$/.test(String(t)) && /[a-z]/i.test(String(t)), al = lat(item.a);
-    const same = P.qa.filter((x) => x !== item && !!x.rev === !!item.rev && isNum(x.a) === isNum(item.a) && lat(x.a) === al).sort((x, y) => near(x) - near(y) + (r() - 0.5) * 1.5);
-    for (const x of same) { if (out.length >= n) break; if (!seen.has(x.a)) { seen.add(x.a); out.push(x.a); } }
+    // ไม่ใช้คำตอบของข้อที่ถามเรื่องเดียวกัน (โจทย์เดียวกัน หรือคำในคู่เดียวกัน) เป็นตัวลวง
+    const qk = normA(item.q), mk = item.mq != null ? normA(item.mq) : null;
+    const same = P.qa.filter((x) => x !== item && !!x.rev === !!item.rev && isNum(x.a) === isNum(item.a) && lat(x.a) === al && (item.img || normA(x.q) !== qk) && (mk == null || x.mq == null || normA(x.mq) !== mk) && !(isNum(x.a) ? false : tooClose(x.a, item.a)))
+      // ข้อชุดเดียวกันก่อน (คู่คำ / คำจากเกมเดียวกัน / ภาพผลไม้) → ตัวลวงเป็นของประเภทเดียวกับคำตอบ
+      .map((x) => [x, (item.grp && x.grp === item.grp) || (item.img && x.q === item.q) ? 0 : 6]).sort((x, y) => x[1] - y[1] || near(x[0]) - near(y[0]) + (r() - 0.5) * 1.5).map((x) => x[0]);
+    for (const x of same) { if (out.length >= n) break; if (!seen.has(x.a) && !out.some((o) => !isNum(o) && tooClose(o, x.a))) { seen.add(x.a); out.push(x.a); } }
   }
   return out;
 }
 
 // ---------- เลือกข้อตามระดับและชุด ----------
-function pickLevel(pool, level, n, set, base, r) {
+function pickLevel(pool, level, n, set, base, r, strict = false) {
   const tiers = [];
-  for (const it of pool) { const d = Math.abs((it.lv || 3) - level); (tiers[d] ||= []).push(it); }
+  for (const it of pool) { const d = Math.abs((it.lv ?? 3) - level); (tiers[d] ||= []).push(it); }
   // โหมดเรื่องราว (ชุด > 4): หน้าต่างเลื่อนบนคลังรอบระดับนั้น (ระดับตรงก่อน แล้วระดับใกล้เคียง) → เล่นซ้ำได้ข้อใหม่จนกว่าจะครบคลัง
   if (set > SETS) {
     // ระดับตรง + ระดับติดกันเสมอ (±1) · ระดับห่างกว่านั้นเติมเฉพาะเมื่อคลังเล็ก · ตัดโจทย์ข้อความซ้ำออก
     const list = [], seenQ = new Set();
-    for (let d = 0; d < tiers.length; d++) { if (!tiers[d]) continue; if (d >= 2 && list.length >= n * 4) break;
+    for (let d = 0; d < tiers.length; d++) { if (!tiers[d]) continue; if (strict ? d >= 1 && list.length >= n : d >= 2 && list.length >= n * 4) break;
       for (const it of shuffle(tiers[d], rng(hashStr(base + "|w" + d)))) { const k = (it.q || it.s || it.mq || "") + "|" + (it.a ?? it.t ?? ""); if (seenQ.has(k)) continue; seenQ.add(k); list.push(it); } }
     if (!list.length) return [];
     const off = ((set - SETS - 1) * n) % list.length, out = [];
@@ -186,14 +202,16 @@ function normOpts(L, o = {}) {
 }
 const keyOf = (o) => [o.level, o.mode, o.count, o.set, o.seed].join(".") + (o.g >= 0 ? "." + o.g : "");
 function parseKey(L, key) { const [level, mode, count, set, seed, g] = String(key || "").split("."); return normOpts(L, { level, mode, count, set, seed: seed || 1, g: g ?? -1 }); }
-// ชั้นเป้าหมายของด่าน: บทที่ 1 ทบทวนชั้นก่อนหน้า · บทที่ 2–4 ชั้นของเรา · บทที่ 5 ท้าทายชั้นถัดไป (อยู่ในช่วงชั้นของบทเรียน)
-const GRADE_SHIFT = [-1, 0, 0, 0, 1];
-function targetGrade(L, o) { const [a, b] = L.grade || [1, 12]; if (o.g < 0) return Math.round(a + ((o.level - 1) / 4) * (b - a)); return Math.min(b, Math.max(a, o.g + GRADE_SHIFT[o.level - 1])); }
+// ชั้นเป้าหมายของด่าน: เลือกชั้นแล้ว → ทุกบทใช้คำถามของชั้นนั้นเท่านั้น (ไม่ดึงชั้นที่สูงกว่ามา)
+// ไม่ได้เลือกชั้น → เทียบระดับความยากกับช่วงชั้นของบทเรียน
+function targetGrade(L, o) { const [a, b] = L.grade || [1, 12]; if (o.g < 0) return Math.round(a + ((o.level - 1) / 4) * (b - a)); return Math.min(b, Math.max(a, o.g)); }
+// ลำดับข้อเมื่อเลือกชั้น: 0 = ชั้นนี้ของบทเรียนนี้ · 1 = ชั้นนี้จากบทอื่นในบ้านเดียวกัน · 2+ = ชั้นที่ต่ำกว่า (ทบทวน) · ชั้นสูงกว่า = ไม่ใช้
+const strictRank = (x, tg, own) => { const gr = x.gr ?? tg; if (gr > tg) return -1; if (gr === tg) return own ? 0 : 1; return own ? 1 + (tg - gr) : -1; };
 
 // คลังรวมของบ้านวิชาเดียวกัน (ใช้กับบทเรียนตามชั้นเรียน: ดึงข้อของบทอื่นที่ตรงชั้นมาเสริม → คำถามไม่ซ้ำนานขึ้น)
 const catPools = new Map();
 function catPool(L) {
-  if (!catPools.has(L.cat)) { const qa = [], tf = []; for (const x of LESSONS) if (x.cat === L.cat && !x.gen && !x.ggen && !x.byGrade) { const P = prep(x), r = rng(hashStr("cp|" + x.id));
+  if (!catPools.has(L.cat)) { const qa = [], tf = []; for (const x of LESSONS) if (x.cat === L.cat && !x.gen && !x.ggen) { const P = prep(x), r = rng(hashStr("cp|" + x.id));
     // ข้อที่ไปใช้ในบทอื่น ต้องพกตัวลวงจากบทเรียนต้นทางไปด้วย (เช่น ข้อแบบคู่คำกลับด้านที่ไม่มีตัวลวงในตัว)
     qa.push(...P.qa.map((it) => ((it.w || []).length >= 3 ? it : { ...it, w: distractors(it, P, r) }))); tf.push(...P.tf); } catPools.set(L.cat, { qa, tf }); }
   return catPools.get(L.cat);
@@ -207,37 +225,47 @@ function build(L, opts) {
   if (L.ggen && o.mode !== "order") {
     // บทเรียนสร้างโจทย์ตามชั้นเรียน: โจทย์ใหม่ทุกครั้งตามหลักสูตรของชั้นนั้น
     items = []; const seenQ = new Set(), cards = new Set();
-    for (const g of [tg, tg - 1, tg + 1].filter((x) => x >= (L.grade || [0])[0] && x <= (L.grade || [0, 12])[1]))
+    for (const g of (o.g >= 0 ? [tg, tg - 1] : [tg, tg - 1, tg + 1]).filter((x) => x >= (L.grade || [0])[0] && x <= (L.grade || [0, 12])[1]))
       for (let tries = 0; items.length < n && tries < n * 50; tries++) { const it = L.ggen(g, r, o.level); if (!it) continue; it.lv = o.level; it.gr = g; it.w = it.w || [];
         const ca = it.ma || it.a, cq = it.mq || it.q; if (o.mode === "scramble" && !(it.scr && graphemes(it.a).length >= 3 && graphemes(it.a).length <= 12)) continue; if (o.mode === "match" && !it.mq) continue;
         if (seenQ.has(it.q + "|" + it.a) || (o.mode === "match" && (cards.has(ca) || cards.has(cq) || ca === cq))) continue; seenQ.add(it.q + "|" + it.a); cards.add(ca); cards.add(cq); items.push(it); if (items.length >= n) break; }
     const CP = catPool(L), sqa = P.qa.concat(CP.qa), stf = P.tf.concat(CP.tf);
     const stat = o.mode === "truefalse" ? stf.map((x) => ({ ...x, kind: "tf" })).concat(sqa) : o.mode === "mcq" || o.mode === "timed" ? sqa : [];
-    if (stat.length >= 4 && items.length) { const pool = stat.filter((x) => Math.abs((x.gr ?? tg) - tg) <= 1).map((x) => ({ ...x, lv: Math.abs((x.gr ?? tg) - tg) })), k = Math.min(Math.round(n / 3), pool.length), extra = pickLevel(pool, 0, k, o.set, `${L.id}|${tg}|${o.mode}|s`, r);
+    if (stat.length >= 4 && items.length) { const pool = stat.filter((x) => (o.g >= 0 ? (x.gr ?? tg) === tg : Math.abs((x.gr ?? tg) - tg) <= 1)).map((x) => ({ ...x, lv: Math.abs((x.gr ?? tg) - tg) })), k = Math.min(Math.round(n / 3), pool.length), extra = pickLevel(pool, 0, k, o.set, `${L.id}|${tg}|${o.mode}|s`, r);
       items = shuffle(items.slice(0, n - extra.length).concat(extra), r); }
   } else if (L.gen && o.mode !== "order" && o.mode !== "scramble") {
     items = []; const seenQ = new Set(), cards = new Set();
     // เลือกชั้นแล้ว → แปลงชั้นเป้าหมายเป็นระดับของตัวสร้างโจทย์ (ชั้นต่ำ = ง่าย · ชั้นสูง = ยาก)
-    const glv = o.g >= 0 ? (() => { const [a, b] = L.grade || [1, 12]; return b === a ? o.level : Math.min(5, Math.max(1, 1 + Math.round(((tg - a) / (b - a)) * 4))); })() : o.level;
+    // gradeLv: { ชั้น: [ระดับต่ำสุด, ระดับสูงสุด] } → บทที่ 1–5 ไล่ระดับภายในช่วงของชั้นนั้น (เช่น อนุบาลใช้ระดับ 1–3)
+    const span = o.g >= 0 && L.gradeLv && L.gradeLv[tg];
+    const glv = span ? span[0] + Math.round(((o.level - 1) / 4) * (span[1] - span[0])) : o.g >= 0 ? (() => { const [a, b] = L.grade || [1, 12]; return b === a ? o.level : Math.min(5, Math.max(1, 1 + Math.round(((tg - a) / (b - a)) * 4))); })() : o.level;
+    const lvOk = (lv) => !span || (lv >= span[0] && lv <= span[1]);
     // ถ้าระดับนี้สร้างโจทย์ไม่ซ้ำได้ไม่พอ (เช่น จับคู่ที่คำตอบซ้ำกันง่าย) ให้ขยับไปใช้ระดับข้างเคียง
-    for (const lv of [glv, glv - 1, glv + 1, glv - 2, glv + 2].filter((x) => x >= 1 && x <= 5)) {
+    for (const lv of [glv, glv - 1, glv + 1, glv - 2, glv + 2].filter((x) => x >= 1 && x <= 5 && lvOk(x))) {
       for (let tries = 0; items.length < n && tries < n * 40; tries++) { const it = L.gen(lv, r); it.lv = lv; it.w = it.w || [];
         const ca = it.ma || it.a, cq = it.mq || it.q;
         if (seenQ.has(it.q) || (o.mode === "match" && (cards.has(ca) || cards.has(cq) || ca === cq))) continue; seenQ.add(it.q); cards.add(ca); cards.add(cq); items.push(it); }
       if (items.length >= n) break;
     }
     // บทเรียนสร้างโจทย์อัตโนมัติ: แทรกคำถามจากคลังที่ส่งมาจากบทเรียนคลังรวม (~ 1 ใน 4 ข้อ) ให้หลากหลายขึ้น
-    const stat = o.mode === "truefalse" ? P.tf.map((x) => ({ ...x, kind: "tf" })).concat(P.qa) : o.mode === "mcq" || o.mode === "timed" ? P.qa : [];
+    const stat = (o.mode === "truefalse" ? P.tf.map((x) => ({ ...x, kind: "tf" })).concat(P.qa) : o.mode === "mcq" || o.mode === "timed" ? P.qa : []).filter((x) => o.g < 0 || (x.gr ?? tg) === tg);
     if (stat.length >= 4 && items.length) { const k = Math.min(Math.round(n / 4), stat.length), extra = pickLevel(stat, o.level, k, o.set, `${L.id}|${o.level}|${o.mode}|s`, r);
       items = shuffle(items.slice(0, n - extra.length).concat(extra), r); }
   } else {
-    // บทเรียนตามชั้นเรียน (byGrade) + เลือกชั้นแล้ว → เสริมด้วยข้อของบทอื่นในบ้านเดียวกันที่ตรงชั้น (±1)
-    const CP = L.byGrade && o.g >= 0 && (o.mode === "mcq" || o.mode === "timed" || o.mode === "truefalse") ? catPool(L) : null;
-    const qa2 = CP ? P.qa.concat(CP.qa.filter((x) => Math.abs(x.gr - tg) <= 1)) : P.qa, tf2 = CP ? P.tf.concat(CP.tf.filter((x) => Math.abs(x.gr - tg) <= 1)) : P.tf;
+    // เลือกชั้นแล้ว → ข้อของชั้นนี้ก่อน · ไม่พอค่อยเสริมด้วยข้อชั้นเดียวกันจากบทอื่นในบ้านเดียวกัน แล้วจึงข้อชั้นที่ต่ำกว่า · ไม่ใช้ข้อชั้นที่สูงกว่า
+    const CP = o.g >= 0 && (o.mode === "mcq" || o.mode === "timed" || o.mode === "truefalse") ? catPool(L) : null;
+    const own = new Set([...P.qa, ...P.tf]), ownK = new Set([...P.qa.map((x) => x.q + "|" + x.a), ...P.tf.map((x) => x.s)]);
+    const qa2 = CP ? P.qa.concat(CP.qa.filter((x) => !ownK.has(x.q + "|" + x.a) && x.gr === tg)) : P.qa, tf2 = CP ? P.tf.concat(CP.tf.filter((x) => !ownK.has(x.s) && x.gr === tg)) : P.tf;
     const pool = o.mode === "truefalse" ? tf2.map((x) => ({ ...x, kind: "tf" })).concat(qa2) : o.mode === "match" ? P.matchable : o.mode === "scramble" ? P.scramble : o.mode === "order" ? P.seq : qa2;
     let src = pool;
     if (o.mode === "match") { const seen = new Set(); src = shuffle(pool, rng(hashStr(L.id + "m"))).filter((x) => { const k = x.ma || x.a, k2 = x.mq || x.q; if (seen.has(k) || seen.has(k2)) return false; seen.add(k); seen.add(k2); return true; }); }
-    items = o.g >= 0 ? pickLevel(src.map((x) => ({ ...x, lv: Math.abs((x.gr ?? tg) - tg) })), 0, n, o.set, `${L.id}|g${tg}|${o.mode}`, r) : pickLevel(src, o.level, n, o.set, `${L.id}|${o.level}|${o.mode}`, r);
+    items = o.g >= 0 ? pickLevel(src.map((x) => ({ ...x, lv: strictRank(x, tg, own.has(x) || o.mode === "match" || o.mode === "scramble" || o.mode === "order") })).filter((x) => x.lv >= 0), 0, n, o.set, `${L.id}|g${tg}|${o.mode}`, r, true)
+      : pickLevel(src, o.level, n, o.set, `${L.id}|${o.level}|${o.mode}`, r);
+    // ชั้นนี้มีข้อในคลังไม่พอ → เติมด้วยโจทย์ที่สร้างตามหลักสูตรของชั้นเดียวกัน (บทเรียน "ตามชั้นเรียน" ของบ้านนี้) แทนการดึงข้อชั้นอื่น
+    if (o.g >= 0 && items.length < n && (o.mode === "mcq" || o.mode === "timed" || o.mode === "truefalse")) {
+      const G = LESSONS.find((x) => x.cat === L.cat && x.ggen && tg >= x.grade[0] && tg <= x.grade[1]);
+      if (G) { const seen = new Set(items.map((x) => x.q || x.s)); for (let t = 0; items.length < n && t < n * 30; t++) { const it = G.ggen(tg, r, o.level); if (!it || seen.has(it.q)) continue; seen.add(it.q); Object.assign(it, { lv: o.level, gr: tg, w: it.w || [] }); items.push(it); } }
+    }
   }
   const genP = L.gen || L.ggen ? { qa: items.concat(P.qa) } : P;
   const questions = items.map((it) => {

@@ -39,7 +39,7 @@ const TH = {
   2: [(r) => { const [m, ws] = pk(r, Object.entries(MATRA)), w = pk(r, ws); return { q: `คำว่า “${w}” สะกดด้วยมาตราใด`, a: m, w: pickN(r, Object.keys(MATRA), 3, [m]) }; },
     (r) => { const c = pk(r, CONS); return { q: `“${c[0]} ${c[1]}” เป็นพยัญชนะตัวที่เท่าใด`, a: String(CONS.indexOf(c) + 1) }; }],
   3: [(r) => { const c = pk(r, CONS)[0]; return { q: `“${c}” เป็นอักษรหมู่ใด`, a: classOf(c), w: ["อักษรกลาง", "อักษรสูง", "อักษรต่ำ"].filter((x) => x !== classOf(c)) }; },
-    (r) => { const dead = r() < 0.5, w = pk(r, dead ? DEAD : LIVE); return { q: `คำว่า “${w}” เป็นคำเป็นหรือคำตาย`, a: dead ? "คำตาย" : "คำเป็น", w: [dead ? "คำเป็น" : "คำตาย"] }; },
+    (r) => { const dead = r() < 0.5, w = pk(r, dead ? DEAD : LIVE); return { q: `คำว่า “${w}” เป็นคำเป็นหรือคำตาย`, a: dead ? "คำตาย" : "คำเป็น", w: [dead ? "คำเป็น" : "คำตาย"], nofill: true }; },
     (r) => { const [m, ws] = pk(r, Object.entries(MATRA)), w = pk(r, ws); return { q: `คำว่า “${w}” สะกดด้วยมาตราใด`, a: m, w: pickN(r, Object.keys(MATRA), 3, [m]) }; }],
   4: [(r) => { const [n, c] = pk(r, CLF); return { q: `ลักษณนามของ “${n}” คือข้อใด`, a: c, w: pickN(r, [...new Set(CLF.map((x) => x[1]))], 3, [c, "ตัว"]) }; },
     (r) => { const [t, ws] = pk(r, Object.entries(POS)), w = pk(r, ws); return { q: `คำว่า “${w}” เป็นคำชนิดใด`, a: t, w: pickN(r, Object.keys(POS), 3, [t]) }; }],
