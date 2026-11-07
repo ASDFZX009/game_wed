@@ -550,7 +550,10 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     if (nightK > 0) nightPass(x, now, cx, cy, nightK);
     grade(x, now, nightK);
     const v = view.getContext("2d"); v.imageSmoothingEnabled = smooth; if (smooth) v.imageSmoothingQuality = "low";
-    v.setTransform(1, 0, 0, 1, 0, 0); v.drawImage(buf, 0, 0, vw * S * dpr, vh * S * dpr);
+    v.setTransform(1, 0, 0, 1, 0, 0);
+    // แผง/แท็บที่ถูกซ่อนตอนเปิดเว็บ ขนาดเป็น 0 → drawImage ขว้าง error ทุกเฟรม: ข้ามไปจนกว่าจะมีขนาดจริง
+    if (!buf.width || !buf.height || !view.width || !view.height) return;
+    v.drawImage(buf, 0, 0, vw * S * dpr, vh * S * dpr);
     drawLabels(now, cx, cy);
   }
   // ป้ายตัวหนังสือ: วาดบนชั้นบนสุด จึงคมชัดแม้อยู่ในโซนเบลอ
