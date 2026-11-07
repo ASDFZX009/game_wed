@@ -1522,7 +1522,7 @@ body.gh-scrolled:not(.home-world) .gh-top { background: linear-gradient(rgba(20,
   .gh-name { max-width: 96px; font-size: .78rem; } .gh-rank { font-size: .62rem; } .gh-xp { width: 84px; }
   .gh-coins { padding: 4px 8px; font-size: .8rem; box-shadow: 0 0 0 2px #c8961a, 0 0 0 4px #2a1608; } .gh-coins b { font-size: .86rem; }
   .gh-sys { gap: 8px; } .gh-btn { min-width: 38px; height: 38px; font-size: 1.05rem; padding: 0 6px; } .gh-login span { display: none; }
-  .gh-dock { left: 0; right: 0; bottom: 0; transform: none; display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; padding: 5px 4px calc(5px + env(safe-area-inset-bottom)); box-shadow: 0 -3px 0 #f0c040, 0 -6px 0 #2a1608; }
+  .gh-dock { left: 0; right: 0; bottom: 0; transform: none; display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; padding: 5px 4px calc(5px + env(safe-area-inset-bottom)); box-shadow: 0 -3px 0 #f0c040, 0 -6px 0 #2a1608; }
   .gh-slot { width: auto; height: 52px; } .gh-slot .i { font-size: 1.2rem; } .gh-slot .t { font-size: .6rem; }
   .gh-slot:hover { transform: none; } .gh-slot.on::after { top: -9px; }
 }
@@ -1601,3 +1601,121 @@ body.has-hud.immersive:not(.home-world) { background: #07060a; }
 .hz-track.ask { box-shadow: inset 0 0 0 2px #ffd84a, 0 0 16px rgba(255,216,74,.35); animation: hz-ask 1.6s ease-in-out infinite; }
 .hz-ask { flex: 1 1 100%; margin: 0 0 4px; font-weight: 800; color: #ffe9a8; }
 @keyframes hz-ask { 50% { box-shadow: inset 0 0 0 2px #ffd84a, 0 0 26px rgba(255,216,74,.6); } }
+
+/* ===== 💬 กล่องข้อความแบบเกม (talk.js) ===== */
+.tk{position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;pointer-events:auto;font-family:"Noto Sans Thai",Kanit,sans-serif;opacity:0;transition:opacity .2s}
+.tk.on{opacity:1}.tk.off{opacity:0}
+.tk.dim{background:linear-gradient(180deg,rgba(8,6,24,.15) 0%,rgba(8,6,24,.55) 55%,rgba(8,6,24,.82) 100%)}
+.tk-wrap{position:relative;width:min(1000px,100%);padding:0 18px 18px 18px;display:grid;grid-template-columns:240px 1fr;align-items:end;gap:0}
+.tk.noface .tk-wrap{grid-template-columns:0 1fr}
+.tk-pt{position:relative;height:250px;align-self:end;z-index:2;pointer-events:none}
+.tk-pt.in{animation:tkIn .32s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes tkIn{from{transform:translateX(-40px);opacity:0}to{transform:none;opacity:1}}
+.tk-slash{position:absolute;left:18px;bottom:22px;width:190px;height:150px;background:linear-gradient(135deg,var(--tc) 0%,transparent 80%);clip-path:polygon(18% 0,100% 12%,82% 100%,0 86%);opacity:.55}
+.tk-img{position:absolute;left:8px;bottom:6px;width:240px;height:240px;image-rendering:pixelated;filter:drop-shadow(0 6px 0 rgba(0,0,0,.35)) drop-shadow(0 0 14px color-mix(in srgb,var(--tc) 50%,transparent))}
+.tk-panel{position:relative;margin-left:-40px;min-height:150px;outline:none;cursor:pointer}
+.tk-panel::before{content:"";position:absolute;inset:0;transform:skewX(-7deg);background:linear-gradient(180deg,#1b1640 0%,#0f0c26 100%);border:3px solid #f4f0ff;border-radius:6px;box-shadow:0 0 0 3px #0f0c26,8px 8px 0 color-mix(in srgb,var(--tc) 70%,#000),0 14px 30px rgba(0,0,0,.45)}
+.tk-panel::after{content:"";position:absolute;left:16px;right:16px;bottom:10px;height:3px;transform:skewX(-7deg);background:linear-gradient(90deg,var(--tc),transparent)}
+.tk-name{position:absolute;left:34px;top:-20px;z-index:2;transform:skewX(-10deg);background:var(--tc);border:3px solid #f4f0ff;box-shadow:4px 4px 0 #0f0c26;padding:2px 18px}
+.tk-name span{display:block;transform:skewX(10deg);font-family:Kanit,"Noto Sans Thai",sans-serif;font-weight:800;font-size:19px;color:#120c24;letter-spacing:.3px}
+.tk-body{position:relative;z-index:1;padding:26px 46px 26px 52px;color:#f4f0ff}
+.tk-text{margin:0;font-size:clamp(16px,2.1vw,21px);line-height:1.6;font-weight:600;min-height:3.2em;text-shadow:0 2px 0 rgba(0,0,0,.4)}
+.tk-text b{font-weight:800}
+.tk-more{position:absolute;right:30px;bottom:18px;color:var(--tc);font-size:16px;opacity:0}
+.tk.ready .tk-more{opacity:1;animation:tkBob .8s ease-in-out infinite}
+@keyframes tkBob{50%{transform:translateY(4px)}}
+.tk-ctrl{grid-column:2;display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.tk-b{font:inherit;font-weight:700;font-size:13px;color:#f4f0ff;background:rgba(15,12,38,.85);border:2px solid #f4f0ff;border-radius:999px;padding:4px 12px;cursor:pointer;min-height:34px}
+.tk-b:hover,.tk-b.on{background:var(--tc,#7a5af0);color:#120c24}
+.tk-b:focus-visible,.tk-ch:focus-visible{outline:3px solid #ffe060;outline-offset:2px}
+.tk-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.tk-choices:empty{display:none}
+.tk-ch{display:flex;align-items:center;gap:8px;font:inherit;text-align:left;color:#f4f0ff;background:#241d52;border:2px solid var(--cc,#9a8af0);border-radius:12px;padding:6px 14px 6px 6px;cursor:pointer;flex:1 1 200px;min-height:48px;transition:transform .1s,background .1s}
+.tk-ch:hover{background:color-mix(in srgb,var(--cc) 30%,#241d52);transform:translateY(-2px)}
+.tk-ch img{width:56px;height:56px;image-rendering:pixelated;background:rgba(0,0,0,.25);border-radius:8px}
+.tk-ch-t b{display:block;font-size:16px}.tk-ch-t small{display:block;font-size:12.5px;color:#cfc8f0;font-weight:500;line-height:1.35}
+.tk-ch.wide{grid-column:1/-1}
+.tk-spot{position:fixed;z-index:1;border:3px solid #ffe060;border-radius:14px;box-shadow:0 0 0 9999px rgba(8,6,24,.25),0 0 18px #ffe060;pointer-events:none;animation:tkSpot 1s ease-in-out infinite}
+@keyframes tkSpot{50%{box-shadow:0 0 0 9999px rgba(8,6,24,.25),0 0 30px #ffe060;transform:scale(1.04)}}
+.tk-log{position:fixed;inset:0;z-index:3;background:rgba(6,4,18,.8);display:flex;align-items:center;justify-content:center;padding:16px}
+.tk-log-in{background:#17123a;border:3px solid #f4f0ff;border-radius:14px;width:min(640px,100%);max-height:80vh;display:flex;flex-direction:column;padding:16px;color:#f4f0ff}
+.tk-log-in h3{margin:0 0 8px;font-family:Kanit,sans-serif}
+.tk-log-list{overflow:auto;flex:1;display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.tk-log-list b{font-family:Kanit,sans-serif}.tk-log-list p{margin:0;color:#ddd6ff}
+.tk-log-in .tk-b{align-self:flex-end}
+@media (max-width:640px){
+  .tk-wrap{grid-template-columns:1fr;padding:0 10px 10px}
+  .tk.noface .tk-wrap{grid-template-columns:1fr}
+  .tk-pt{position:absolute;left:4px;bottom:calc(100% - 12px);height:130px;width:130px}
+  .tk-img{width:128px;height:128px;left:0;bottom:0}.tk-slash{width:110px;height:86px;left:10px;bottom:10px}
+  .tk-panel{margin-left:0;min-height:120px}
+  .tk-name{left:120px;top:-18px}.tk:not(.noface) .tk-name{left:126px}.tk.noface .tk-name{left:18px}
+  .tk-body{padding:24px 22px 22px 24px}
+  .tk-ctrl{grid-column:1}
+  .tk-choices{grid-template-columns:1fr}
+}
+/* ตะโกนตอนตื่นพลัง */
+.tk-shout{position:fixed;left:0;top:28%;z-index:8000;display:flex;align-items:center;pointer-events:none;animation:tkShout 1.7s cubic-bezier(.2,.9,.3,1) both}
+.tk-shout.still{animation:none}
+.tk-shout img{width:150px;height:150px;image-rendering:pixelated;position:relative;z-index:2;filter:drop-shadow(0 0 16px var(--tc))}
+.tk-shout-p{margin-left:-30px;transform:skewX(-10deg);background:linear-gradient(90deg,#0f0c26 0%,#1b1640 70%,transparent);border-top:3px solid var(--tc);border-bottom:3px solid var(--tc);padding:10px 60px 10px 40px;color:#fff}
+.tk-shout-p b{display:block;font-family:Kanit,sans-serif;color:var(--tc);font-size:15px;transform:skewX(10deg)}
+.tk-shout-p span{display:block;font-family:Kanit,sans-serif;font-weight:800;font-size:clamp(18px,3vw,28px);transform:skewX(10deg);text-shadow:0 3px 0 rgba(0,0,0,.5)}
+@keyframes tkShout{0%{transform:translateX(-110%)}14%{transform:translateX(0)}82%{transform:translateX(0);opacity:1}100%{transform:translateX(30%);opacity:0}}
+@media (max-width:640px){.tk-shout img{width:100px;height:100px}.tk-shout{top:18%}}
+html[data-motion="reduce"] .tk,html[data-motion="reduce"] .tk-pt.in,html[data-motion="reduce"] .tk-spot,html[data-motion="reduce"] .tk.ready .tk-more{animation:none;transition:none}
+
+/* ===== ✨ ประตูอัญเชิญ (กรอบ) ===== */
+.gc { height: calc(100dvh - 64px); background: #0c0a18; }
+.gc-frame { width: 100%; height: 100%; border: 0; display: block; background: #0c0a18; }
+@media (max-width: 760px) { .gc { height: calc(100dvh - 64px - 62px - env(safe-area-inset-bottom)); } }
+body.has-hud .gc { height: calc(100dvh - var(--hud-top) - var(--dock-h)); }
+.gh-gems b { color: #9af0ff; }
+
+/* ===== ⚔️ คู่หูจากประตูอัญเชิญในฉากต่อสู้ ===== */
+.bt-hero { position: relative; padding: 0; overflow: hidden; display: grid; place-items: center; }
+.bt-hero img { width: 46px; height: 46px; margin-top: 6px; image-rendering: pixelated; pointer-events: none; }
+.bt-hero i { position: absolute; right: 0; bottom: 0; font-style: normal; font-size: .62rem; line-height: 1; background: rgba(42,22,8,.8); padding: 1px 2px; border-radius: 3px 0 0 0; }
+.bt-hero.r5 { box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 2px #2a1608, 0 0 0 4px #ffc93c; }
+.bt-hero.r4 { box-shadow: inset -3px -3px 0 #e2c992, 0 0 0 2px #2a1608, 0 0 0 4px #b07aff; }
+.bt-hero.on { background: color-mix(in srgb, var(--hc) 55%, #fff4c0); box-shadow: inset -3px -3px 0 rgba(0,0,0,.2), 0 0 0 2px #2a1608, 0 0 0 5px #fff; }
+.bt-heroes { max-height: calc(100% - 96px); overflow-y: auto; scrollbar-width: none; padding: 5px; margin: -5px; }
+.bt-plate.hero { border-left: 4px solid var(--hc, #ffd84a); }
+.bt-guard { font-weight: 800; color: #9ad8ff; font-size: .8rem; }
+.bt-items { position: absolute; z-index: 6; top: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; }
+.bt-items:not(:has(.bt-it:not([hidden]))) { display: none; }
+.bt-it { display: inline-flex; align-items: center; gap: 2px; font: inherit; font-size: .85rem; font-weight: 800; color: #3a2412; background: #f4e4bc; border: 0; border-radius: 4px; padding: 1px 7px; box-shadow: inset -2px -2px 0 #e2c992, 0 0 0 2px #2a1608; cursor: pointer; text-shadow: none; min-height: 26px; }
+.bt-it[disabled] { opacity: .45; cursor: default; }
+.bt-it:not([disabled]):hover { background: #ffe680; }
+/* คำถามแบบกล่องข้อความ */
+.bt-q { padding-top: 16px; }
+.bt-qtag { position: absolute; left: 12px; top: -13px; padding: 1px 12px; font-size: .78rem; font-weight: 800; color: #fff; background: #5a3dd8; transform: skewX(-10deg); box-shadow: 0 0 0 2px #2a1608, 3px 3px 0 #2a1608; }
+@media (max-width: 760px) { .bt > .bt-q { margin-top: 14px; padding-top: 14px; } }
+/* คำพูดคู่หูหลังตอบ (แทนแถบผลแบบเดิม) */
+.bt-fb.bt-say { display: flex; align-items: flex-end; gap: 0; padding: 0; background: none; box-shadow: none; max-width: 680px; flex: 1 1 380px; }
+.bt-say-face { width: 72px; height: 72px; image-rendering: pixelated; flex: none; position: relative; z-index: 2; margin-right: -8px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.3)); }
+.bt-say-box { position: relative; flex: 1; padding: 14px 16px 10px; background: #1b1640; color: #f4f0ff; border: 3px solid #f4f0ff; box-shadow: 0 0 0 3px #2a1608, 5px 5px 0 color-mix(in srgb, var(--hc) 70%, #000); text-align: left; }
+.bt-say.ok .bt-say-box { border-color: #b8ffc8; } .bt-say.no .bt-say-box { border-color: #ffb8a8; }
+.bt-say-name { position: absolute; left: 12px; top: -14px; padding: 0 12px; font-size: .82rem; color: #120c24; background: var(--hc); transform: skewX(-10deg); box-shadow: 0 0 0 2px #2a1608; }
+.bt-say-t { font-weight: 700; line-height: 1.5; } .bt-say-t b { color: #ffe680; } .bt-say-t em { display: block; font-style: normal; color: var(--hc); font-size: .9rem; }
+.bt-explain { flex-basis: 100%; max-width: 680px; margin: -4px auto 0; padding: 6px 12px; background: #f4e4bc; color: #3a2412; box-shadow: 0 0 0 2px #2a1608; font-weight: 600; }
+/* ร่างตื่นพลัง: การ์ดท่าไม้ตาย */
+.bt-hand.awake .bc { box-shadow: 0 0 0 3px #2a1608, 0 0 0 6px var(--el), 0 0 22px var(--el); }
+.bc.ult .bc-type { background: linear-gradient(90deg, #ffe060, var(--el)); color: #2a1608; }
+.bc.ult .bc-art::after { content: ""; position: absolute; inset: 0; background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.45) 50%, transparent 70%); background-size: 250% 100%; animation: bc-foil 1.8s linear infinite; pointer-events: none; }
+.bc .bc-art { position: relative; }
+@keyframes bc-foil { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+.bc.blown { opacity: .35; filter: grayscale(1); transform: translateY(14px) rotate(-4deg) !important; transition: transform .4s, opacity .4s; }
+.bt-num.ult { color: #fff; font-size: 1.8rem; text-shadow: 0 0 10px var(--el, #ffd84a), 2px 2px 0 #2a1608; }
+.bt-stage.awake { box-shadow: inset 0 0 40px rgba(255,230,140,.35); }
+.rs-chip.gem b { color: #2a8ac8; }
+.vs-badge.gem .ic { filter: drop-shadow(0 0 6px #7ae8ff); }
+@media (max-width: 760px) {
+  .bt-heroes { top: 62px; bottom: auto; flex-direction: column; max-height: calc(100% - 70px); }
+  .bt-hero img { width: 38px; height: 38px; margin-top: 4px; }
+  .bt-say-face { width: 56px; height: 56px; }
+  .bt-items { top: auto; bottom: 6px; left: auto; right: 8px; transform: none; }
+  .bt-items .bt-it { min-height: 28px; padding: 0 7px; }
+}
+:root[data-motion="reduce"] .bc.ult .bc-art::after { animation: none; }
+.bt-items { pointer-events: auto; }

@@ -5,7 +5,7 @@ import { myLook } from "./look.js";
 import { rankOf } from "./journey.js";
 
 export const DOCK = [
-  ["/", "🏡", "หมู่บ้าน"], ["/games", "🗺️", "บ้านวิชา"], ["/quizzes", "📝", "แบบทดสอบ"], ["/quiz-game", "🎣", "ตกปลา"],
+  ["/", "🏡", "หมู่บ้าน"], ["/games", "🗺️", "บ้านวิชา"], ["/quizzes", "📝", "แบบทดสอบ"], ["/gacha", "✨", "อัญเชิญ"], ["/quiz-game", "🎣", "ตกปลา"],
   ["/dashboard", "📖", "สมุด"], ["/shop", "🛒", "ร้านค้า"], ["/bag", "🎒", "กระเป๋า"],
 ];
 // หน้าย่อยที่อยู่ใต้ช่องลัดเดียวกัน (เช่น ผลแบบทดสอบ → แบบทดสอบ · ตั้งค่า/โปรไฟล์ → สมุด)
@@ -36,6 +36,7 @@ export function hudHtml({ me = {}, cur = "/", cloud = false, admin = false }) {
           ${rk ? html`<span class="gh-rank">${rk.icon} ${rk.name}</span><span class="gh-xp" role="progressbar" aria-label="XP สู่เลเวลถัดไป" aria-valuemin="0" aria-valuemax="${per}" aria-valuenow="${into}"><i style="width:${(into / per) * 100}%"></i></span>` : ""}</span>
       </a>
       <a href="/shop" class="gh-coins" title="เหรียญของฉัน · ไปร้านค้า">🪙 <b id="ghCoins">${(me.coins || 0).toLocaleString("th-TH")}</b></a>
+      ${me.gacha ? html`<a href="/gacha" class="gh-coins gh-gems" data-tour="gacha" title="เพชรสำหรับอัญเชิญ · ได้จากการตอบคำถามถูก">💎 <b id="ghGems">${(me.gacha.gems || 0).toLocaleString("th-TH")}</b></a>` : ""}
       ${me.stars != null ? html`<a href="/dashboard?j=1" class="gh-coins gh-stars" title="ดาวสะสม · เปิดสมุดผจญภัย">★ <b>${me.stars}</b>${me.rewardsReady ? html`<em>🎁${me.rewardsReady}</em>` : ""}</a>` : ""}
       <div class="gh-sys">
         ${cloud && !me.cloud ? html`<a href="/login" class="gh-btn gh-login" title="เข้าสู่ระบบ">🔐<span>เข้าสู่ระบบ</span></a>` : ""}

@@ -15,6 +15,7 @@ import * as S from "../public/js/pages/student.js";
 import * as SH from "../public/js/pages/shop.js";
 import * as BG from "../public/js/pages/bag.js";
 import * as QG from "../public/js/pages/quizgame.js";
+import { gachaPage } from "../public/js/pages/gacha.js";
 
 window.__LOCAL_API = localApi;
 
@@ -22,13 +23,13 @@ window.__LOCAL_API = localApi;
 const ROUTES = [
   [/^\/$/, "", P.home], [/^\/games$/, "games", P.library], [/^\/games\/(\d+)$/, "game-$1", P.playGame, "id"],
   [/^\/quizzes$/, "quizzes", P.quizList], [/^\/quizzes\/(\d+)$/, "quiz-$1", P.quizPage, "id"], [/^\/attempts\/(\d+)$/, "attempt-$1", P.attemptPage, "id"],
-  [/^\/dashboard$/, "dashboard", S.dashboard], [/^\/profile$/, "profile", S.profile], [/^\/shop$/, "shop", SH.shop], [/^\/bag$/, "bag", BG.bag], [/^\/quiz-game$/, "quiz-game", QG.quizGame],
+  [/^\/dashboard$/, "dashboard", S.dashboard], [/^\/profile$/, "profile", S.profile], [/^\/shop$/, "shop", SH.shop], [/^\/bag$/, "bag", BG.bag], [/^\/quiz-game$/, "quiz-game", QG.quizGame], [/^\/gacha$/, "gacha", gachaPage],
   [/^\/settings$/, "prefs", S.settings], [/^\/admin$/, "admin", (ctx) => adminPage({ ...ctx, go, refreshMe })], [/^\/privacy$/, "privacy", privacyLocal],
   [/^\/login$/, "login", loginPage], [/^\/register$/, "register", registerPage], [/^\/forgot$/, "forgot", forgotPage], [/^\/reset-password$/, "reset-password", resetPage],
 ];
 const HASH = [
   [/^$/, "/"], [/^games$/, "/games"], [/^game-(\d+)$/, "/games/$1"], [/^quizzes$/, "/quizzes"], [/^quiz-(\d+)$/, "/quizzes/$1"],
-  [/^attempt-(\d+)$/, "/attempts/$1"], [/^dashboard$/, "/dashboard"], [/^profile$/, "/profile"], [/^shop$/, "/shop"], [/^bag$/, "/bag"], [/^quiz-game$/, "/quiz-game"], [/^prefs$/, "/settings"], [/^admin$/, "/admin"], [/^settings$/, "/settings"], [/^privacy$/, "/privacy"],
+  [/^attempt-(\d+)$/, "/attempts/$1"], [/^dashboard$/, "/dashboard"], [/^profile$/, "/profile"], [/^shop$/, "/shop"], [/^bag$/, "/bag"], [/^quiz-game$/, "/quiz-game"], [/^gacha$/, "/gacha"], [/^prefs$/, "/settings"], [/^admin$/, "/admin"], [/^settings$/, "/settings"], [/^privacy$/, "/privacy"],
   [/^login$/, "/login"], [/^register$/, "/register"], [/^forgot$/, "/forgot"], [/^reset-password$/, "/reset-password"],
 ];
 let pending = null; // ที่อยู่เต็ม (รวม ?query) ที่รอแสดง

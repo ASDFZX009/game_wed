@@ -1,0 +1,89 @@
+// 🧭 บทสอนเล่น: เข้าเกมครั้งแรก (เลือกคู่หู + ของขวัญเพชร), สู้บอสครั้งแรก, เปิดประตูอัญเชิญครั้งแรก
+// ผู้นำทาง = มิระ · เล่นซ้ำได้จากปุ่ม ❔ วิธีเล่น
+import { api, state, toast } from "./core.js";
+import { refreshMe } from "./app.js";
+import { talk } from "./talk.js";
+import { ROSTER, STARTERS, PASSIVE, GUIDE, GEM, COST } from "../gacha/data.js";
+import { myGacha, needsStarter } from "./gacha-client.js";
+
+const M = (text, extra = {}) => ({ who: GUIDE, text, ...extra });
+const seen = (k) => !!myGacha()?.tut?.[k];
+async function mark(k) { try { await api("/api/gacha/tut", { method: "POST", body: { key: k } }); await refreshMe(); } catch { /* เวอร์ชันที่ไม่มีระบบนี้ */ } }
+const pasText = (id) => ROSTER[id].pas.map((p) => `${PASSIVE[p].n}: ${PASSIVE[p].d}`).join(" · ");
+export const hasGacha = () => !!myGacha();
+
+/** เลือกคู่หูคนแรก + รับของขวัญเพชร (คืน id ที่เลือก) */
+export async function pickStarter() {
+  const id = await talk([M("ก่อนออกผจญภัย ต้องมี *คู่หู* ไปช่วยสู้บอสก่อน เลือกมา 1 คนเลย! (อัญเชิญเพิ่มทีหลังได้)", {
+    choices: STARTERS.map((k) => ({ who: k, value: k, label: `${ROSTER[k].ic} ${ROSTER[k].n} · ธาตุ${ROSTER[k].el}`, sub: `${ROSTER[k].t} — ${pasText(k)}` })),
+  })], { canSkip: false });
+  const pick = id || STARTERS[0];
+  await api("/api/gacha/starter", { method: "POST", body: { id: pick } });
+  await refreshMe();
+  await talk([{ who: pick, text: ROSTER[pick].line.replace(/!$/, "") + " ฝากตัวด้วยนะ! ไปสู้บอสด้วยกันเลย!" }]);
+  return pick;
+}
+
+/** บทสอนเล่นตอนเข้าเกมครั้งแรก (หมู่บ้าน) */
+export async function runIntro({ go, force = false } = {}) {
+  if (!hasGacha() || (!force && seen("intro"))) return;
+  const narrow = innerWidth < 760;
+  await talk([
+    M("สวัสดี! ฉันชื่อ *มิระ* จอมเวทแห่งดวงดาว จะเป็นผู้นำทางของเธอในโลก *QUIZ ODYSSEY* เอง"),
+    M(narrow ? "ที่นี่คือ *หมู่บ้านแห่งการเรียนรู้* บ้านแต่ละหลังคือวิชาหนึ่งวิชา แตะที่บ้านแล้วตัวละครจะเดินไปเข้าเอง"
+      : "ที่นี่คือ *หมู่บ้านแห่งการเรียนรู้* บ้านแต่ละหลังคือวิชาหนึ่งวิชา เดินด้วย *ลูกศร* หรือ *WASD* แล้วกด *E* เข้าบ้าน หรือคลิกที่บ้านก็ได้"),
+    M("ในบ้านมีบทเรียนให้เลือก พอเริ่มเล่น *บอส* จะโผล่มา! ตอบคำถามถูก คู่หูของเธอจะร่ายสกิลโจมตีบอส"),
+  ]);
+  if (needsStarter()) await pickStarter();
+  const g = myGacha();
+  const go2 = await talk([
+    M(`ตอบถูกจะได้ *เพชร 💎* (เกมข้อละ ${GEM.perGame} · ปราบบอสได้อีก ${GEM.bossWin}) เอาไปอัญเชิญเพื่อนร่วมทีมที่ *ประตูอัญเชิญ* ได้`, { spot: '[data-tour="gacha"]' }),
+    M(`ตอนนี้เธอมีเพชร *${(g?.gems || 0).toLocaleString("th-TH")}* เม็ด${(g?.gems || 0) >= COST * 10 ? " พออัญเชิญ 10 ครั้งเลย!" : ""} อยากไปอัญเชิญเลยไหม?`, {
+      choices: [{ value: "gacha", label: "✨ ไปอัญเชิญเลย!", def: false }, { value: "stay", label: "🏡 เดินเล่นในหมู่บ้านก่อน", def: true }],
+    }),
+  ]);
+  await mark("intro");
+  if (go2 === "gacha") go("/gacha");
+  else await talk([M("ถ้าลืมวิธีเล่น กดปุ่ม *❔ วิธีเล่น* ได้ทุกเมื่อนะ ขอให้สนุก!", { spot: "#wHelp" })]);
+}
+
+/** ก่อนสู้บอสครั้งแรก */
+export async function battleTips(heroId, { force = false } = {}) {
+  if (!hasGacha() || (!force && seen("battle"))) return;
+  const hid = ROSTER[heroId] ? heroId : STARTERS[0], c = ROSTER[hid];
+  await talk([
+    M("บอสมาแล้ว! ด้านบนคือ *คำถาม* ด้านล่างคือ *การ์ดคำตอบ* แต่ละใบมีสกิลของคู่หูติดมาด้วย", { spot: "#btHand" }),
+    M(`เลือกการ์ดที่ตอบถูก *${c.n}* จะโจมตีทันที! หลอดเลือดบอสเท่ากับจำนวนข้อ ตอบถูกครบทุกข้อ = ชนะ`, { spot: ".bt-plate.boss" }),
+    M("ถ้าตอบผิด บอสจะโจมตีสวน และ *คอมโบ* จะหายไป ไม่ต้องกลัว อ่านเฉลยแล้วจำไว้ใช้ข้อต่อไปนะ"),
+    M(`ตอบถูกติดกัน ${c.pas.includes("fast") ? 2 : 3} ข้อ ${c.n}จะ *ตื่นพลัง* กลายร่างเป็น "${c.f}" แล้วใช้ท่าไม้ตาย!`),
+    { who: hid, text: `ความสามารถติดตัวของฉัน: ${pasText(hid)}` },
+    M("ปุ่มรูปตัวละครด้านซ้ายใช้สลับคู่หู ส่วน *💡 คำใบ้* กับ *🧪 ยา* จากการอัญเชิญ กดใช้ได้ที่แถบด้านบน", { spot: ".bt-heroes" }),
+  ]);
+  await mark("battle");
+}
+
+/** เปิดประตูอัญเชิญครั้งแรก */
+export async function gachaTips({ force = false } = {}) {
+  if (!hasGacha() || (!force && seen("gacha"))) return;
+  await talk([
+    M(`นี่คือ *ประตูอัญเชิญ* ใช้เพชร ${COST} เม็ดต่อครั้ง หรือ ${(COST * 10).toLocaleString("th-TH")} เม็ดต่อ 10 ครั้ง (การันตีเลเจนดารี ★4 ขึ้นไป 1 ใบ)`),
+    M("ตอนวงเวทกำลังก่อตัว *แตะจอ 3 ครั้ง* เพื่อชาร์จพลัง ถ้าแสงเปลี่ยนเป็น *สีม่วง* หรือ *สีทอง* แปลว่ามีตัวหายากมาแน่!"),
+    M("ตัวละครมี 3 ระดับ: *ธรรมดา ★3* · *เลเจนดารี ★4* · *มิสติก ★5* ได้ตัวซ้ำจะเพิ่ม *ขั้นพลัง* ทำให้ได้เพชรโบนัสมากขึ้น"),
+    M("ดูตัวละครและตั้ง *คู่หู* ที่จะไปสู้บอสได้ที่แท็บ *ตัวละครของฉัน* · อัตราการออกของทุกตัวดูได้ที่ด้านล่างเสมอ"),
+  ]);
+  await mark("gacha");
+}
+
+/** ปุ่ม ❔ วิธีเล่น: เลือกหัวข้อที่อยากฟังอีกครั้ง */
+export async function helpMenu({ go } = {}) {
+  if (!hasGacha()) { toast("วิธีเล่น: เลือกบ้านวิชาในหมู่บ้าน แล้วตอบคำถามเพื่อสู้บอส"); return; }
+  const k = await talk([M("อยากให้ฉันอธิบายเรื่องไหนอีกครั้ง?", { choices: [
+    { value: "intro", label: "🏡 หมู่บ้านและเพชร", sub: "เริ่มต้นเล่น · วิธีได้เพชร" },
+    { value: "battle", label: "⚔️ การสู้บอสตอบคำถาม", sub: "การ์ดคำตอบ · คอมโบ · ตื่นพลัง" },
+    { value: "gacha", label: "✨ ประตูอัญเชิญ", sub: "อัญเชิญ · ระดับดาว · คู่หู" },
+    { value: null, label: "ไม่เป็นไร ขอบคุณ", def: true, cls: "wide" },
+  ] })]);
+  if (k === "intro") await runIntro({ go, force: true });
+  else if (k === "battle") await battleTips(myGacha()?.party, { force: true });
+  else if (k === "gacha") { if (location.hash.includes("gacha") || location.pathname === "/gacha") await gachaTips({ force: true }); else go?.("/gacha?tips=1"); }
+}

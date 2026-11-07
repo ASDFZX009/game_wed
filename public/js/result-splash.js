@@ -38,6 +38,7 @@ export function showResultSplash(host, o) {
     ...(r.levelUp ? [{ icon: "🆙", small: "เลเวลอัป!", name: `Lv ${r.levelUp.from} → ${r.levelUp.to} · ${r.levelUp.rank.name}`, cls: "lv" }] : []),
     ...(r.unlockedLevel ? [{ icon: "🔓", small: "ปลดล็อกระดับใหม่!", name: `ระดับ${r.unlockedLevel.name}` }] : []),
     ...(r.boss?.win ? [{ icon: "⚔️", small: r.boss.first ? "ปราบบอสครั้งแรก! บันทึกลงสมุดแล้ว" : "ปราบบอสสำเร็จ!", name: r.boss.name, cls: "boss" }] : []),
+    ...(r.gems?.got ? [{ icon: "💎", small: ["เพชรสำหรับอัญเชิญ", r.gems.pct ? `โบนัสคู่หู +${r.gems.pct}%` : "", r.gems.luck ? "เครื่องรางนำโชค ×2" : ""].filter(Boolean).join(" · "), name: `+${r.gems.got.toLocaleString("th-TH")} เพชร (มี ${r.gems.total.toLocaleString("th-TH")})`, cls: "gem" }] : []),
     ...(r.eliteNow ? [{ icon: "👑", small: "ปลดล็อกแล้ว!", name: "บอสร่างจ้าว" }] : []),
   ];
   const stat = (cls, key, val, extra = "") => html`<div class="vs-stat ${cls}"><span class="k">${key}</span><b>${raw(val)}</b>${raw(extra)}</div>`;

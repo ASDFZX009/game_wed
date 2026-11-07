@@ -6,6 +6,8 @@ import { showResultSplash, resultMeta, fmtTime } from "./result-splash.js";
 import { createBattle } from "./battle.js";
 import { reducedMotion } from "./prefs.js";
 import { pickBoss, RARITY, bossInfo, SHINY } from "./journey.js";
+import { loadSprites, needsStarter } from "./gacha-client.js";
+import { battleTips, pickStarter } from "./tutorial.js";
 
 // ป้ายแนะนำบอสก่อนสู้: ความหายาก + สกิลประจำตัว (+ ร่างทองคำ)
 export function encounterHtml(boss) {
@@ -73,10 +75,16 @@ export function startGame(root, data, opts = {}) {
   }
 
   // ⚔️ ปรนัยและถูก/ผิด: ตอบด้วยการ์ดสกิลโจมตีบอส (หลอดเลือดบอส = จำนวนข้อ)
-  let battle = null, usedBattle = false;
+  let battle = null, usedBattle = false, prepping = false, tipsShown = false;
   const boss = data.boss || pickBoss(game.title, data.setup?.current?.level || 2, false);
   function renderBattle() {
     usedBattle = true;
+    if (!battle && (needsStarter() || !globalThis.QO_SPR)) {
+      // ยังไม่มีคู่หู/ภาพตัวละคร: เลือกคู่หูก่อน แล้วค่อยเริ่มต่อสู้
+      if (!prepping) { prepping = true; root.innerHTML = '<div class="loading" aria-busy="true">กำลังเรียกคู่หู…</div>';
+        (async () => { await loadSprites(); if (needsStarter()) await pickStarter().catch(() => {}); prepping = false; if (!done) renderBattle(); })(); }
+      return;
+    }
     if (!battle) {
       root.innerHTML = html`<div class="play play-battle">${introHead(true)}<div id="g-battle"></div></div>`.s;
       battle = createBattle(root.querySelector("#g-battle"), {
@@ -85,9 +93,11 @@ export function startGame(root, data, opts = {}) {
         onAnswer: async (a) => { answers[idx] = a; const r = await check(a).catch((e) => { toast(e.message, "bad"); return null; }); if (r) playSound(r.correct ? "correct" : "wrong"); return r; },
         autoNext: () => getPrefs().autoGo !== false && !done,
         onNext: () => { clearTimeout(autoTimer); if (done) return; idx++; idx >= questions.length ? finish() : renderQ(); },
+        onEliminate: (skip) => (game.template === "mcq" ? api(`/api/games/${game.id}/eliminate`, { body: { index: idx, key, skip } }).then((r) => r.wrong).catch(() => null) : Promise.resolve(null)),
       });
     }
     battle.ask(idx, questions[idx]); tick();
+    if (!tipsShown) { tipsShown = true; battleTips(battle.heroId).catch(() => {}); }
   }
   function renderQ() {
     locked = false;
@@ -221,8 +231,8 @@ export function startGame(root, data, opts = {}) {
 
   let t0 = 0;
   async function finish(extra) {
-    if (done) return; done = true; stop(); battle?.destroy(); battle = null;
-    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite, shiny: !!boss.shiny } } : {}), ...(story ? { story: story.n } : {}) };
+    if (done) return; done = true; stop(); const hero = battle?.heroId || null; battle?.destroy(); battle = null;
+    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(hero ? { hero } : {}), ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite, shiny: !!boss.shiny } } : {}), ...(story ? { story: story.n } : {}) };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }
@@ -248,6 +258,7 @@ export function startGame(root, data, opts = {}) {
         <div class="rs-chips">
           <span class="rs-chip">${isMatch ? html`🃏 พลิก <b>${body.moves || 0}</b> ครั้ง` : html`✅ ตอบถูก <b>${r.correct}/${r.total}</b>`}</span>
           ${r.saved ? html`<span class="rs-chip xp">⭐ <b>+${r.xp}</b> XP</span><span class="rs-chip coin">🪙 <b>+${r.coins || 0}</b> เหรียญ</span>` : ""}
+          ${r.gems?.got ? html`<span class="rs-chip gem">💎 <b>+${r.gems.got}</b> เพชร</span>` : ""}
           ${seconds != null ? html`<span class="rs-chip">⏱ <b>${fmtTime(seconds)}</b></span>` : ""}
           <span class="rs-chip ${r.passed ? "ok" : "bad"}">${r.passed ? "ผ่านเกณฑ์" : "ยังไม่ผ่าน"} ${r.passPct}%</span>
         </div>

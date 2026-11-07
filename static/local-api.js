@@ -6,6 +6,7 @@ import G from "../server/grading.js";
 import Lessons from "../server/lessons/index.js";
 import * as J from "../public/js/journey.js";
 import { storyPlan } from "../public/js/story.js";
+import * as GA from "../public/gacha/data.js";
 
 const TZ = "Asia/Bangkok";
 const KEY = "eduplay-web:v1";
@@ -31,8 +32,10 @@ const CATALOG = DATA.shop.catalog, BOXES = DATA.shop.boxes, RARITY = DATA.shop.r
 const ITEM = Object.fromEntries(CATALOG.map((x) => [x.id, x]));
 
 // ---------- ที่เก็บความคืบหน้า ----------
+// ✨ อัญเชิญ: เพชรได้จากการตอบคำถามถูกเท่านั้น (ไม่มีการซื้อด้วยเงินจริง)
+const freshGacha = () => ({ gems: 0, cnt: 0, pity: 0, own: {}, inv: {}, hist: [], party: null, tut: {}, gift: false });
 const fresh = () => ({ v: 1, name: "นักผจญภัย", grade: "", xp: 0, coins: WELCOME_COINS, createdAt: now(), updatedAt: now(), seq: 1,
-  plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {}, stars: {}, bosses: {}, claimed: {}, rot: {}, seen: {} });
+  plays: [], attempts: [], badges: {}, activity: [], items: {}, equipped: {}, prefs: {}, coinTx: [{ amount: WELCOME_COINS, reason: "welcome", detail: "ของขวัญต้อนรับ", at: now() }], lastFree: null, gamePlays: {}, stars: {}, bosses: {}, claimed: {}, rot: {}, seen: {}, gacha: freshGacha() });
 let S = fresh();
 let adminFlag = false; // ตรวจสิทธิ์จริงที่ Supabase (is_admin) แล้วจึงเปิด
 let remote = null; // ที่เก็บในบัญชี Claude (artifact) ถ้ามี
@@ -134,7 +137,22 @@ export async function connectRemote(onLoaded) {
 // ---------- ช่วยเหลือ ----------
 const equippedView = () => Object.fromEntries(Object.entries(S.equipped).filter(([s, id]) => ITEM[id]?.type === s).map(([s, id]) => [s, ITEM[id].value]));
 const me = () => ({ id: 1, email: cloudUser?.email || "", cloud: !!cloudUser, admin: adminFlag && !!cloudUser, displayName: S.name, role: "student", grade: S.grade, xp: S.xp, coins: S.coins, prefs: S.prefs, equipped: equippedView(), owned: Object.keys(S.items), local: true,
-  level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL, stars: totalStars(), rewardsReady: rewardsReady() });
+  level: Math.floor(S.xp / XP_PER_LEVEL) + 1, xpPerLevel: XP_PER_LEVEL, stars: totalStars(), rewardsReady: rewardsReady(), gacha: gachaView() });
+
+// ---------- ✨ อัญเชิญตัวละคร ----------
+function GS() { if (!S.gacha || typeof S.gacha !== "object") S.gacha = freshGacha(); const g = S.gacha; for (const [k, v] of Object.entries(freshGacha())) if (g[k] === undefined) g[k] = v;
+  for (const k of ["own", "inv", "tut"]) if (!g[k] || typeof g[k] !== "object") g[k] = {}; if (!Array.isArray(g.hist)) g.hist = []; if (!Number.isFinite(g.gems)) g.gems = 0; return g; }
+function gachaView() { const g = GS(); return { gems: g.gems, cnt: g.cnt, pity: g.pity, own: { ...g.own }, inv: { ...g.inv }, hist: g.hist.slice(0, 60), party: g.own[g.party] != null ? g.party : null, tut: { ...g.tut }, gift: g.gift }; }
+function addGems(n, why) { const g = GS(); g.gems = Math.max(0, g.gems + n); if (n) S.activity.unshift({ kind: "gems", title: `${n > 0 ? "+" : ""}${n} 💎 ${why}`, xp: 0, created_at: now() }); }
+/** เพชรตอนจบด่าน: ตอบถูกข้อละ 10 + ชนะบอส 30 · โบนัสตัวละคร · เครื่องรางนำโชค ×2 */
+function gameGems(correct, bossWin, heroId) {
+  const g = GS(); if (!(correct > 0)) return null;
+  const base = correct * GA.GEM.perGame + (bossWin ? GA.GEM.bossWin : 0);
+  const hero = g.own[heroId] != null ? heroId : g.party, pct = hero && g.own[hero] != null ? GA.gemBonus(hero, g.own[hero]) : 0;
+  const luck = (g.inv.luck || 0) > 0; if (luck) g.inv.luck--;
+  const got = Math.round(base * (1 + pct) * (luck ? 2 : 1));
+  addGems(got, "จากการตอบคำถาม"); return { got, base, pct: Math.round(pct * 100), luck, hero: hero || null, total: g.gems };
+}
 function addXP(xp, kind, title) { S.xp += xp; S.activity.unshift({ kind, title, xp, created_at: now() }); S.activity = S.activity.slice(0, 200); }
 function addCoins(amount, reason, detail) { if (!amount && reason !== "free_box") return; S.coins += amount; S.coinTx.unshift({ amount, reason, detail, at: now() }); S.coinTx = S.coinTx.slice(0, 200); }
 function streak() {
@@ -276,6 +294,15 @@ on("POST", "/api/games/:id/check", ({ id }, b) => {
   if (!q) throw err(400, "ไม่พบข้อนี้");
   return { correct: G.gradeGameQuestion(tpl, q, b.answer), answer: G.gameAnswerText(tpl, q), explain: q.explain || null };
 });
+// 💡 การ์ดคำใบ้ / ลมพัดตัวลวง: บอกตัวเลือกที่ผิด 1 ข้อ (สุ่ม)
+on("POST", "/api/games/:id/eliminate", ({ id }, b) => {
+  const g = gameById(id); const set = g.template === "lesson" ? lessonSet(g, b.key) : null, tpl = set ? set.template : g.template;
+  const q = (set ? set.questions : g.questions)[+b.index];
+  if (!q || tpl !== "mcq" || !Array.isArray(q.options)) throw err(400, "ใช้กับข้อนี้ไม่ได้");
+  const skip = new Set((b.skip || []).map(Number)), wrong = q.options.map((_, i) => i).filter((i) => !skip.has(i) && !G.gradeGameQuestion(tpl, q, i));
+  if (wrong.length <= 1 && q.options.length - skip.size <= 2) throw err(400, "เหลือตัวเลือกน้อยแล้ว");
+  return { wrong: wrong.length ? wrong[G.randInt(wrong.length)] : null };
+});
 on("POST", "/api/games/:id/finish", ({ id }, b) => {
   const g0 = gameById(id), set = g0.template === "lesson" ? lessonSet(g0, b.key) : null;
   const lvl = set ? set.level : 0, lvBefore = Math.floor(S.xp / XP_PER_LEVEL) + 1, lockBefore = set ? lockedFor(g0.id) : [], eliteBefore = eliteUnlocked();
@@ -310,13 +337,14 @@ on("POST", "/api/games/:id/finish", ({ id }, b) => {
     const bonus = win ? J.bossBonus(BM.rarity, shiny, elite) : 0; if (bonus) addCoins(bonus, "boss", `${shiny ? "✨ " : ""}${elite ? BM.elite : BM.name}`);
     boss = { id: BM.id, name: elite ? BM.elite : BM.name, elite, win, first, rarity: BM.rarity, shiny, bonus }; }
   const newBadges = checkBadges(perfect);
+  const gems = gameGems(correct, !!boss?.win, b.hero);
   const lvAfter = Math.floor(S.xp / XP_PER_LEVEL) + 1;
   save();
   return { score, max, correct, total, passed: (score / Math.max(1, max)) * 100 >= 60, passPct: 60, perfect, review, saved: true, xp, coins: xp, newBadges, preview: false,
     stars: set ? { got, best: Math.max(got, prevBest), prevBest, level: lvl, levelName: Lessons.setupOf(Lessons.lessonById(g0.lesson)).levels[lvl - 1] } : null,
     unlockedLevel: !b.story && unlockedNow.length ? { level: unlockedNow[0], name: ["ง่ายมาก", "ง่าย", "ปานกลาง", "ยาก", "ยากมาก"][unlockedNow[0] - 1] } : null,
     levelUp: lvAfter > lvBefore ? { from: lvBefore, to: lvAfter, rank: J.rankOf(lvAfter) } : null,
-    eliteNow: !eliteBefore && eliteUnlocked(), boss, totalStars: totalStars(), rewardsReady: rewardsReady() };
+    eliteNow: !eliteBefore && eliteUnlocked(), boss, gems, totalStars: totalStars(), rewardsReady: rewardsReady() };
 });
 
 on("GET", "/api/progress", () => {
@@ -406,9 +434,10 @@ on("POST", "/api/quizzes/:id/submit", ({ id }, b) => {
   S.attempts.unshift(a);
   const xp = Math.round((score / Math.max(1, max)) * 20);
   addXP(xp, "quiz", z.title); addCoins(xp, "quiz", z.title);
+  const nOk = Object.values(results).filter((x) => x.correct).length, qg = nOk * GA.GEM.perQuiz; if (qg) addGems(qg, "จากแบบทดสอบ");
   const newBadges = checkBadges(max > 0 && score >= max);
   save();
-  return { attempt: attemptView(a), xp, coins: xp, newBadges, pending: false };
+  return { attempt: attemptView(a), xp, coins: xp, newBadges, pending: false, gems: qg ? { got: qg, total: GS().gems } : null };
 });
 
 on("GET", "/api/dashboard/student", () => {
@@ -462,6 +491,35 @@ on("POST", "/api/exchange/fish", (_p, b) => {
   S.xch.got += n; addCoins(n, "exchange", `แลกจากเกมตกปลา ${n * 5} G`); S.activity.unshift({ kind: "exchange", title: `แลกเงินเกมตกปลา ${n * 5} G → 🪙 ${n}`, xp: 0, created_at: now() }); save();
   return { coins: S.coins, left: xchLeft(), got: n };
 });
+
+// ✨ อัญเชิญตัวละคร
+on("GET", "/api/gacha", () => gachaView());
+on("POST", "/api/gacha/starter", (_p, b) => {
+  const g = GS(); if (!GA.STARTERS.includes(b.id)) throw err(400, "เลือกตัวละครเริ่มต้นไม่ถูกต้อง");
+  if (!Object.keys(g.own).length) { g.own[b.id] = 0; g.party = b.id; g.hist.unshift(`★3 ${GA.RN[3]} · ${GA.ROSTER[b.id].n} · คู่หูคนแรก`); }
+  if (!g.gift) { g.gift = true; addGems(GA.GEM.welcome, "ของขวัญต้อนรับ"); }
+  save(); return gachaView();
+});
+on("POST", "/api/gacha/pull", (_p, b) => {
+  const g = GS(), ticket = !!b.ticket, n = ticket ? 1 : +b.n === 10 ? 10 : 1;
+  if (ticket) { if ((g.inv.shard || 0) < GA.SHARDS_PER_PULL) throw err(400, `ชิ้นส่วนดาวไม่พอ (ต้องการ ${GA.SHARDS_PER_PULL})`); g.inv.shard -= GA.SHARDS_PER_PULL; }
+  else { const cost = GA.COST * n; if (g.gems < cost) throw err(400, `เพชรไม่พอ (ต้องการ ${cost.toLocaleString()} มี ${g.gems.toLocaleString()}) — ตอบคำถามให้ถูกเพื่อรับเพชรเพิ่ม`); g.gems -= cost; }
+  const res = [];
+  for (let i = 0; i < n; i++) res.push(GA.rollOnce(g, n === 10 && i === 9 && !res.some((r) => r.rar >= 4)));
+  res.forEach((r, i) => {
+    if (r.type === "ch") { const o = g.own[r.id]; r.isNew = o == null; r.dupMax = o === GA.MAX_STAGE; g.own[r.id] = o == null ? 0 : Math.min(GA.MAX_STAGE, o + 1); r.stage = g.own[r.id];
+      if (r.dupMax) g.inv.shard = (g.inv.shard || 0) + 2; if (!g.party) g.party = r.id; }
+    else if (r.it === "coin") addCoins(50, "gacha", "อัญเชิญได้เหรียญทอง");
+    else g.inv[r.it] = (g.inv[r.it] || 0) + 1;
+    g.hist.unshift(`${r.type === "ch" ? `★${r.rar} ${GA.RN[r.rar]} · ${GA.ROSTER[r.id].n}` : `★3 ${GA.ITEMS[r.it].n}`} · ครั้งที่ ${g.cnt - n + i + 1}`);
+  });
+  g.hist = g.hist.slice(0, 80);
+  S.activity.unshift({ kind: "gacha", title: `อัญเชิญ ${n} ครั้ง${res.some((r) => r.rar === 5) ? " · ได้มิสติก ★5!" : ""}`, xp: 0, created_at: now() });
+  save(); return { res, gacha: gachaView(), coins: S.coins };
+});
+on("POST", "/api/gacha/party", (_p, b) => { const g = GS(); if (g.own[b.id] == null) throw err(400, "ยังไม่มีตัวละครนี้"); g.party = b.id; save(); return gachaView(); });
+on("POST", "/api/gacha/use", (_p, b) => { const g = GS(); if (!["hint", "pot"].includes(b.item)) throw err(400, "ใช้ไอเทมนี้ตอนสู้ไม่ได้"); if (!(g.inv[b.item] > 0)) throw err(400, "ไอเทมหมดแล้ว"); g.inv[b.item]--; save(); return gachaView(); });
+on("POST", "/api/gacha/tut", (_p, b) => { const g = GS(); if (b.reset) g.tut = {}; else if (/^[a-z]{2,16}$/.test(b.key || "")) g.tut[b.key] = now(); save(); return gachaView(); });
 on("POST", "/api/shop/box", (_p, b) => {
   const box = BOXES.find((x) => x.id === b.boxId);
   if (!box) throw err(404, "ไม่พบกล่องนี้");

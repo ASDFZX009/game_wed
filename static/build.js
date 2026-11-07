@@ -76,6 +76,9 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
   // 🎣 เกมตอบคำถาม (AWS Fishing) เป็นไฟล์แยก เปิดในกรอบจากหน้า #quiz-game
   fs.rmSync(path.join(dir, "fishing"), { recursive: true, force: true });
   fs.cpSync(path.join(root, "public/fishing"), path.join(dir, "fishing"), { recursive: true, filter: (f) => !/\.md$/.test(f) });
+  // ✨ ประตูอัญเชิญ + ภาพตัวละคร 64px เป็นไฟล์แยก (หน้าอัญเชิญเปิดในกรอบ · ฉากต่อสู้โหลด sprites.js ไฟล์เดียวกัน)
+  fs.rmSync(path.join(dir, "gacha"), { recursive: true, force: true });
+  fs.cpSync(path.join(root, "public/gacha"), path.join(dir, "gacha"), { recursive: true });
   try { fs.unlinkSync(process.env.DB_FILE); } catch { /* ignore */ }
   console.log(`สร้างแล้ว: docs/play/index.html (${(html.length / 1024).toFixed(0)} KB)`);
 })();
