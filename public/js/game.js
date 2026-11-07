@@ -232,7 +232,7 @@ export function startGame(root, data, opts = {}) {
   let t0 = 0;
   async function finish(extra) {
     if (done) return; done = true; stop(); const hero = battle?.heroId || null; battle?.destroy(); battle = null;
-    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(hero ? { hero } : {}), ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite, shiny: !!boss.shiny } } : {}), ...(story ? { story: story.n } : {}) };
+    const body = { answers, assignmentId: finishPayload.assignmentId, key, ...(hero ? { hero } : {}), ...(usedBattle ? { boss: { id: boss.id, elite: boss.elite, shiny: !!boss.shiny } } : {}), ...(story ? { story: story.n, ...(Number.isInteger(story.g) && story.g >= 0 ? { storyG: story.g } : {}) } : {}) };
     if (game.template === "match") Object.assign(body, extra || finishPayload.getMemory?.() || {});
     let r;
     try { r = await api(`/api/games/${game.id}/finish`, { body }); }

@@ -1594,7 +1594,18 @@ body.has-hud.immersive:not(.home-world) { background: #07060a; }
 @media (max-width: 480px) { .xch-strip .grow { flex: 1 1 calc(100% - 56px); } .xch-strip > .btn { flex: 1 1 100%; } }
 .hz-grades { display: flex; flex-wrap: wrap; gap: 5px; flex: 1 1 260px; }
 .hz-grades button { min-width: 44px; }
-.hz-grades button.all { min-width: 64px; }
+.hz-grades { flex-direction: column; flex-basis: 100%; }
+.hz-grow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.hz-grow small { min-width: 44px; font-weight: 800; font-size: .74rem; color: #ffe9a8; opacity: .85; }
+.hz-gpick { flex-basis: 100%; margin-top: 4px; }
+.hz-gpick[hidden] { display: none; }
+.hz-track .hz-chg { background: #2a1608; color: #ffe9a8; box-shadow: inset 0 0 0 2px #ffd84a; }
+.hz-track.ask { flex-direction: column; align-items: stretch; padding: 14px; }
+.hz-track.ask .hz-grades button { min-width: 64px; padding: 8px 12px; font-size: .95rem; }
+.hz-gtag { margin-left: 8px; padding: 2px 8px; font-size: .8rem; font-weight: 800; color: #2a1608; background: #ffd84a; }
+.hz-gtag:empty { display: none; }
+.hz-house.empty { opacity: .5; cursor: not-allowed; filter: grayscale(.6); }
+.hz-empty { margin-top: 10px; }
 .hz-gnote { flex-basis: 100%; margin: 4px 0 0; font-size: .78rem; color: #ffe9a8; opacity: .9; }
 .hz-gnote b { color: #ffd84a; }
 @media (max-width: 420px) { .hz-grades button { min-width: 0; padding: 4px 7px; font-size: .74rem; } }

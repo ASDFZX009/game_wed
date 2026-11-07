@@ -5,7 +5,8 @@ import DATA from "./data.json";
 import G from "../server/grading.js";
 import Lessons from "../server/lessons/index.js";
 import * as J from "../public/js/journey.js";
-import { storyPlan } from "../public/js/story.js";
+import { storyPlan, STORY } from "../public/js/story.js";
+const STORY_CATS = new Set(Object.keys(STORY));
 import * as GA from "../public/gacha/data.js";
 
 const TZ = "Asia/Bangkok";
@@ -328,6 +329,7 @@ on("POST", "/api/games/:id/finish", ({ id }, b) => {
   // ดาว (เก็บค่าที่ดีที่สุดของแต่ละระดับ)
   const got = J.starsFor(score, max), byL = (S.stars[g0.id] = S.stars[g0.id] || {}), prevBest = byL[lvl] || 0;
   if (got > prevBest) byL[lvl] = got;
+  if (b.story && Number.isInteger(b.storyG) && b.storyG >= 0 && b.storyG <= 12) { const GS2 = gStars(b.storyG), gb = (GS2[g0.id] = GS2[g0.id] || {}); if (got > (gb[lvl] || 0)) gb[lvl] = got; } // ดาวของเส้นทางชั้นนี้
   const unlockedNow = set ? lockBefore.filter((L) => !lockedFor(g0.id).includes(L)) : [];
   // บอส: นับการเผชิญหน้า ชนะเมื่อตอบถูกครบ (หลอดเลือดบอส = จำนวนข้อ)
   let boss = null; const BM = b.boss && J.BOSS_LIST.find((x) => x.id === b.boss.id);
@@ -364,24 +366,35 @@ on("POST", "/api/progress/claim", (_p, b) => {
 // ---------- โหมดเรื่องราว ----------
 const TRACK_RANGE = { all: [0, 12], ...Object.fromEntries(Array.from({ length: 13 }, (_, g) => [`g${g}`, [g, g]])) };
 const gradeOfTrack = (t) => (/^g\d+$/.test(t || "") ? +t.slice(1) : -1);
+const GL = (g) => (g === 0 ? "อนุบาล" : g <= 6 ? `ป.${g}` : `ม.${g - 6}`);
+// ดาวของโหมดเรื่องราวแยกตามชั้น (เส้นทางของแต่ละชั้นมีด่านไม่เหมือนกัน) · เซฟเก่า: ยกดาวเดิมไปไว้ที่ชั้นแรกที่เปิด
+function gStars(g) {
+  if (!S.gstars || typeof S.gstars !== "object") S.gstars = {};
+  const k = "g" + g; if (!S.gstars[k]) { S.gstars[k] = S.gstarsSeeded ? {} : JSON.parse(JSON.stringify(S.stars || {})); S.gstarsSeeded = true; }
+  return S.gstars[k];
+}
 function planOf(cat, track = "all") {
-  const [ta, tb] = TRACK_RANGE[track] || TRACK_RANGE.all, inTrack = (gr) => gr[0] <= tb && gr[1] >= ta;
-  // เรียงบทเรียนในบ้านตามช่วงชั้น (ป.ต้น → ม.ปลาย) ให้เส้นทางค่อย ๆ ยากขึ้นตามสายชั้น
-  const lessons = GAMES.filter((g) => g.template === "lesson" && g.category === cat).map((g, i) => { const L = Lessons.lessonById(g.lesson); return { gid: g.id, title: g.title, icon: L.icon, gr: L.grade, grade: Lessons.gradeLabel(L.grade), i }; })
+  const tg = gradeOfTrack(track), [ta, tb] = TRACK_RANGE[track] || TRACK_RANGE.all, inTrack = (gr) => gr[0] <= tb && gr[1] >= ta;
+  const c0 = catBy[cat], house = c0 ? { slug: c0.slug, name: c0.name, icon: c0.icon } : null;
+  // เลือกชั้นแล้ว: เฉพาะบทเรียนที่มีคำถามของชั้นนั้นจริง ป้ายชั้นของทุกด่าน = ชั้นนั้น · ไม่ได้เลือก: ทุกบท เรียงตามช่วงชั้น
+  const lessons = GAMES.filter((g) => g.template === "lesson" && g.category === cat).map((g, i) => { const L = Lessons.lessonById(g.lesson); return { gid: g.id, title: g.title, icon: L.icon, gr: L.grade, grade: Lessons.gradeLabel(L.grade), i, L }; })
+    .filter((x) => tg < 0 || Lessons.hasGrade(x.L, tg)).map(({ L, ...x }) => (tg < 0 ? x : { ...x, gr: [tg, tg], grade: GL(tg) }))
     .sort((a, b) => a.gr[0] - b.gr[0] || a.gr[1] - b.gr[1] || a.i - b.i);
+  if (!lessons.length) { if (tg < 0 || !STORY_CATS.has(cat)) throw err(404, "ไม่พบบ้านวิชานี้"); return { cat, empty: true, grade: GL(tg), house, chapters: [], total: 0, current: 0, got: 0, max: 0, gradeSpan: GL(tg) }; }
   const P = storyPlan(cat, lessons); if (!P) throw err(404, "ไม่พบบ้านวิชานี้");
+  const SB = tg >= 0 ? gStars(tg) : S.stars;
   let prevOk = true, cur = null; const unlockAll = adminFlag && cloudUser;
   // สายชั้น: ด่านนอกสายไม่ขวางทาง (เล่นข้ามได้) · ด่านในสายต้องได้อย่างน้อย ★ เพื่อเปิดด่านถัดไป
-  for (const ch of P.chapters) for (const st of ch.stages) { st.stars = (S.stars[st.gid] || {})[st.level] || 0; st.unlocked = prevOk || st.stars > 0 || !!unlockAll; st.inTrack = inTrack(st.gr); if (st.unlocked && !st.stars && !cur && st.inTrack) cur = st.n; if (st.inTrack) prevOk = st.stars > 0; }
-  P.current = cur || P.total; P.gradeSpan = Lessons.gradeLabel([Math.min(...lessons.map((l) => l.gr[0])), Math.max(...lessons.map((l) => l.gr[1]))]); P.got = P.chapters.reduce((a, c) => a + c.stages.reduce((b, x) => b + x.stars, 0), 0); P.max = P.total * 3;
-  const c = catBy[cat]; P.house = c ? { slug: c.slug, name: c.name, icon: c.icon } : null;
+  for (const ch of P.chapters) for (const st of ch.stages) { st.stars = (SB[st.gid] || {})[st.level] || 0; st.unlocked = prevOk || st.stars > 0 || !!unlockAll; st.inTrack = inTrack(st.gr); if (st.unlocked && !st.stars && !cur && st.inTrack) cur = st.n; if (st.inTrack) prevOk = st.stars > 0; }
+  P.current = cur || P.total; P.gradeSpan = tg >= 0 ? GL(tg) : Lessons.gradeLabel([Math.min(...lessons.map((l) => l.gr[0])), Math.max(...lessons.map((l) => l.gr[1]))]); P.grade = tg >= 0 ? GL(tg) : null; P.got = P.chapters.reduce((a, c) => a + c.stages.reduce((b, x) => b + x.stars, 0), 0); P.max = P.total * 3;
+  P.house = house;
   return P;
 }
 const stageOf = (P, n) => { for (const ch of P.chapters) for (const st of ch.stages) if (st.n === +n) return { ch, st }; throw err(404, "ไม่พบด่านนี้"); };
 const qKey = (q) => { const t = String(q.prompt || q.a || "") + "|" + String(q.b || "") + "|" + String(q.options ? q.options[q.answer] : q.word ?? q.answer ?? ""); let h = 7; for (const c of t) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h.toString(36); };
 on("GET", "/api/story/:cat", ({ cat }, _b, q) => planOf(cat, q.get("track") || "all"));
 on("GET", "/api/story/:cat/:n/play", ({ cat, n }, _b, q) => {
-  const P = planOf(cat, q.get("track") || "all"), { ch, st } = stageOf(P, n);
+  const P = planOf(cat, q.get("track") || "all"); if (P.empty) throw err(404, `บ้านนี้ยังไม่มีบทเรียนของชั้น ${P.grade}`); const { ch, st } = stageOf(P, n);
   if (!st.unlocked) throw err(403, "ด่านนี้ยังล็อกอยู่ ผ่านด่านก่อนหน้าก่อนนะ");
   const g = gameById(st.gid), L = Lessons.lessonById(g.lesson);
   const gG = gradeOfTrack(q.get("track")), sk = gG >= 0 ? `${g.lesson}@${gG}` : g.lesson; // ประวัติข้อที่เห็นแยกตามชั้น
@@ -398,7 +411,7 @@ on("GET", "/api/story/:cat/:n/play", ({ cat, n }, _b, q) => {
   return { game: { ...gameRow(g), template: best.template, templateName: best.templateName, howTo: best.howTo, timeLimitSec: best.timeLimitSec, questionCount: best.questions.length },
     questions: playableQs(best.template, best.questions), preview: false, key: best.key,
     boss: J.pickBoss(g.lesson + (st.boss ? "|boss" : ""), st.level, st.boss && ch.n >= 4 && eliteUnlocked(), { storyBoss: !!st.boss }),
-    story: { cat, n: st.n, total: P.total, chapter: ch.n, chapterTitle: ch.title, chapterIntro: ch.intro, levelName: ch.levelName, line: st.line, boss: st.boss, villain: P.villain, house: P.house, prevStars: st.stars, next: next ? { n: next.n, lesson: next.lesson } : null } };
+    story: { cat, n: st.n, total: P.total, chapter: ch.n, chapterTitle: ch.title, chapterIntro: ch.intro, levelName: ch.levelName, line: st.line, boss: st.boss, villain: P.villain, house: P.house, prevStars: st.stars, g: gG, next: next ? { n: next.n, lesson: next.lesson } : null } };
 });
 on("GET", "/api/quizzes", (_p, _b, q) => {
   const t = (q.get("q") || "").toLowerCase();

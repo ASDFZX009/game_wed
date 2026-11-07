@@ -23,7 +23,7 @@ const graphemes = (s) => { try { return [...new Intl.Segmenter("th", { granulari
 // ---------- รวมคลังคำถามจากทุกหมวด ----------
 // บทเรียนใหม่ต่อท้ายไว้ในไฟล์ extra.js เสมอ (ลำดับบทเรียน = รหัสเกม → ความคืบหน้าเดิมของผู้เล่นไม่เลื่อน)
 const EXTRA = require("./extra");
-const BANKS = [require("./math"), require("./science"), require("./thai"), require("./english"), require("./social"), require("./health"), require("./early"), require("./brain"), require("./general"), EXTRA];
+const BANKS = [require("./math"), require("./science"), require("./thai"), require("./english"), require("./social"), require("./health"), require("./early"), require("./brain"), require("./general"), EXTRA, require("./grades-plus")];
 const LESSONS = BANKS.flat();
 const BY_ID = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
 // คำถามเพิ่มเติมของบทเรียนเดิม
@@ -288,4 +288,12 @@ function build(L, opts) {
 }
 
 const lessonById = (id) => BY_ID[id] || null;
-module.exports = { LESSONS, LEVELS, MODES, COUNTS, SETS, build, parseKey, setupOf, lessonById, prep, graphemes, gradeLabel, ROUTE, ROUTED_FISH, ROUTED_LEGACY };
+// บทเรียนนี้มีคำถามของชั้น g จริงไหม (ใช้จัดด่านแยกชั้น): โจทย์สร้างอัตโนมัติ = มีทุกชั้นในช่วง · คลังคำถาม = ต้องมีข้อของชั้นนั้นอย่างน้อย 5 ข้อ
+const MIN_PER_GRADE = 5, hasCache = new Map();
+function hasGrade(L, g) {
+  if (!L || g < L.grade[0] || g > L.grade[1]) return false;
+  if (L.gen || L.ggen) return true;
+  const k = L.id + "@" + g; if (!hasCache.has(k)) { const P = prep(L); hasCache.set(k, [...P.qa, ...P.tf].filter((x) => x.gr === g).length >= MIN_PER_GRADE); }
+  return hasCache.get(k);
+}
+module.exports = { hasGrade, LESSONS, LEVELS, MODES, COUNTS, SETS, build, parseKey, setupOf, lessonById, prep, graphemes, gradeLabel, ROUTE, ROUTED_FISH, ROUTED_LEGACY };

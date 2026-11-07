@@ -11,10 +11,13 @@ const signURL = (id) => { if (!signCache.has(id)) { const s = subjectSign(id), c
 // สายชั้น: เน้นด่านที่ตรงช่วงชั้นของผู้เล่น (ด่านอื่นจางลง แต่ยังเล่นได้)
 // ชั้นเรียนของผู้เล่น: เลือกครั้งเดียว ใช้ทุกบ้าน → คำถามตรงชั้น (g0 อนุบาล · g1–g6 ป.1–ป.6 · g7–g12 ม.1–ม.6)
 const GL = (g) => (g === 0 ? "อนุบาล" : g <= 6 ? `ป.${g}` : `ม.${g - 6}`);
-const TRACKS = [["all", "ทุกชั้น"], ...Array.from({ length: 13 }, (_, g) => [`g${g}`, GL(g)])];
+// แบ่งตามชั้นชัดเจน: ต้องเลือกชั้นก่อนเล่น (ไม่มีตัวเลือก "ทุกชั้น") · แต่ละชั้นมีเส้นทางและดาวของตัวเอง
 const TRACK_RANGE = { all: [0, 12], ...Object.fromEntries(Array.from({ length: 13 }, (_, g) => [`g${g}`, [g, g]])) };
-let track = (() => { try { const t = localStorage.getItem("qo:track"); return TRACK_RANGE[t] ? t : "all"; } catch { return "all"; } })();
-const trackPicked = () => { try { return !!TRACK_RANGE[localStorage.getItem("qo:track")]; } catch { return true; } };
+let track = (() => { try { const t = localStorage.getItem("qo:track"); return /^g\d+$/.test(t || "") && TRACK_RANGE[t] ? t : "all"; } catch { return "all"; } })();
+const trackPicked = () => track !== "all";
+const setTrack = (t) => { track = t; try { localStorage.setItem("qo:track", t); } catch { /* ignore */ } };
+// ปุ่มเลือกชั้น: อนุบาล · ประถม ป.1–ป.6 · มัธยม ม.1–ม.6
+const gradeGrid = () => html`<div class="hz-grades">${[["", [0]], ["ประถม", [1, 2, 3, 4, 5, 6]], ["มัธยม", [7, 8, 9, 10, 11, 12]]].map(([lab, gs]) => html`<div class="hz-grow">${lab ? html`<small>${lab}</small>` : ""}${gs.map((g) => html`<button type="button" class="${track === `g${g}` ? "on" : ""}" data-track="g${g}" aria-pressed="${track === `g${g}`}">${GL(g)}</button>`)}</div>`)}</div>`;
 const inTrack = (gr) => { const [a, b] = TRACK_RANGE[track] || TRACK_RANGE.all; return !gr || (gr[0] <= b && gr[1] >= a); };
 const stars = (n) => html`<span class="hz-st" aria-label="${n} ดาว">${[1, 2, 3].map((i) => html`<i class="${i <= n ? "on" : ""}">★</i>`)}</span>`;
 
@@ -32,13 +35,28 @@ export function openHouse({ cat, onClose, onPlayState }) {
 
   async function showMap(focusN) {
     stopGame?.(); stopGame = null; onPlayState?.(false); el.classList.remove("playing"); el.querySelector("[data-x]").textContent = "⬅ ออกจากบ้าน";
+    if (!trackPicked()) { // ยังไม่ได้เลือกชั้น → เลือกก่อน แล้วค่อยเปิดแผนที่ของชั้นนั้น
+      body.innerHTML = html`<div class="hz-track ask"><p class="hz-ask">👋 เลือกชั้นเรียนของคุณก่อนเริ่ม — ด่านและคำถามทั้งหมดจะเป็นของชั้นนั้นเท่านั้น</p>${gradeGrid()}</div>`.s;
+      body.querySelectorAll("[data-track]").forEach((b) => (b.onclick = () => { setTrack(b.dataset.track); showMap(); })); return;
+    }
     body.innerHTML = '<div class="loading" aria-busy="true">กำลังเปิดแผนที่…</div>';
     try { plan = await api(`/api/story/${cat}?track=${track}`); } catch (e) { body.innerHTML = html`<div class="card center"><p>${e.message}</p></div>`.s; return; }
-    titleEl.innerHTML = html`<img src="${signURL(cat)}" alt=""><b>${plan.house?.name || ""}</b>`.s;
+    titleEl.innerHTML = html`<img src="${signURL(cat)}" alt=""><b>${plan.house?.name || ""}</b><span class="hz-gtag">${plan.grade || ""}</span>`.s;
+    const trackBox = html`<div class="hz-track"><span>🎓 ชั้นเรียนของฉัน: <b>${plan.grade}</b></span><button type="button" class="hz-chg" data-chg>เปลี่ยนชั้น</button>
+      <div class="hz-gpick" hidden>${gradeGrid()}</div>
+      <p class="hz-gnote">ทุกด่านในแผนที่นี้เป็นบทเรียนและคำถามของชั้น <b>${plan.grade}</b> เท่านั้น · บทหลัง ๆ ข้อเยอะขึ้นและมีจับเวลา · ดาวเก็บแยกตามชั้น</p></div>`;
+    const bindTrack = () => {
+      body.querySelector("[data-chg]")?.addEventListener("click", () => { const g = body.querySelector(".hz-gpick"); g.hidden = !g.hidden; });
+      body.querySelectorAll("[data-track]").forEach((b) => (b.onclick = () => { setTrack(b.dataset.track); showMap(); }));
+    };
+    if (plan.empty) {
+      progEl.innerHTML = "";
+      body.innerHTML = html`${trackBox}<div class="card center hz-empty"><div style="font-size:2.4rem">📭</div>${cat === "early" ? html`<h3>บ้านปฐมวัยเป็นบ้านของอนุบาลและ ป.1</h3><p class="muted">บทเรียนชั้น ${plan.grade} อยู่ในบ้านวิชาอื่นครบทุกบ้าน — ลองบ้านคณิต วิทย์ ภาษาไทย ภาษาอังกฤษ ฯลฯ</p>` : html`<h3>บ้านนี้ยังไม่มีบทเรียนของชั้น ${plan.grade}</h3><p class="muted">ลองบ้านวิชาอื่น หรือเปลี่ยนชั้นเรียนด้านบน</p>`}</div>`.s;
+      bindTrack(); return;
+    }
     progEl.innerHTML = html`<span>★ ${plan.got}<small>/${plan.max}</small></span><span>ด่าน ${Math.min(plan.current, plan.total)}/${plan.total}</span>`.s;
     body.innerHTML = html`<div class="hz-intro"><span class="hz-villain">${{ math: "🧙‍♂️", science: "☁️", thai: "👻", english: "👸", social: "🦹", health: "👹", early: "🐱", brain: "🌑", general: "🦉" }[cat] || "👾"}</span><p>${plan.intro}</p></div>
-      <div class="hz-track ${trackPicked() ? "" : "ask"}" role="group" aria-label="เลือกชั้นเรียนของฉัน">${trackPicked() ? "" : html`<p class="hz-ask">👋 เลือกชั้นเรียนของคุณก่อนเริ่ม — คำถามจะตรงกับชั้นของคุณ และข้ามด่านที่ไม่ใช่ชั้นของคุณได้</p>`}<span>🎓 ชั้นเรียนของฉัน:</span><div class="hz-grades">${TRACKS.map(([k, t]) => html`<button type="button" class="${track === k ? "on" : ""} ${k === "all" ? "all" : ""}" data-track="${k}" aria-pressed="${track === k}">${t}</button>`)}</div>
-        ${track !== "all" ? html`<p class="hz-gnote">คำถามทุกด่านจะเป็นของชั้น <b>${TRACKS.find((x) => x[0] === track)[1]}</b> เท่านั้น · บทหลัง ๆ ข้อเยอะขึ้นและมีจับเวลา</p>` : ""}</div>
+      ${trackBox}
       ${plan.chapters.map((ch) => { const open = ch.stages.some((s) => s.unlocked); return html`<section class="hz-ch lv${ch.level} ${open ? "" : "locked"}">
         <header><h2>${ch.title}</h2><span class="hz-lv">${"●".repeat(ch.level)}${"○".repeat(5 - ch.level)} ${ch.levelName}</span></header>
         <p class="hz-chi">${open ? ch.intro : "🔒 ผ่านบทก่อนหน้าเพื่อเปิดบทนี้"}</p>
@@ -46,7 +64,7 @@ export function openHouse({ cat, onClose, onPlayState }) {
           <button type="button" data-n="${s.n}" ${s.unlocked ? "" : raw("disabled")} aria-label="ด่าน ${s.n} ${s.lesson}${s.boss ? " (บอส)" : ""} ${s.unlocked ? `${s.stars} ดาว` : "ล็อกอยู่"}">
             <span class="hz-num">${s.unlocked ? (s.boss ? "👑" : s.n) : "🔒"}</span><span class="hz-ic">${s.icon}</span></button>
           <span class="hz-name">${s.lesson}</span><span class="hz-gr">${s.grade || ""}</span>${s.unlocked ? stars(s.stars) : ""}</li>`)}</ol></section>`; })}`.s;
-    body.querySelectorAll("[data-track]").forEach((b) => (b.onclick = () => { track = b.dataset.track; try { localStorage.setItem("qo:track", track); } catch { /* ignore */ } showMap(+body.querySelector(".hz-node.cur button")?.dataset.n || 0); }));
+    bindTrack();
     body.querySelectorAll("[data-n]").forEach((b) => (b.onclick = () => sheet(+b.dataset.n)));
     const cur = body.querySelector(focusN ? `[data-n="${focusN}"]` : ".hz-node.cur button") || body.querySelector("[data-n]");
     cur?.scrollIntoView({ block: "center" }); cur?.focus({ preventScroll: true });
@@ -57,8 +75,7 @@ export function openHouse({ cat, onClose, onPlayState }) {
     const sh = document.createElement("div"); sh.className = "hz-sheet"; sh.setAttribute("role", "dialog"); sh.setAttribute("aria-label", `ด่าน ${n}`);
     sh.innerHTML = html`<div class="hz-card"><span class="hz-tag">${chp.title} · ด่าน ${n}${st.boss ? " · ด่านบอส" : ""}</span>
       <div class="hz-big">${st.icon}</div><h3>${st.lesson}</h3><p>${st.line}</p>
-      <div class="hz-meta"><span>🎓 ${(() => { const tg = +String(track).slice(1), gr = st.gr || [0, 12]; if (!/^g\d+$/.test(track)) return st.grade || "-";
-        const q = Math.min(gr[1], Math.max(gr[0], tg)); return q === tg ? `คำถามชั้น ${GL(tg)}` : `คำถามชั้น ${GL(q)} (บทเรียนนี้ไม่มีชั้น ${GL(tg)})`; })()}</span><span>ความยาก ${chp.levelName}</span><span>${{ mcq: "🎯 ปรนัย", truefalse: "⚖️ ถูกหรือผิด", timed: "⏱️ ท้าเวลา" }[st.mode]}</span><span>${st.count} ข้อ</span></div>
+      <div class="hz-meta"><span>🎓 คำถามชั้น ${plan.grade || st.grade || "-"}</span><span>ความยาก ${chp.levelName}</span><span>${{ mcq: "🎯 ปรนัย", truefalse: "⚖️ ถูกหรือผิด", timed: "⏱️ ท้าเวลา" }[st.mode]}</span><span>${st.count} ข้อ</span></div>
       ${st.stars ? html`<p class="hz-best">ดีที่สุด ${stars(st.stars)} · เล่นซ้ำได้ คำถามจะไม่ซ้ำเดิมจนกว่าจะครบคลัง</p>` : html`<p class="hz-best">ได้อย่างน้อย ★ เพื่อเปิดด่านถัดไป</p>`}
       <div class="hz-act"><button type="button" class="btn btn-ghost" data-c>ปิด</button><button type="button" class="btn" data-go>⚔️ เข้าสู่ด่าน</button></div></div>`.s;
     el.querySelector(".hz-box").appendChild(sh);
@@ -87,11 +104,26 @@ export function openPicker({ onPick, onClose }) {
   let closed = false; const close = (picked) => { if (closed) return; closed = true; el.remove(); document.body.classList.remove("hz-open"); document.removeEventListener("keydown", onKey); onClose?.(picked || null); if (picked) onPick(picked); };
   const onKey = (e) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
   document.addEventListener("keydown", onKey); el.querySelector("[data-x]").onclick = () => close(); el.querySelector(".hz-dim").onclick = () => close();
-  Promise.all(CAT_ORDER.map((c) => api(`/api/story/${c}?track=${track}`).catch(() => null))).then((plans) => { if (closed) return;
-    el.querySelector(".hz-body").innerHTML = html`<p class="hz-pick-lead">เลือกบ้านแล้วออกผจญภัยในเรื่องราวของแต่ละวิชา — ยิ่งไปไกล คำถามยิ่งยากขึ้น</p><div class="hz-grid">${plans.map((P, i) => P ? html`<button type="button" class="hz-house" data-cat="${CAT_ORDER[i]}">
+  const bodyEl = el.querySelector(".hz-body");
+  const bindGrades = () => bodyEl.querySelectorAll("[data-track]").forEach((b) => (b.onclick = () => { setTrack(b.dataset.track); load(); }));
+  function load() {
+    if (!trackPicked()) { // เลือกชั้นก่อน → บ้านทุกหลังจะแสดงเฉพาะบทเรียนของชั้นนั้น
+      bodyEl.innerHTML = html`<div class="hz-track ask"><p class="hz-ask">👋 เลือกชั้นเรียนของคุณก่อน — ทุกบ้านจะมีเฉพาะบทเรียนและคำถามของชั้นนั้น</p>${gradeGrid()}</div>`.s; bindGrades(); return;
+    }
+    bodyEl.innerHTML = '<div class="loading">กำลังโหลด…</div>';
+    Promise.all(CAT_ORDER.map((c) => api(`/api/story/${c}?track=${track}`).catch(() => null))).then((plans) => { if (closed) return;
+      const gName = GL(+track.slice(1));
+      bodyEl.innerHTML = html`<div class="hz-track"><span>🎓 ชั้นเรียนของฉัน: <b>${gName}</b></span><button type="button" class="hz-chg" data-chg>เปลี่ยนชั้น</button><div class="hz-gpick" hidden>${gradeGrid()}</div></div>
+        <p class="hz-pick-lead">เลือกบ้านแล้วออกผจญภัย — ทุกด่านเป็นบทเรียนของชั้น ${gName} · ยิ่งไปไกล ข้อยิ่งเยอะและมีจับเวลา</p><div class="hz-grid">${plans.map((P, i) => !P ? "" : P.empty
+        ? html`<button type="button" class="hz-house empty" disabled><img src="${signURL(CAT_ORDER[i])}" alt=""><b>${P.house?.name}</b><span class="hz-sub">${CAT_ORDER[i] === "early" ? "🧸 บ้านของอนุบาล–ป.1" : `📭 ยังไม่มีบทเรียนของชั้น ${gName}`}</span></button>`
+        : html`<button type="button" class="hz-house" data-cat="${CAT_ORDER[i]}">
       <img src="${signURL(CAT_ORDER[i])}" alt=""><b>${P.house?.name}</b><span class="hz-vil">ศัตรู: ${STORY[CAT_ORDER[i]].villain}</span>
-      <span class="hz-bar"><i style="width:${(P.got / P.max) * 100}%"></i></span><span class="hz-sub">★ ${P.got}/${P.max} · ด่าน ${Math.min(P.current, P.total)}/${P.total}</span><span class="hz-sub">🎓 ${P.gradeSpan || ""}</span></button>` : "")}</div>`.s;
-    el.querySelectorAll("[data-cat]").forEach((b) => (b.onclick = () => close(b.dataset.cat)));
-    el.querySelector("[data-cat]")?.focus(); });
+      <span class="hz-bar"><i style="width:${(P.got / P.max) * 100}%"></i></span><span class="hz-sub">★ ${P.got}/${P.max} · ด่าน ${Math.min(P.current, P.total)}/${P.total}</span><span class="hz-sub">🎓 ${gName} · ${P.chapters[0].stages.length} บทเรียน</span></button>`)}</div>`.s;
+      bodyEl.querySelector("[data-chg]").onclick = () => { const g = bodyEl.querySelector(".hz-gpick"); g.hidden = !g.hidden; };
+      bindGrades();
+      bodyEl.querySelectorAll("[data-cat]").forEach((b) => (b.onclick = () => close(b.dataset.cat)));
+      bodyEl.querySelector("[data-cat]")?.focus(); });
+  }
+  load();
   return { close: () => close() };
 }
