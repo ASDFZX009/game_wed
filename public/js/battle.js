@@ -13,7 +13,6 @@ import "../vendor/pxfx/fx/venom-pool.js"; import "../vendor/pxfx/fx/dust-devil.j
 import "../vendor/pxfx/fx/arcane-missile.js"; import "../vendor/pxfx/fx/shadow-glaive.js"; import "../vendor/pxfx/fx/astral-convergence.js"; import "../vendor/pxfx/fx/black-hole.js";
 import "../vendor/pxfx/fx/soul-siphon.js"; import "../vendor/pxfx/fx/starblade-cataclysm.js"; import "../vendor/pxfx/fx/golden-chain-rain.js"; import "../vendor/pxfx/fx/azure-sweep.js";
 import { html, raw, esc, toast, api, state as appState } from "./core.js";
-import { getPrefs } from "./prefs.js";
 import { ROSTER, PASSIVE, ITEMS as GITEMS, hasPas } from "../gacha/data.js";
 import { myTeam, frameImg, frameUrl } from "./gacha-client.js";
 import { shout } from "./talk.js";
@@ -176,9 +175,9 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       g.addColorStop(0, `rgba(255,255,255,${0.9 * ch})`); g.addColorStop(0.4, `rgba(${er},${eg},${eb},${0.7 * ch})`); g.addColorStop(1, `rgba(${er},${eg},${eb},0)`); x.fillStyle = g; x.fillRect(hx2 - 16, hy2 - 16, 32, 32); x.globalCompositeOperation = "source-over"; }
   }
   // ความลื่น: เครื่องช้า (เฟรมเฉลี่ยเกิน ~22ms) → โหมดเบา วาดฉาก 30fps และเอฟเฟกต์ 20fps (ภาพพิกเซลดูไม่ต่าง แต่ไม่กระตุก)
-  const perf = { lite: LITE.on || getPrefs().gfx === "low", avg: 16.7, last: 0, n: 0, drawn: 0 };
+  const perf = { lite: LITE.on, avg: 16.7, last: 0, n: 0, drawn: 0 };
   const loop = (now) => { if (!alive) return; raf = requestAnimationFrame(loop);
-    if (perf.last) { const d = Math.min(100, now - perf.last); perf.avg += (d - perf.avg) * 0.08; if (++perf.n > 45 && !perf.lite && getPrefs().gfx !== "high" && perf.avg > 22) { perf.lite = LITE.on = true; document.body.classList.add("fx-lite"); } }
+    if (perf.last) { const d = Math.min(100, now - perf.last); perf.avg += (d - perf.avg) * 0.08; if (++perf.n > 45 && !perf.lite && perf.avg > 22) { perf.lite = LITE.on = true; document.body.classList.add("fx-lite"); } }
     perf.last = now;
     if (perf.lite && now - perf.drawn < 31) return; perf.drawn = now; draw(now); };
 

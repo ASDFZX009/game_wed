@@ -15,7 +15,7 @@ const T = 64, SPR = () => globalThis.QO_SPR || {};
 const GFX = { high: { dpr: 2, parts: 90, budget: 7, portal: 2, clouds: 1, magic: 2, fps: 0 }, med: { dpr: 1, parts: 45, budget: 6, portal: 3, clouds: 1, magic: 1, fps: 0 }, low: { dpr: 1, res: 0.7, parts: 0, budget: 4, portal: 5, clouds: 0, magic: 0, fps: 30 } };
 const pref = () => { const g = getPrefs().gfx; return g === "high" || g === "med" || g === "low" ? g : "auto"; };
 const isWeak = () => (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 3;
-let gfxMode = pref(), gfx = gfxMode === "auto" ? (isWeak() ? "med" : "high") : gfxMode, Q = GFX[gfx];
+let gfxMode = "med", gfx = "med", Q = GFX[gfx]; // ใช้ระดับกลางคงที่ทุกเครื่อง (ไม่มีหน้าตั้งค่ากราฟิก)
 const reduced = reducedOpt; loadSprites();
 const REG = { x0: 15, y0: 12, x1: 65, y1: 57 }; // พื้นที่ตัวอย่าง (ช่อง): ใจกลางหมู่บ้าน + ลานซุ้มประตูโบราณ
 const inReg = (tx, ty, pad = 3) => tx > REG.x0 - pad && tx < REG.x1 + pad && ty > REG.y0 - pad && ty < REG.y1 + pad;
