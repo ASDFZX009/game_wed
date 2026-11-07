@@ -61,7 +61,7 @@ export function mountMeadowBg({ reduced = false } = {}) {
   const cv = document.createElement("canvas"); cv.className = "meadow-bg"; cv.setAttribute("aria-hidden", "true"); document.body.prepend(cv);
   const x = cv.getContext("2d"); let S = 2, W = 0, H = 0, base = null, raf = 0, alive = true;
   const petals = Array.from({ length: 22 }, (_, i) => ({ x: hash(i, 1, 5), y: hash(i, 2, 5), s: 0.4 + hash(i, 3, 5), c: ["#ffd6e6", "#fff4d0", "#f6c840", "#ffffff"][i % 4] }));
-  const layout = () => { S = innerWidth < 700 ? 1 : innerWidth > 1800 ? 3 : 2; W = Math.ceil(innerWidth / S); H = Math.ceil(innerHeight / S); cv.width = W; cv.height = H; base = bakeMeadow(W, H, S); };
+  const layout = () => { const vw = innerWidth || 1280, vh = innerHeight || 720; S = vw < 700 ? 1 : vw > 1800 ? 3 : 2; W = Math.max(1, Math.ceil(vw / S)); H = Math.max(1, Math.ceil(vh / S)); cv.width = W; cv.height = H; base = bakeMeadow(W, H, S); };
   const draw = (now) => { const t = now / 1000; x.imageSmoothingEnabled = false; x.drawImage(base, 0, 0);
     x.fillStyle = "rgba(10,30,40,.12)"; for (let i = 0; i < 3; i++) { const cx = ((i * 0.41 + t * 0.01) % 1.4 - 0.2) * W, cy = H * (0.25 + i * 0.28); x.beginPath(); x.ellipse(cx, cy, W * 0.22, H * 0.12, 0.2, 0, 7); x.fill(); }
     for (const p of petals) { const px = ((p.x + t * 0.022 * p.s) % 1) * (W + 20) - 10, py = ((p.y + t * 0.016 * p.s) % 1) * (H + 20) - 10 + Math.sin(t * 2 + p.x * 9) * 4; x.fillStyle = p.c; x.fillRect(Math.round(px), Math.round(py), Math.floor(t * 4 + p.x * 9) % 2 ? 2 : 1, 1); } };
@@ -116,7 +116,7 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
   const petals = Array.from({ length: 26 }, (_, i) => ({ x: hash(i, 1, 3), y: hash(i, 2, 3), s: 0.4 + hash(i, 3, 3), c: ["#ffd6e6", "#fff4d0", "#f6c840", "#ffffff"][i % 4] }));
 
   function layout() {
-    const vw = innerWidth, vh = innerHeight; S = vw < 700 ? 1 : vw > 1800 ? 3 : 2; W = Math.ceil(vw / S); H = Math.ceil(vh / S);
+    const vw = innerWidth || 1280, vh = innerHeight || 720; /* หน้าต่างกว้าง 0 (ย่อ/ซ่อน) ไม่ให้พัง */ S = vw < 700 ? 1 : vw > 1800 ? 3 : 2; W = Math.ceil(vw / S); H = Math.ceil(vh / S);
     bg.width = W; bg.height = H; bg.style.width = W * S + "px"; bg.style.height = H * S + "px"; base = bakeMeadow(W, H, S);
     const rb = root.querySelector(".ti-ribbon").getBoundingClientRect(); trailY = (rb.top + rb.height / 2) / S;
   }

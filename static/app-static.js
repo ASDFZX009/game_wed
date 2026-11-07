@@ -310,20 +310,37 @@ window.addEventListener("hashchange", () => {
   if (/(^|&)(access_token|error)=/.test(location.hash.slice(1))) return location.reload();
   render();
 });
+// เริ่มเกม: ขั้นไหนช้าหรือพังต้องไม่ทำให้ค้างที่ "กำลังโหลด…" — มีเวลาจำกัดทุกขั้นที่ต่อเน็ต และวาดหน้าเสมอ
+const within = (p, ms, msg) => Promise.race([p, new Promise((_, no) => setTimeout(() => no(Object.assign(new Error(msg), { timeout: true })), ms))]);
+const bootGuard = setTimeout(() => { // กันไว้อีกชั้น: ผ่านไปนานแล้วยังไม่มีหน้า → ให้ปุ่มลองใหม่
+  const main = document.getElementById("app"); if (!main || !main.querySelector(":scope > .loading")) return;
+  main.innerHTML = html`<div class="card center narrow"><h2>โหลดนานกว่าปกติ</h2><p class="muted">อินเทอร์เน็ตอาจช้า หรือข้อมูลในเครื่องมีปัญหา</p>
+    <p><button class="btn" type="button" data-retry>🔄 ลองใหม่</button></p></div>`.s;
+  main.querySelector("[data-retry]").onclick = () => location.reload();
+}, 20000);
 (async () => {
-  const ci = await C.initCloud();
-  state.config = { ...(await api("/api/config")), cloud: ci.enabled };
-  state.realtime = () => C.realtimeInfo();
-  if (ci.enabled && C.currentUser()) {
-    try { await connectAccount(C.currentUser()); }
-    catch (e) { if (!e.expired) toast("โหลดความคืบหน้าจากบัญชีไม่ได้: " + e.message, "bad"); }
+  let ci = { enabled: false };
+  try {
+    try { ci = await within(C.initCloud(), 6000, "เชื่อมต่อระบบบัญชีช้าเกินไป"); } catch (e) { ci = { enabled: !e.timeout ? false : true }; toast("เชื่อมต่อระบบบัญชีไม่ได้ ตอนนี้เล่นแบบในเครื่องไปก่อน", "bad"); }
+    state.config = { ...(await api("/api/config")), cloud: ci.enabled };
+    state.realtime = () => C.realtimeInfo();
+    if (ci.enabled && C.currentUser()) {
+      const ld = document.querySelector("#app > .loading"); if (ld) ld.textContent = "กำลังโหลดความคืบหน้าจากบัญชี…";
+      try { await within(connectAccount(C.currentUser()), 8000, "โหลดความคืบหน้าจากบัญชีช้าเกินไป ลองรีเฟรชอีกครั้ง"); }
+      catch (e) { if (!e.expired) toast("โหลดความคืบหน้าจากบัญชีไม่ได้: " + e.message, "bad"); }
+    }
+    else if (ownedByAccount()) { try { await dropCloud(); } catch (e) { console.warn("dropCloud", e); } } // เซสชันหายไปแล้ว: ไม่แสดงความคืบหน้าของบัญชีค้างไว้
+    state.me = (await api("/api/auth/me")).user;
+    loadPrefs();
+    if (ci.link?.error) { toast(ci.link.error, "bad"); location.hash = "login"; }
+    else if (ci.link?.type === "recovery") location.hash = "reset-password";
+    else if (ci.link) { toast(`ยืนยันอีเมลเรียบร้อย ยินดีต้อนรับ ${state.me.displayName}! ☁️`); enterAfterAuth(ci.link.type === "signup"); }
+  } catch (e) {
+    console.error("boot", e); toast("เริ่มเกมไม่สมบูรณ์: " + (e.message || e), "bad");
+    if (!state.config) state.config = { cloud: ci.enabled };
+    if (!state.me) { try { state.me = (await api("/api/auth/me")).user; } catch { /* วาดหน้าด้วยข้อมูลว่าง */ } }
   }
-  else if (ownedByAccount()) await dropCloud(); // เซสชันหายไปแล้ว: ไม่แสดงความคืบหน้าของบัญชีค้างไว้
-  state.me = (await api("/api/auth/me")).user;
-  loadPrefs();
-  if (ci.link?.error) { toast(ci.link.error, "bad"); location.hash = "login"; }
-  else if (ci.link?.type === "recovery") location.hash = "reset-password";
-  else if (ci.link) { toast(`ยืนยันอีเมลเรียบร้อย ยินดีต้อนรับ ${state.me.displayName}! ☁️`); enterAfterAuth(ci.link.type === "signup"); }
+  clearTimeout(bootGuard);
   render();
   if (!ci.enabled) connectRemote(async () => { await refreshMe(); render(); toast("โหลดความคืบหน้าจากบัญชีของคุณแล้ว"); });
 })();

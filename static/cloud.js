@@ -54,8 +54,11 @@ async function call(path, { method = "GET", body, auth = false, headers = {} } =
   const h = { apikey: CFG.key, "Content-Type": "application/json", ...headers };
   if (auth && session) h.Authorization = "Bearer " + session.access_token; // ไม่ส่ง key เป็น Bearer: ใช้ได้ทั้ง anon key แบบเดิมและ publishable key แบบใหม่
   let r;
-  try { r = await fetch(CFG.url + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) }); }
+  // เน็ตค้าง → ยกเลิกหลัง 10 วินาที (ไม่ให้หน้าเกมรอไปตลอด)
+  const ac = typeof AbortController === "function" ? new AbortController() : null, to = ac && setTimeout(() => ac.abort(), 10000);
+  try { r = await fetch(CFG.url + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body), signal: ac?.signal }); }
   catch { throw Object.assign(new Error("เชื่อมต่อเซิร์ฟเวอร์บัญชีไม่ได้ ตรวจอินเทอร์เน็ตแล้วลองใหม่"), { status: 0, network: true }); }
+  finally { if (to) clearTimeout(to); }
   const text = await r.text();
   let data = null; try { data = text ? JSON.parse(text) : null; } catch { data = { message: text }; }
   if (!r.ok) {
