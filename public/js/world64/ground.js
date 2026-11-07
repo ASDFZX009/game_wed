@@ -65,14 +65,16 @@ export function makeTypeFn(M, PLAZA) {
 }
 
 /** ระบายสีพื้นของสี่เหลี่ยมหนึ่ง (ชิ้นแผนที่) → ImageData */
-export function bakeChunk(M, PLAZA, typeAt, X0, Y0, w, h) {
+export function bakeChunk(M, PLAZA, typeAt, X0, Y0, w, h) { const g = bakeChunkGen(M, PLAZA, typeAt, X0, Y0, w, h); let r; while (!(r = g.next()).done); return r.value; }
+/** แบบทยอยทำ: yield ทุก ๆ ไม่กี่แถว เพื่อแบ่งงานข้ามเฟรม (ไม่ให้เกมกระตุกตอนเดินเข้าพื้นที่ใหม่) */
+export function* bakeChunkGen(M, PLAZA, typeAt, X0, Y0, w, h) {
   const MG = 26, W2 = w + MG * 2, H2 = h + MG * 2, tp = new Uint8Array(W2 * H2);
-  for (let y = 0; y < H2; y++) for (let x = 0; x < W2; x++) tp[y * W2 + x] = typeAt(X0 - MG + x, Y0 - MG + y);
+  for (let y = 0; y < H2; y++) { for (let x = 0; x < W2; x++) tp[y * W2 + x] = typeAt(X0 - MG + x, Y0 - MG + y); if ((y & 3) === 3) yield; }
   const ty = (X, Y) => { const x = X - X0 + MG, y = Y - Y0 + MG; return x < 0 || y < 0 || x >= W2 || y >= H2 ? 0 : tp[y * W2 + x]; };
   const wd = (X, Y) => { const fx = X / T - 0.5, fy = Y / T - 0.5, x0 = Math.floor(fx), y0 = Math.floor(fy), u = fx - x0, v = fy - y0, s = (x, y) => (M.inb(x, y) ? M.wdist[M.at(x, y)] : 0);
     return s(x0, y0) * (1 - u) * (1 - v) + s(x0 + 1, y0) * u * (1 - v) + s(x0, y0 + 1) * (1 - u) * v + s(x0 + 1, y0 + 1) * u * v; };
   const img = new ImageData(w, h), D = img.data;
-  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+  for (let y = 0; y < h; y++) { if ((y & 3) === 0) yield; for (let x = 0; x < w; x++) {
     const X = X0 + x, Y = Y0 + y, t = ty(X, Y); let c;
     if (t === 0) {
       c = grassRGB(X, Y);
@@ -109,7 +111,8 @@ export function bakeChunk(M, PLAZA, typeAt, X0, Y0, w, h) {
       if ((X & 63) >= 4 && (X & 63) < 7 && py > 5 && py < 9) c = [64, 64, 70];
     } else { c = flagRGB(X, Y); if (ty(X, Y - 3) === 0 || ty(X, Y - 6) === 0) c = mul(c, 0.72); }
     const i = (y * w + x) * 4; D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; D[i + 3] = 255;
-  }
+  } }
+  yield;
   // กอหญ้ายาว (เส้นใบ) วาดทับทีละกอ — ทำให้หญ้าดูมีมิติ
   const put = (X, Y, c) => { const x = X - X0, y = Y - Y0; if (x < 0 || y < 0 || x >= w || y >= h) return; const i = (y * w + x) * 4; D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; };
   const CS = 14;
@@ -127,5 +130,14 @@ export function bakeChunk(M, PLAZA, typeAt, X0, Y0, w, h) {
     const col = [[244, 240, 232], [246, 214, 90], [236, 120, 170], [180, 150, 240]][(hash(cx, cy, 99) * 4) | 0];
     for (const [dx, dy, k] of [[1, 0, 1], [0, 1, 0.85], [2, 1, 0.7], [1, 2, 0.6]]) put(bx + dx, by + dy, mul(col, k)); put(bx + 1, by + 1, [255, 230, 120]); put(bx + 1, by + 3, G_DARK);
   }
+  return img;
+}
+
+/** ภาพตัวอย่างหยาบ (1 จุดต่อ 8px) ใช้แสดงชั่วคราวระหว่างทยอยวาดชิ้นจริง — เร็วมาก */
+export function previewChunk(M, PLAZA, typeAt, X0, Y0, w, h) {
+  const S = 8, pw = Math.ceil(w / S), ph = Math.ceil(h / S), img = new ImageData(pw, ph), D = img.data;
+  for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) { const X = X0 + x * S + 4, Y = Y0 + y * S + 4, t = typeAt(X, Y);
+    const c = t === 0 ? grassRGB(X, Y) : t === 1 ? dirtRGB(X, Y, 0) : t === 2 ? [40, 84, 100] : t === 3 ? [140, 96, 54] : flagRGB(X, Y), i = (y * pw + x) * 4;
+    D[i] = c[0]; D[i + 1] = c[1]; D[i + 2] = c[2]; D[i + 3] = 255; }
   return img;
 }

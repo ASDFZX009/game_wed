@@ -1725,3 +1725,4 @@ body.has-hud .gc { height: calc(100dvh - var(--hud-top) - var(--dock-h)); }
 .w64 .world-canvas { position: absolute; left: 0; top: 0; image-rendering: pixelated; }
 .w64 .w-haze { top: 0; height: 45%; mix-blend-mode: screen; background: linear-gradient(rgba(255,226,180,.24), rgba(255,226,180,0)); }
 .w64.w-is-night .w-haze, .w64.w-is-night .w-rays { display: none; }
+.w64 .w-tilt, .w64 .w-rays, .w64[data-gfx="med"] .w-rays, .w64[data-gfx="low"] .w-rays, .w64[data-gfx="low"] .w-haze { display: none; }

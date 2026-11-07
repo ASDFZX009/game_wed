@@ -2,7 +2,7 @@
 // ผู้เยี่ยมชม: เก็บในเบราว์เซอร์ · สมาชิก: เก็บกับบัญชี (ตามไปทุกเครื่อง)
 import { state, api } from "./core.js";
 
-export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoGo: true, contrast: false, dyslexic: false, tickSound: "synth", skin: "classic" };
+export const DEFAULTS = { gfx: "auto", mode: "auto", palette: "violet", fontSize: "md", motion: "auto", sound: true, haptics: true, confetti: true, autoGo: true, contrast: false, dyslexic: false, tickSound: "synth", skin: "classic" };
 
 // สไตล์หน้าเว็บ (เปลี่ยนรูปทรง ฟอนต์ ขอบ เงา พื้นหลัง) ใช้คู่กับธีมสีได้ทุกธีม
 export const SKINS = [

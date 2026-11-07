@@ -194,6 +194,7 @@ export async function settings({ main, me }) {
         <div class="tick-grid" role="radiogroup" aria-labelledby="l-tick" id="tickGrid"></div>
         <div class="row small" style="margin-top:8px"><label class="btn btn-ghost btn-sm" style="cursor:pointer">📁 ใช้ไฟล์เสียงของฉัน<input type="file" id="tickFile" accept="audio/*" hidden></label>
           <span class="muted">ไฟล์ของคุณเก็บในเบราว์เซอร์นี้เท่านั้น ไม่ถูกอัปโหลดไปไหน</span></div></div>
+      <div class="set-row"><div class="t"><b>🎨 คุณภาพกราฟิก</b><span class="small muted">“อัตโนมัติ” เริ่มที่ภาพสวยสุด แล้วลดเองถ้าเครื่องเริ่มหน่วง · “ประหยัด” ลดเอฟเฟกต์ เล่นลื่นบนมือถือรุ่นเก่า แบตอยู่ได้นานขึ้น</span></div>${seg("gfx", [["auto", "🤖 อัตโนมัติ"], ["high", "✨ สูง"], ["med", "⚖️ กลาง"], ["low", "🔋 ประหยัด"]])}</div>
       ${sw("haptics", "สั่นเมื่อตอบ (มือถือ)", "สั่นเบา ๆ เมื่อตอบถูก/ผิด — ใช้ได้กับมือถือ Android ส่วนใหญ่ (iPhone ไม่รองรับ)")}
       ${sw("confetti", "พลุฉลอง", "แสดงพลุกระดาษเมื่อได้คะแนนเต็มหรือติดอันดับ")}
       ${sw("autoGo", "ไปข้อถัดไปอัตโนมัติ", "หลังตอบและสกิลเล่นจบ เกมจะไปข้อต่อไปเอง (ตอบถูก 2.2 วินาที ตอบผิด 3 วินาที ให้อ่านเฉลยได้ทัน) · กด ⏸ รอก่อน เพื่อหยุดได้")}</section>

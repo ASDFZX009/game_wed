@@ -10,7 +10,7 @@ import { openTitle, titleSeen } from "./title.js";
 import { myLook, loadProfile } from "../look.js";
 import { pxPage } from "../pxpage.js";
 import { openHouse, openPicker } from "./house.js";
-import { reducedMotion, loadSkinFont } from "../prefs.js";
+import { reducedMotion, loadSkinFont, getPrefs, setPrefs } from "../prefs.js";
 import { runIntro, helpMenu, hasGacha } from "../tutorial.js";
 
 const TPL_IC = { truefalse: "⚖️", match: "🃏", order: "🔢", scramble: "🔤", mcq: "🎯" };
@@ -38,7 +38,7 @@ export async function home({ main }) {
   main.innerHTML = html`
     <section class="world-full" aria-labelledby="w-title">
       <h1 id="w-title" class="sr-only">หมู่บ้านแห่งการเรียนรู้</h1>
-      <div class="w-hud"><button type="button" class="w-title-btn w-time" id="wTime" aria-pressed="false" title="สลับเวลาในหมู่บ้าน กลางวัน/กลางคืน"></button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button><button type="button" class="w-title-btn" id="wHelp">❔ วิธีเล่น</button><button type="button" class="w-title-btn" id="wMap" title="สลับแผนที่หมู่บ้าน"></button></div>
+      <div class="w-hud"><button type="button" class="w-title-btn w-time" id="wTime" aria-pressed="false" title="สลับเวลาในหมู่บ้าน กลางวัน/กลางคืน"></button><button type="button" class="w-title-btn" id="wTitle">🧭 เมนูหลัก</button><button type="button" class="w-title-btn" id="wHelp">❔ วิธีเล่น</button><button type="button" class="w-title-btn" id="wMap" title="สลับแผนที่หมู่บ้าน"></button><button type="button" class="w-title-btn" id="wGfx" title="คุณภาพกราฟิก"></button></div>
       <div class="world" id="world"></div>
       <nav class="sr-only" aria-label="ไปที่บ้านวิชาโดยตรง">${categories.map((c) => html`<a href="/games?category=${c.slug}">${c.icon} ${c.name}</a>`)}
         ${local ? html`<a href="/quiz-game">🎣 เกมตอบคำถาม</a>` : ""}<a href="/shop">🛒 ร้านค้า</a><a href="/games">🎮 คลังเกมทั้งหมด</a></nav>
@@ -55,8 +55,12 @@ export async function home({ main }) {
   // แผนที่หมู่บ้าน: โฉมใหม่ 64px (ค่าเริ่มต้น) หรือแบบเดิม 32px (มีระบบเจอผู้เล่นออนไลน์)
   let mapKind = "new"; try { mapKind = localStorage.getItem("qo:map") === "old" ? "old" : "new"; } catch { /* ignore */ }
   const w = mapKind === "new"
-    ? mountWorld64(main.querySelector("#world"), { go, night, playerName: nameOf(loadProfile()), reduced: reducedMotion(), onHouse: house, heroId: state.me?.gacha?.party || "wayu" })
+    ? mountWorld64(main.querySelector("#world"), { onGfx: (g, why) => { showGfx(); if (why === "post") toast("ลดเอฟเฟกต์เบลอขอบ/ลำแสงเล็กน้อยให้ลื่นขึ้น (ภาพยังคมชัดระดับสูง)"); if (why === "auto") toast(`เครื่องเริ่มหน่วง ปรับกราฟิกเป็น “${GFXN[g]}” ให้ลื่นขึ้นแล้ว (เปลี่ยนได้ที่ปุ่ม 🎨)`); }, go, night, playerName: nameOf(loadProfile()), reduced: reducedMotion(), onHouse: house, heroId: state.me?.gacha?.party || "wayu" })
     : mountWorld(main.querySelector("#world"), { go, fill: true, night, playerName: nameOf(loadProfile()), shirt, look: myLook(shirt), reduced: reducedMotion(), net, onHouse: house });
+  const GFXN = { auto: "อัตโนมัติ", high: "สูง", med: "กลาง", low: "ประหยัด" }, gb = main.querySelector("#wGfx");
+  const showGfx = () => { const p = getPrefs().gfx || "auto"; gb.textContent = `🎨 กราฟิก: ${GFXN[p] || "อัตโนมัติ"}${p === "auto" && w.gfx ? ` (${GFXN[w.gfx]})` : ""}`; };
+  gb.hidden = mapKind !== "new"; showGfx();
+  gb.addEventListener("click", () => { const order = ["auto", "high", "med", "low"], cur = getPrefs().gfx || "auto", nx = order[(order.indexOf(cur) + 1) % 4]; setPrefs({ gfx: nx }); w.setGfx?.(nx); showGfx(); toast(`🎨 กราฟิก: ${GFXN[nx]}`); });
   { const mb = main.querySelector("#wMap"); mb.textContent = mapKind === "new" ? "🗺️ แผนที่เดิม" : "✨ แผนที่ใหม่";
     mb.addEventListener("click", () => { try { localStorage.setItem("qo:map", mapKind === "new" ? "old" : "new"); sessionStorage.setItem("qo:titleSeen", "1"); } catch { /* ignore */ } go("/", true); }); }
   // หน้าเริ่มเกม: เปิดครั้งแรกของแต่ละรอบการใช้งาน หรือกด "เมนูหลัก"

@@ -5,11 +5,17 @@ import { subjectSign, drawSignFx, SIGN_FX } from "../world/signs.js";
 import { foxFrame } from "../world/chars.js";
 import { buildMap, findPath, PLACES, PLAZA, SPOTS, SUN, VILLAGERS } from "../pages/world.js";
 import * as A from "./art.js";
-import { makeTypeFn, bakeChunk } from "./ground.js";
+import { makeTypeFn, bakeChunkGen, previewChunk } from "./ground.js";
+import { getPrefs } from "../prefs.js";
 import { loadSprites } from "../gacha-client.js";
 
-export function mountWorld64(host, { go, playerName = "นักผจญภัย", reduced: reducedOpt = false, night: night0 = false, onHouse = null, heroId = "wayu" } = {}) {
+export function mountWorld64(host, { onGfx = null, go, playerName = "นักผจญภัย", reduced: reducedOpt = false, night: night0 = false, onHouse = null, heroId = "wayu" } = {}) {
 const T = 64, SPR = () => globalThis.QO_SPR || {};
+// 🎨 คุณภาพกราฟิก: สูง = เต็มที่ · กลาง = ความละเอียดจอ 1 เท่า ตัดเบลอ/ลำแสง · ประหยัด = ลดเอฟเฟกต์ 30fps · อัตโนมัติ = เริ่มสูงแล้วลดเองถ้าเครื่องหน่วง
+const GFX = { high: { dpr: 2, parts: 90, budget: 7, portal: 2, clouds: 1, magic: 2, fps: 0 }, med: { dpr: 1, parts: 45, budget: 6, portal: 3, clouds: 1, magic: 1, fps: 0 }, low: { dpr: 1, res: 0.7, parts: 0, budget: 4, portal: 5, clouds: 0, magic: 0, fps: 30 } };
+const pref = () => { const g = getPrefs().gfx; return g === "high" || g === "med" || g === "low" ? g : "auto"; };
+const isWeak = () => (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 3;
+let gfxMode = pref(), gfx = gfxMode === "auto" ? (isWeak() ? "med" : "high") : gfxMode, Q = GFX[gfx];
 const reduced = reducedOpt; loadSprites();
 const REG = { x0: 15, y0: 12, x1: 65, y1: 57 }; // พื้นที่ตัวอย่าง (ช่อง): ใจกลางหมู่บ้าน + ลานซุ้มประตูโบราณ
 const inReg = (tx, ty, pad = 3) => tx > REG.x0 - pad && tx < REG.x1 + pad && ty > REG.y0 - pad && ty < REG.y1 + pad;
@@ -79,23 +85,41 @@ function castShadow(x, s, dx, dy, foot, mode, lift, ox, oy) {
   else { x.setTransform(1, 0, -SUN.kx, SUN.ky, SUN.kx * foot - ox, foot * (1 - SUN.ky) - oy); x.drawImage(c, dx, dy); }
   x.setTransform(1, 0, 0, 1, 0, 0);
 }
-function bake(cx, cy) {
-  const X0 = cx * CH, Y0 = cy * CH, img = bakeChunk(M, PLAZA, typeAt, X0, Y0, CH, CH), [c, g] = canvas(CH, CH); g.putImageData(img, 0, 0);
+// ชิ้นพื้น: ที่มองไม่เห็นทยอยวาดทีละนิดต่อเฟรม · ที่เห็นแต่ยังไม่เสร็จ แสดงภาพหยาบไปก่อน (ไม่กระตุก)
+const jobs = new Map(), previews = new Map();
+function finishChunk(cx, cy, img) {
+  const X0 = cx * CH, Y0 = cy * CH, [c, g] = canvas(CH, CH); g.putImageData(img, 0, 0);
   const [sl, sx] = canvas(CH + 16, CH + 16), ox = X0 - 8, oy = Y0 - 8;
   const hit = shadows.filter((o) => o.bb[2] > ox && o.bb[0] < ox + CH + 16 && o.bb[3] > oy && o.bb[1] < oy + CH + 16);
   for (const o of hit) castShadow(sx, o.s, o.dx, o.dy, o.foot, o.mode, o.lift, ox, oy);
   sx.fillStyle = SHADOW; sx.globalAlpha = 0.55; for (const o of hit) { const w = o.s.c.width * (o.mode === "shift" ? 0.9 : 0.42); sx.beginPath(); sx.ellipse(o.dx + o.s.ax - ox, o.foot - 4 - oy, w / 2, Math.min(18, w / 6), 0, 0, 7); sx.fill(); }
   g.globalAlpha = SHADOW_A; g.filter = "blur(1.5px)"; g.drawImage(sl, -8, -8); g.filter = "none"; g.globalAlpha = 1;
-  chunks.set(cy * 1000 + cx, { c, used: performance.now() });
+  const k = cy * 1000 + cx; chunks.set(k, { c, used: performance.now() }); jobs.delete(k); previews.delete(k);
 }
-function ensureChunks(x0, y0, x1, y1, budget) {
-  const t0 = performance.now(); let missing = 0;
-  for (let cy = Math.floor(y0 / CH); cy <= Math.floor(y1 / CH); cy++) for (let cx = Math.floor(x0 / CH); cx <= Math.floor(x1 / CH); cx++) {
-    const k = cy * 1000 + cx, ch = chunks.get(k); if (ch) { ch.used = performance.now(); continue; }
-    if (performance.now() - t0 < budget) bake(cx, cy); else missing++; }
-  if (chunks.size > 240) { const now = performance.now(), arr = [...chunks.entries()].filter((e) => now - e[1].used > 3000).sort((a, b) => a[1].used - b[1].used); for (let i = 0; i < Math.min(arr.length, chunks.size - 200); i++) chunks.delete(arr[i][0]); }
-  return missing;
+function jobOf(cx, cy) { const k = cy * 1000 + cx; let j = jobs.get(k); if (!j) { j = { cx, cy, g: bakeChunkGen(M, PLAZA, typeAt, cx * CH, cy * CH, CH, CH) }; jobs.set(k, j); } return j; }
+function runJob(j, until) { let r; while (performance.now() < until) { r = j.g.next(); if (r.done) { finishChunk(j.cx, j.cy, r.value); return true; } } return false; }
+function previewOf(cx, cy) { const k = cy * 1000 + cx; let p = previews.get(k); if (!p) { const img = previewChunk(M, PLAZA, typeAt, cx * CH, cy * CH, CH, CH), [c, g] = canvas(img.width, img.height); g.putImageData(img, 0, 0); p = c; previews.set(k, p); } return p; }
+/** sync = วาดชิ้นที่มองเห็นให้เสร็จทันที (ตอนเปิดหน้า) · ไม่งั้นทยอยตามงบเวลาต่อเฟรม */
+function ensureChunks(V, sync) {
+  const R0x = (REG.x0 - 2) * T, R0y = (REG.y0 - 2) * T, R1x = (REG.x1 + 2) * T, R1y = (REG.y1 + 2) * T, now = performance.now();
+  const range = (m) => [Math.floor(Math.max(V.x - m, R0x) / CH), Math.floor(Math.max(V.y - m, R0y) / CH), Math.floor(Math.min(V.x + V.w + m, R1x) / CH), Math.floor(Math.min(V.y + V.h + m, R1y) / CH)];
+  const [a0, b0, a1, b1] = range(0), need = [];
+  for (let cy = b0; cy <= b1; cy++) for (let cx = a0; cx <= a1; cx++) { const ch = chunks.get(cy * 1000 + cx); if (ch) ch.used = now; else need.push([cx, cy]); }
+  const until = now + (sync ? 1e9 : Q.budget);
+  for (const [cx, cy] of need) if (!runJob(jobOf(cx, cy), until) && !sync) break;
+  if (performance.now() < until && !sync) { const [c0, d0, c1, d1] = range(480); outer: for (let cy = d0; cy <= d1; cy++) for (let cx = c0; cx <= c1; cx++) { if (chunks.has(cy * 1000 + cx)) continue; if (!runJob(jobOf(cx, cy), until)) break outer; } }
+  if (chunks.size > 240) { const arr = [...chunks.entries()].filter((e) => now - e[1].used > 3000).sort((x, y) => x[1].used - y[1].used); for (let i = 0; i < Math.min(arr.length, chunks.size - 200); i++) chunks.delete(arr[i][0]); }
+  return [a0, b0, a1, b1];
 }
+// ลำแสงเฉียงสำเร็จรูป + แคนวาสเล็กสำหรับเบลอขอบ (ภาพสูง)
+const RAYS = (() => { const [c, g] = canvas(512, 320); g.save(); g.translate(0, 0); for (let x = -400; x < 900; x += 235) { const gr = g.createLinearGradient(x, 0, x + 80, 0); gr.addColorStop(0, "rgba(255,226,160,0)"); gr.addColorStop(0.5, "rgba(255,232,180,.16)"); gr.addColorStop(1, "rgba(255,226,160,0)"); g.fillStyle = gr; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + 80, 0); g.lineTo(x + 80 + 170, 320); g.lineTo(x + 170, 320); g.fill(); }
+  g.globalCompositeOperation = "destination-in"; const m = g.createLinearGradient(0, 0, 360, 320); m.addColorStop(0, "#000"); m.addColorStop(0.7, "rgba(0,0,0,0)"); g.fillStyle = m; g.fillRect(0, 0, 512, 320); g.restore(); return c; })();
+const tilt = document.createElement("canvas"), tg = tilt.getContext("2d"); let tiltOn = true, raysOn = true;
+// แสงเรืองแบบภาพสำเร็จรูป (แทนการสร้าง gradient ทุกเฟรม)
+const glowCache = new Map();
+const glowImg = (c) => { let g = glowCache.get(c); if (!g) { const [cv2, x] = canvas(128, 128), gr = x.createRadialGradient(64, 64, 1, 64, 64, 64); gr.addColorStop(0, `rgba(${c},1)`); gr.addColorStop(1, `rgba(${c},0)`); x.fillStyle = gr; x.fillRect(0, 0, 128, 128); g = cv2; glowCache.set(c, g); } return g; };
+// จุดระลอกน้ำ (คำนวณครั้งเดียว)
+const ripples = []; for (let i = 0; i < 90; i++) { const L = i < 40 ? M.shapes.lakes[0] : M.shapes.lakes[1], a = hash(i, 1, 40) * 6.28, r = Math.sqrt(hash(i, 2, 40)) * 0.8, x = (L.x + Math.cos(a) * r * L.rx) * T, y = (L.y + Math.sin(a) * r * L.ry) * T; if (inReg(x / T, y / T) && typeAt(x | 0, y | 0) === 2) ripples.push([x, y, i]); }
 
 // ---------- พอร์ทัลในซุ้มประตู ----------
 const { PW, PH, P0 } = G, [pc, pg] = canvas(PW, PH), pimg = pg.createImageData(PW, PH), pmask = new Uint8Array(PW * PH);
@@ -103,7 +127,7 @@ for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) pmask[y * PW + x] = G.
 const PCOL = [[8, 16, 40], [18, 70, 120], [36, 180, 205], [120, 250, 240], [180, 140, 255], [255, 255, 255]];
 let open = 0, near = 0, pFrame = 0;
 function drawPortal(t) {
-  if (++pFrame % 2 && !reduced) return; const d = pimg.data, cx = PW / 2, cy = PH * 0.62;
+  if (++pFrame % Q.portal && !reduced && pFrame > 1) return; const d = pimg.data, cx = PW / 2, cy = PH * 0.62;
   for (let y = 0; y < PH; y++) for (let x = 0; x < PW; x++) { const i = y * PW + x, k = i * 4; if (!pmask[i]) { d[k + 3] = 0; continue; }
     const dx = (x - cx) / 78, dy = (y - cy) / 140, r = Math.hypot(dx, dy), a = Math.atan2(dy, dx), sw = Math.sin(a * 3 + r * 9 - t * 2.6) * 0.5 + 0.5;
     let v = (sw * 0.55 + (1 - clamp(r, 0, 1)) * 0.55) * open + (1 - open) * (0.3 + Math.sin(a * 2 + r * 6 - t * 1.2) * 0.12 + near * 0.25);
@@ -120,7 +144,7 @@ const LIME = "#c4ff78", AL = (x, a) => { x.globalAlpha = a < 0 ? 0 : a > 1 ? 1 :
 const GLOW = (() => { const [c, g] = canvas(128, 128), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "rgba(255,255,220,.9)"); gr.addColorStop(0.18, "rgba(210,255,140,.55)"); gr.addColorStop(0.5, "rgba(170,255,100,.18)"); gr.addColorStop(1, "rgba(150,255,90,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return c; })();
 const LAMPGLOW = (() => { const [c, g] = canvas(128, 128), gr = g.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, "rgba(255,230,160,.8)"); gr.addColorStop(0.3, "rgba(255,190,90,.35)"); gr.addColorStop(1, "rgba(255,170,60,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 128); return c; })();
 const bigP = () => pillars.find((P) => P.big);
-function swirl(x, t, front) { const P = bigP();
+function swirl(x, t, front) { const P = bigP(); if (Q.magic < 2 && !front) return;
   for (const [ry0, rx, ry, sp, n] of [[32, 104, 32, 1.6, 3], [140, 76, 24, -2.1, 2]]) for (let k = 0; k < n; k++) { const a0 = t * sp + (k * Math.PI * 2) / n;
     for (let i = 0; i < 40; i++) { const a = a0 + (sp > 0 ? -1 : 1) * i * 0.034, sn = Math.sin(a); if ((sn >= 0) !== front) continue;
       const px = P.bx + Math.cos(a) * rx, py = P.by - ry0 + sn * ry, al = (1 - i / 40) * (front ? 1 : 0.55);
@@ -158,7 +182,7 @@ function magicFront(x, t, V) {
     if (!reduced) for (let i = 0; i < 5; i++) { const t2 = t + i * 2.1, fx = rx + Math.sin(t2 * 0.9 + i) * 70, fy = ry + 60 + Math.cos(t2 * 0.7 + i * 2) * 50; x.globalAlpha = 0.5 + 0.5 * Math.sin(t2 * 3); x.fillRect(Math.round(fx), Math.round(fy), 4, 4); } }
   x.globalAlpha = 1; x.globalCompositeOperation = "source-over";
   // เงาเมฆเคลื่อนผ่าน (กลางวัน)
-  if (!reduced && !night) { x.fillStyle = "rgba(16,24,60,.10)"; for (let i = 0; i < 4; i++) { const ox = ((t * 44 + i * 1320) % (M.MW * T + 1600)) - 800, oy = (i * 760 + 320) % (M.MH * T);
+  if (!reduced && !night && Q.clouds) { x.fillStyle = "rgba(16,24,60,.10)"; for (let i = 0; i < 4; i++) { const ox = ((t * 44 + i * 1320) % (M.MW * T + 1600)) - 800, oy = (i * 760 + 320) % (M.MH * T);
     x.beginPath(); x.ellipse(ox, oy, 480, 208, 0, 0, 7); x.ellipse(ox + 280, oy + 80, 320, 160, 0, 0, 7); x.fill(); } }
 }
 
@@ -170,24 +194,21 @@ ui.innerHTML = '<div class="w-fx w-haze"></div><div class="w-fx w-rays"></div><d
 host.append(cv, ui);
 const lbl = ui.querySelector(".w64-lbl"), ctx = cv.getContext("2d"), lx = lbl.getContext("2d");
 let VW = 0, VH = 0, DPR = 1, zoom = 1, fitAll = false, cam = { x: hero.x, y: hero.y }, night = night0, paused = false, alive = true, raf = 0;
-function resize() { DPR = Math.min(2, devicePixelRatio || 1); VW = Math.max(1, host.clientWidth); VH = Math.max(1, host.clientHeight); for (const c of [cv, lbl]) { c.width = VW * DPR | 0; c.height = VH * DPR | 0; c.style.width = VW + "px"; c.style.height = VH + "px"; } setZoom(); }
+function resize() { DPR = Math.min(Q.dpr, devicePixelRatio || 1); VW = Math.max(1, host.clientWidth); VH = Math.max(1, host.clientHeight); const RS = Q.res || 1; for (const c of [cv, lbl]) { const k = c === cv ? DPR * RS : DPR; c.width = Math.max(1, VW * k | 0); c.height = Math.max(1, VH * k | 0); c.style.width = VW + "px"; c.style.height = VH + "px"; } setZoom(); }
 function setZoom() { zoom = fitAll ? Math.min(VW / ((REG.x1 - REG.x0) * T), VH / ((REG.y1 - REG.y0) * T)) : VW < 700 ? 0.72 : VW < 1100 ? 0.9 : 1; }
 const ro = new ResizeObserver(() => resize()); ro.observe(host);
 const view = () => { const w = VW / zoom, h = VH / zoom, RW = (REG.x1 - REG.x0) * T, RH = (REG.y1 - REG.y0) * T; let x = cam.x - w / 2, y = cam.y - h / 2;
   x = w >= RW ? REG.x0 * T - (w - RW) / 2 : clamp(x, REG.x0 * T, REG.x1 * T - w); y = h >= RH ? REG.y0 * T - (h - RH) / 2 : clamp(y, REG.y0 * T, REG.y1 * T - h); return { x, y, w, h }; };
 const im = (k) => { const s = SPR()[k]; if (!s) return null; let i = cache.get("img" + k); if (!i) { i = new Image(); i.src = s; cache.set("img" + k, i); } return i.complete ? i : null; };
 function draw(now) {
-  const t = now / 1000, V = view(), s = zoom * DPR;
+  const t = now / 1000, V = view(), s = zoom * DPR * (Q.res || 1);
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = "#1a2410"; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(s, 0, 0, s, -V.x * s, -V.y * s); ctx.imageSmoothingEnabled = false;
-  const RX0 = (REG.x0 - 2) * T, RY0 = (REG.y0 - 2) * T, RX1 = (REG.x1 + 2) * T, RY1 = (REG.y1 + 2) * T, cl = (a, b, c, d, bu) => ensureChunks(Math.max(a, RX0), Math.max(b, RY0), Math.min(c, RX1), Math.min(d, RY1), bu);
-  cl(V.x, V.y, V.x + V.w, V.y + V.h, 1e9); // ที่มองเห็น: อบให้ครบทันที
-  cl(V.x - 320, V.y - 320, V.x + V.w + 320, V.y + V.h + 320, 10); // รอบ ๆ: ทยอยอบล่วงหน้า
-  for (let cy = Math.floor(V.y / CH); cy <= Math.floor((V.y + V.h) / CH); cy++) for (let cx = Math.floor(V.x / CH); cx <= Math.floor((V.x + V.w) / CH); cx++) { const ch = chunks.get(cy * 1000 + cx); if (ch) ctx.drawImage(ch.c, cx * CH, cy * CH); }
+  const [a0, b0, a1, b1] = ensureChunks(V, firstFrame); firstFrame = false;
+  for (let cy = b0; cy <= b1; cy++) for (let cx = a0; cx <= a1; cx++) { const ch = chunks.get(cy * 1000 + cx); if (ch) ctx.drawImage(ch.c, cx * CH, cy * CH); else { ctx.imageSmoothingEnabled = true; ctx.drawImage(previewOf(cx, cy), cx * CH, cy * CH, CH, CH); ctx.imageSmoothingEnabled = false; } }
   // ระลอกน้ำ
   ctx.globalCompositeOperation = "lighter";
-  for (let i = 0; i < 90; i++) { const L = i < 40 ? M.shapes.lakes[0] : M.shapes.lakes[1], a = hash(i, 1, 40) * 6.28, r = Math.sqrt(hash(i, 2, 40)) * 0.8, x = (L.x + Math.cos(a) * r * L.rx) * T, y = (L.y + Math.sin(a) * r * L.ry) * T;
-    if (x < V.x - 40 || x > V.x + V.w + 40 || y < V.y - 40 || y > V.y + V.h + 40 || typeAt(x | 0, y | 0) !== 2) continue; const ph = (t * 0.4 + hash(i, 3, 40)) % 1;
+  for (const [x, y, i] of ripples) { if (x < V.x - 40 || x > V.x + V.w + 40 || y < V.y - 40 || y > V.y + V.h + 40) continue; const ph = (t * 0.4 + hash(i, 3, 40)) % 1;
     ctx.fillStyle = `rgba(200,236,240,${Math.sin(ph * Math.PI) * 0.35})`; ctx.fillRect(Math.round(x + Math.sin(t + i) * 6), Math.round(y), 10 + (i % 3) * 6, 2); }
   // วงเวทรูนหน้าซุ้มประตู
   { const cx = gx, cy = gy + 30, a0 = 0.18 + near * 0.6 + open * 0.4; ctx.save(); ctx.translate(cx, cy); ctx.scale(1, 0.38);
@@ -195,7 +216,7 @@ function draw(now) {
       for (let i = 0; i < n; i++) { const a = (i / n) * 6.283 + t * 0.35 * dir * (reduced ? 0 : 1); ctx.fillStyle = `rgba(200,255,250,${a0})`; ctx.fillRect(Math.round(Math.cos(a) * (r - 9)) - 3, Math.round(Math.sin(a) * (r - 9)) - 3, 6, 6); } }
     ctx.strokeStyle = `rgba(180,140,255,${a0 * 0.9})`; ctx.beginPath(); for (let i = 0; i <= 6; i++) { const a = (i * 2 / 6) * 6.283 - t * 0.2; i ? ctx.lineTo(Math.cos(a) * 86, Math.sin(a) * 86) : ctx.moveTo(Math.cos(a) * 86, Math.sin(a) * 86); } ctx.stroke(); ctx.restore(); }
   ctx.globalCompositeOperation = "source-over";
-  if (bigP()) magicBack(ctx, reduced ? 1.3 : t);
+  if (bigP() && Q.magic) magicBack(ctx, reduced ? 1.3 : t);
   // วัตถุ + ตัวละคร เรียงตามความลึก
   const vis = objects.filter((o) => o.x1 > V.x - 20 && o.x0 < V.x + V.w + 20 && o.bot > V.y - 20 && o.top < V.y + V.h + 40);
   const list = [...vis, ...npcs.map((n) => ({ y: n.y, n })), { y: hero.y, n: hero, me: 1 }, { y: fox.y, fox: 1 }];
@@ -211,7 +232,7 @@ function draw(now) {
       continue; }
     const o = it;
     if (o.kind === "gate") { drawPortal(t); ctx.drawImage(pc, o.dx + P0[0], o.dy + P0[1]); }
-    if (o.hover) { ctx.save(); ctx.filter = "brightness(1.12)"; ctx.drawImage(o.s.c, o.dx, o.dy); ctx.restore(); } else ctx.drawImage(o.s.c, o.dx, o.dy);
+    ctx.drawImage(o.s.c, o.dx, o.dy); if (o.hover) { ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.14; ctx.drawImage(o.s.c, o.dx, o.dy); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
     if (o.kind === "house" && o.sign) { const S = o.sign, bob = reduced ? 0 : Math.round(Math.sin(t * 1.8 + o.ref.x) * 2);
       if (S.s) { ctx.drawImage(S.s.c, Math.round(S.x - S.s.ax), Math.round(S.y + 72 - S.s.ay + bob)); ctx.save(); ctx.scale(2, 2); drawSignFx(ctx, o.ref.id, S.x / 2, (S.y - 12 + bob) / 2, reduced ? 1.3 : t, o.hover, reduced); ctx.restore(); } }
     if (o.kind === "pillar") { const P = o.ref, bob = reduced ? 0 : Math.round(Math.sin(t * 1.9 + P.i) * 6);
@@ -223,9 +244,10 @@ function draw(now) {
         ctx.restore(); }
       const cs = spr("cry" + (P.big ? 26 : 14), () => A.crystal(P.big ? 26 : 14)), qx = P.bx, qy = P.by - P.H - (P.big ? 68 : 44) + bob;
       ctx.drawImage(cs.c, qx - cs.ax, qy - cs.ay); }
-    if (o.kind === "gate") { ctx.save(); ctx.globalCompositeOperation = "lighter"; const rx = gx, ry = gy - 364 + 26, gl = ctx.createRadialGradient(rx, ry, 2, rx, ry, 40 + open * 30); gl.addColorStop(0, `rgba(120,240,255,${0.5 + 0.2 * Math.sin(t * 3)})`); gl.addColorStop(1, "rgba(120,240,255,0)"); ctx.fillStyle = gl; ctx.fillRect(rx - 80, ry - 80, 160, 160);
-      { const k = 0.25 + near * 0.6 + open * 0.5 + 0.12 * Math.sin(t * 2.4); ctx.fillStyle = `rgba(140,255,245,${k})`; for (const [rx2, ry2] of G.runes) ctx.fillRect(o.dx + rx2 - 2, o.dy + ry2 - 2, 4, 4); }
-      if (open > 0.05 || near > 0.05) { const k = Math.max(open, near * 0.4), g2 = ctx.createRadialGradient(gx, gy - 140, 10, gx, gy - 140, 220); g2.addColorStop(0, `rgba(80,220,230,${0.35 * k})`); g2.addColorStop(1, "rgba(80,220,230,0)"); ctx.fillStyle = g2; ctx.fillRect(gx - 240, gy - 380, 480, 480); }
+    if (o.kind === "gate") { ctx.save(); ctx.globalCompositeOperation = "lighter"; const ry = gy - 338;
+      ctx.globalAlpha = 0.5 + 0.2 * Math.sin(t * 3); const r1 = 40 + open * 30; ctx.drawImage(glowImg("120,240,255"), gx - r1, ry - r1, r1 * 2, r1 * 2);
+      { const k2 = 0.25 + near * 0.6 + open * 0.5 + 0.12 * Math.sin(t * 2.4); ctx.globalAlpha = 1; ctx.fillStyle = `rgba(140,255,245,${clamp(k2, 0, 1)})`; for (const [rx2, ry2] of G.runes) ctx.fillRect(o.dx + rx2 - 2, o.dy + ry2 - 2, 4, 4); }
+      if (open > 0.05 || near > 0.05) { ctx.globalAlpha = 0.35 * Math.max(open, near * 0.4); ctx.drawImage(glowImg("80,220,230"), gx - 240, gy - 170 - 240, 480, 480); }
       ctx.restore(); }
   }
   { const x0 = REG.x0 * T, y0 = REG.y0 * T, x1 = REG.x1 * T, y1 = REG.y1 * T, F = 140, C = "14,22,10";
@@ -237,19 +259,28 @@ function draw(now) {
   if (bigP()) magicFront(ctx, reduced ? 1.3 : t, V);
   // ละอองแสง / หิ่งห้อย
   ctx.save(); ctx.globalCompositeOperation = "lighter";
-  for (let i = 0; i < 90; i++) { const px = V.x + hash(i, 1, 99) * V.w, ph = (t * 0.05 + hash(i, 3, 99)) % 1, py = V.y + hash(i, 2, 99) * V.h - ph * 140, a = Math.sin(ph * Math.PI);
+  for (let i = 0; i < Q.parts; i++) { const px = V.x + hash(i, 1, 99) * V.w, ph = (t * 0.05 + hash(i, 3, 99)) % 1, py = V.y + hash(i, 2, 99) * V.h - ph * 140, a = Math.sin(ph * Math.PI);
     ctx.fillStyle = night ? `rgba(200,255,140,${a * 0.9})` : `rgba(255,240,190,${a * 0.5})`; ctx.fillRect(Math.round(px + Math.sin(t * 0.7 + i) * 18), Math.round(py), 3, 3); }
   ctx.restore();
   // แสงเย็นสีทอง / กลางคืน (พิกัดหน้าจอ)
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  if (!night) { const g = ctx.createLinearGradient(0, 0, cv.width, cv.height); g.addColorStop(0, "rgba(255,206,130,.30)"); g.addColorStop(0.5, "rgba(255,196,120,.06)"); g.addColorStop(1, "rgba(70,40,120,.22)"); ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; }
+  if (!night) { if (gfx !== "low") { const g = ctx.createLinearGradient(0, 0, cv.width, cv.height); g.addColorStop(0, "rgba(255,206,130,.30)"); g.addColorStop(0.5, "rgba(255,196,120,.06)"); g.addColorStop(1, "rgba(70,40,120,.22)"); ctx.globalCompositeOperation = "soft-light"; ctx.fillStyle = g; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "source-over"; } }
   else { ctx.globalCompositeOperation = "multiply"; ctx.fillStyle = "rgb(64,74,148)"; ctx.fillRect(0, 0, cv.width, cv.height); ctx.globalCompositeOperation = "lighter"; ctx.setTransform(s, 0, 0, s, -V.x * s, -V.y * s);
-    const glow = (x, y, r, c, a) => { if (x < V.x - r || x > V.x + V.w + r || y < V.y - r || y > V.y + V.h + r) return; const g = ctx.createRadialGradient(x, y, 2, x, y, r); g.addColorStop(0, `rgba(${c},${a})`); g.addColorStop(1, `rgba(${c},0)`); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2); };
+    const glow = (x, y, r, c, a) => { if (x < V.x - r || x > V.x + V.w + r || y < V.y - r || y > V.y + V.h + r) return; ctx.globalAlpha = clamp(a, 0, 1); ctx.drawImage(glowImg(c), x - r, y - r, r * 2, r * 2); ctx.globalAlpha = 1; };
     for (const [x, y] of lamps) glow(x, y, 120, "255,196,110", 0.6); for (const [x, y] of wins) glow(x, y, 54, "255,186,100", 0.7);
     for (const P of pillars) if (!P.owl) glow(P.bx, P.by - P.H - (P.big ? 68 : 44), P.big ? 120 : 70, "150,255,110", 0.5);
     for (const o of objects) if (o.kind === "house" && o.sign?.s) glow(o.sign.x, o.sign.y + 20, 90, "255,220,140", 0.35);
     glow(gx, gy - 170, 280, "90,230,240", 0.3 + open * 0.4 + near * 0.15); glow(gx, gy - 338, 80, "180,255,255", 0.6); ctx.setTransform(1, 0, 0, 1, 0, 0); }
   ctx.globalCompositeOperation = "source-over";
+  // ภาพสูง: ลำแสงเฉียง + เบลอขอบบน/ล่างแบบ tilt-shift (วาดบนแคนวาสเอง ถูกกว่าฟิลเตอร์ CSS หลายเท่า)
+  if (gfx === "high" && !reduced) { const W2 = cv.width, H2 = cv.height;
+    if (!night && raysOn) { const off = ((t * 18) % 470) * DPR; ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.55; ctx.drawImage(RAYS, -470 * DPR + off, 0, W2 + 470 * DPR, H2); ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over"; }
+    if (tiltOn) { const sw = Math.max(1, W2 >> 3), shT = Math.max(1, (H2 * 0.26) >> 3), shB = Math.max(1, (H2 * 0.2) >> 3);
+    if (tilt.width !== sw || tilt.height !== shT + shB) { tilt.width = sw; tilt.height = shT + shB; }
+    tg.imageSmoothingEnabled = true; tg.drawImage(cv, 0, 0, W2, H2 * 0.26, 0, 0, sw, shT); tg.drawImage(cv, 0, H2 * 0.8, W2, H2 * 0.2, 0, shT, sw, shB);
+    ctx.imageSmoothingEnabled = true;
+    for (const [k, a] of [[1, 0.85], [0.66, 0.55], [0.36, 0.3]]) { ctx.globalAlpha = a; ctx.drawImage(tilt, 0, 0, sw, shT * k, 0, 0, W2, H2 * 0.26 * k); const hb = shB * k; ctx.drawImage(tilt, 0, shT + shB - hb, sw, hb, 0, H2 - H2 * 0.2 * k, W2, H2 * 0.2 * k); }
+    ctx.globalAlpha = 1; ctx.imageSmoothingEnabled = false; } }
   // ป้ายชื่อ (ตัวอักษรคมชัด)
   lx.setTransform(1, 0, 0, 1, 0, 0); lx.clearRect(0, 0, lbl.width, lbl.height); lx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const toS = (x, y) => [(x - V.x) * zoom, (y - V.y) * zoom];
@@ -292,8 +323,14 @@ const onKD = (e) => { if (talking || paused || document.querySelector(".tk") || 
   if (k === "e" || k === "enter") { if (Math.hypot(hero.x - gx, hero.y - gy - 40) < 140) arrive("gate"); else { const p = PLACES.find((q) => inReg(q.x, q.y) && Math.hypot(hero.x - (q.ex * T + 32), hero.y - (q.ey * T + 40)) < 80); if (p) arrive(p); } } };
 const onKU = (e) => keys.delete(e.key.toLowerCase());
 addEventListener("keydown", onKD); addEventListener("keyup", onKU);
-let last = 0;
+let last = 0, lastDraw = 0, firstFrame = true, ema = 16.7, frames = 0, slowFor = 0;
+function setGfx(level, why) { if (!GFX[level] || level === gfx) return; gfx = level; Q = GFX[gfx]; host.dataset.gfx = gfx; resize(); onGfx?.(gfx, why); }
+host.dataset.gfx = gfx;
 function step(now) {
+  // วัดความลื่น: โหมดอัตโนมัติจะลดระดับเองเมื่อเฟรมช้าต่อเนื่อง ~2 วินาที
+  if (last && !paused && document.visibilityState === "visible") { const ft = now - last; if (++frames > 90) { ema += (Math.min(ft, 100) - ema) * 0.05; slowFor = ema > 24 ? slowFor + ft : 0;
+    if (gfxMode === "high" && slowFor > 2000 && (tiltOn || raysOn)) { slowFor = 0; ema = 16.7; frames = 0; if (tiltOn) tiltOn = false; else raysOn = false; onGfx?.(gfx, "post"); }
+    if (gfxMode === "auto" && slowFor > 2000) { slowFor = 0; ema = 16.7; frames = 0; if (gfx === "high") setGfx("med", "auto"); else if (gfx === "med") setGfx("low", "auto"); } } }
   const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; const sp = 4.4 * T;
   let vx = 0, vy = 0;
   if (!talking && !paused) { if (keys.has("arrowleft") || keys.has("a")) vx--; if (keys.has("arrowright") || keys.has("d")) vx++; if (keys.has("arrowup") || keys.has("w")) vy--; if (keys.has("arrowdown") || keys.has("s")) vy++; }
@@ -309,7 +346,7 @@ function step(now) {
   npcs.forEach((c) => (c.dir = hero.x < c.x ? -1 : 1));
   const dG = Math.hypot(hero.x - gx, hero.y - gy - 30); near += ((dG < 260 ? 1 - dG / 260 : 0) - near) * Math.min(1, dt * 4); if (!talking && open > 0) open = Math.max(0, open - dt * 0.8);
   if (!fitAll) { cam.x += (hero.x - cam.x) * Math.min(1, dt * 5); cam.y += (hero.y - 60 - cam.y) * Math.min(1, dt * 5); } else { cam.x = (REG.x0 + REG.x1) / 2 * T; cam.y = (REG.y0 + REG.y1) / 2 * T; }
-  if (VW > 1) draw(now); if (alive) raf = requestAnimationFrame(step);
+  if (VW > 1 && (!Q.fps || now - lastDraw >= 1000 / Q.fps - 2)) { lastDraw = now; draw(now); } if (alive) raf = requestAnimationFrame(step);
 }
 
 // ---------- ถึงที่หมาย ----------
@@ -334,6 +371,8 @@ return {
   _hero: hero, _npcs: npcs, netRefresh() {},
   setLook(_l, name) { if (name) playerName = name; },
   setHero(id) { if (id) hero.id = id; },
+  setGfx(mode) { tiltOn = raysOn = true; gfxMode = mode === "high" || mode === "med" || mode === "low" ? mode : "auto"; setGfx(gfxMode === "auto" ? (isWeak() ? "med" : "high") : gfxMode, "user"); host.dataset.gfx = gfx; },
+  get gfx() { return gfx; },
   _walk(tx, ty) { walkTo(tx, ty); },
   walkToPlace(id) { const p = PLACES.find((x) => x.id === id); if (p) walkTo(p.ex, p.ey, p); },
   walkToGate() { walkTo(gateFront[0], gateFront[1], "gate"); },
