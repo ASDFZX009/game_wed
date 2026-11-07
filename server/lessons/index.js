@@ -27,7 +27,8 @@ const BANKS = [require("./math"), require("./science"), require("./thai"), requi
 const LESSONS = BANKS.flat();
 const BY_ID = Object.fromEntries(LESSONS.map((l) => [l.id, l]));
 // คำถามเพิ่มเติมของบทเรียนเดิม
-for (const [id, add] of Object.entries(EXTRA.ADD || {})) { const L = BY_ID[id]; if (!L) throw new Error("ADD: ไม่พบบทเรียน " + id); for (const k of ["qa", "tf", "seq"]) if (add[k]) L[k] = (L[k] || []).concat(add[k]); }
+const MORE = [require("./more1"), require("./more2"), require("./more3")]; // คลังคำถามเพิ่ม (บทที่ข้อน้อย)
+for (const [id, add] of [EXTRA.ADD || {}, ...MORE].flatMap((o) => Object.entries(o))) { const L = BY_ID[id]; if (!L) throw new Error("ADD: ไม่พบบทเรียน " + id); for (const k of ["qa", "tf", "seq"]) if (add[k]) L[k] = (L[k] || []).concat(add[k]); }
 // ช่วงชั้นของแต่ละบทเรียน: 0 = อนุบาล · 1–6 = ป.1–ป.6 · 7–12 = ม.1–ม.6
 const GRADE = {
   "math-addsub": [1, 4], "math-muldiv": [2, 6], "math-frac": [4, 7], "math-geo": [3, 9], "math-word": [3, 9], "math-number": [4, 8], "math-algebra": [6, 9], "math-adv": [10, 12],
