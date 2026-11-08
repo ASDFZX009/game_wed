@@ -160,53 +160,53 @@ export async function settings({ main, me }) {
   const ownedIds = new Set((shop?.items || []).filter((i) => i.owned).map((i) => i.id));
   const locked = (x) => x.premium && !ownedIds.has(x.premium);
   const seg = (key, opts) => html`<div class="seg" role="group" data-seg="${key}">${opts.map(([v, t]) => html`<button type="button" data-v="${v}" aria-pressed="${P[key] === v}">${t}</button>`)}</div>`;
-  const sw = (key, title, desc) => html`<div class="set-row"><div class="t"><b id="l-${key}">${title}</b><span class="small muted">${desc}</span></div>
-    <label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label></div>`;
-  main.innerHTML = html`<div class="narrow"><h1 class="px-sign">⚙️ ตั้งค่า</h1>
-    <nav class="settings-nav" aria-label="หมวดการตั้งค่า"><a href="#s-look">🎨 ธีมและการแสดงผล</a><a href="#s-read">👓 การอ่านและการเข้าถึง</a><a href="#s-game">🎮 เกมและเสียง</a>${state.config.local ? "" : html`<a href="#s-app">📲 ติดตั้งแอป</a>`}${me ? html`<a href="#s-account">👤 ${state.config.local ? "ผู้เล่นและความคืบหน้า" : "บัญชี"}</a>` : ""}</nav>
-    <p class="small muted">${state.config.local ? "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้" : me ? "การตั้งค่าการแสดงผลจะบันทึกกับบัญชีของคุณ ใช้ได้ทุกเครื่องที่เข้าสู่ระบบ" : "การตั้งค่าจะบันทึกไว้ในเบราว์เซอร์นี้ — เข้าสู่ระบบเพื่อให้ตามไปทุกเครื่อง"} · มีผลทันทีที่เลือก</p>
+  // แต่ละแถว: ไอคอนใหญ่ + ชื่อสั้น + คำอธิบายบรรทัดเดียว (เด็กอ่านเข้าใจ) · แบ่งเป็น 3 แท็บ เห็นทีละแท็บ
+  const row = (ic, title, desc, ctrl, id = "") => html`<div class="set-row st-row"><span class="st-ic" aria-hidden="true">${ic}</span><div class="t"><b ${id ? raw(`id="${id}"`) : ""}>${title}</b><span class="small muted">${desc}</span></div>${ctrl}</div>`;
+  const sw = (key, ic, title, desc) => row(ic, title, desc, html`<label class="switch"><input type="checkbox" data-sw="${key}" aria-labelledby="l-${key}" ${P[key] ? raw("checked") : ""}><span></span></label>`, `l-${key}`);
+  let tab = "sound"; try { tab = sessionStorage.getItem("qo:setTab") || "sound"; } catch { /* ignore */ }
+  if (location.hash.includes("s-account")) tab = "me";
+  const TABS = [["sound", "🔊", "เสียง"], ["look", "👀", "หน้าจอ"], ...(me ? [["me", "👤", state.config.local ? "ผู้เล่น" : "บัญชี"]] : [])];
+  if (!TABS.some(([id]) => id === tab)) tab = "sound";
+  main.innerHTML = html`<div class="narrow st-page"><h1 class="px-sign">⚙️ ตั้งค่า</h1>
+    <nav class="st-tabs" role="tablist" aria-label="หมวดการตั้งค่า">${TABS.map(([id, ic, t]) => html`<button type="button" role="tab" class="st-tab" data-tab="${id}" id="tb-${id}" aria-controls="tp-${id}" aria-selected="${tab === id}"><span class="ic" aria-hidden="true">${ic}</span><span>${t}</span></button>`)}</nav>
+    <p class="small muted st-note" ${tab === "me" ? raw("hidden") : ""}>✔️ กดเลือกแล้วใช้ได้ทันที ไม่ต้องกดบันทึก</p>
 
-    <section class="card" id="s-look"><h2 style="margin-top:0">🎨 ธีมและการแสดงผล</h2>
-      <div class="preview" aria-hidden="true"><div class="ph"><b>ตัวอย่างธีม</b><div class="small" style="opacity:.9">เรียนสนุก เล่นได้จริง 🚀</div></div>
-        <div class="pb"><div class="row"><span class="btn btn-sm">ปุ่มหลัก</span><span class="btn btn-sm btn-ghost">ปุ่มรอง</span><span class="badge badge-brand">ป้าย</span><span class="badge badge-ok">ถูกต้อง</span></div>
-        <div class="progress" style="margin:0"><i style="width:65%"></i></div><div class="card" style="padding:10px 14px;box-shadow:none">การ์ดเนื้อหา · <a href="#s-look">ลิงก์</a> · <span class="muted">ข้อความรอง</span></div></div></div>
-      <h3 style="margin-top:18px">สไตล์หน้าเว็บ</h3>
-      <p class="small muted" style="margin:0">เปลี่ยนรูปทรง ฟอนต์ ขอบ และพื้นหลังทั้งเว็บ ใช้คู่กับธีมสีด้านล่างได้ทุกแบบ</p>
-      <div class="skins" role="radiogroup" aria-label="สไตล์หน้าเว็บ">${SKINS.map((x) => html`<button type="button" class="skin" role="radio" data-skin-id="${x.id}" aria-checked="${P.skin === x.id}">
-        <div class="sk-mini sk-${x.id}" aria-hidden="true"><i class="t"></i><i class="c"></i><i class="b"></i></div>
-        <span class="nm"><span>${x.icon} ${x.name}</span><span class="ok" aria-hidden="true">${P.skin === x.id ? "✓" : ""}</span></span><span class="ds">${x.desc}</span></button>`)}</div>
-      <h3 style="margin-top:18px">ธีมสี</h3>
-      <div class="palettes" role="radiogroup" aria-label="ธีมสี">${PALETTES.map((x) => html`<button type="button" class="pal" role="radio" data-pal="${x.id}" ${locked(x) ? raw('data-locked="1"') : ""} aria-checked="${P.palette === x.id}" ${locked(x) ? raw(`aria-label="${x.name} (ล็อกอยู่ ปลดล็อกได้ที่ร้านค้า)"`) : ""}>
-        <div class="sw" style="background:linear-gradient(135deg, ${x.c[0]}, ${x.c[1]})${locked(x) ? ";filter:grayscale(.7);opacity:.6" : ""}">${locked(x) ? "🔒" : x.icon}</div><span class="ok">${P.palette === x.id ? "✓" : ""}</span><span class="nm">${x.name}${x.premium ? html` <span class="badge badge-warn">พิเศษ</span>` : ""}</span></button>`)}</div>
-      <p class="small muted">ธีมพิเศษ 🔒 ปลดล็อกได้ที่ <a href="/shop">🛒 ร้านค้า</a> ด้วยเหรียญจากการเล่นเกม</p>
-      <div class="set-row" style="margin-top:12px"><div class="t"><b>โหมดสี</b><span class="small muted">“ตามอุปกรณ์” จะเปลี่ยนตามการตั้งค่ามืด/สว่างของเครื่อง</span></div>${seg("mode", [["light", "☀️ สว่าง"], ["dark", "🌙 มืด"], ["auto", "🖥️ ตามอุปกรณ์"]])}</div>
-      <div class="set-row"><div class="t"><b>ขนาดตัวอักษร</b><span class="small muted">ขยายทั้งหน้าเว็บ รวมเกมและแบบทดสอบ</span></div>${seg("fontSize", [["sm", "เล็ก"], ["md", "ปกติ"], ["lg", "ใหญ่"], ["xl", "ใหญ่มาก"]])}</div></section>
-
-    <section class="card" id="s-read"><h2 style="margin-top:0">👓 การอ่านและการเข้าถึง</h2>
-      ${sw("contrast", "ความต่างสีสูง", "ตัวอักษรรองเข้มขึ้น เส้นขอบชัดขึ้น อ่านง่ายในที่แสงจ้า")}
-      ${sw("dyslexic", "เว้นระยะตัวอักษร", "เพิ่มระยะห่างระหว่างตัวอักษร คำ และบรรทัด ช่วยให้อ่านง่ายขึ้น")}
-      <div class="set-row"><div class="t"><b>การเคลื่อนไหว</b><span class="small muted">“ปกติ” เล่นแอนิเมชันเกมตามปกติ (ถ้าเครื่องตั้งลดการเคลื่อนไหวไว้ จะตัดเฉพาะจอสั่น) · “ลดการเคลื่อนไหว” หยุดแอนิเมชันและพลุฉลองทั้งหมด</span></div>${seg("motion", [["auto", "ปกติ"], ["reduce", "ลดการเคลื่อนไหว"]])}</div></section>
-
-    <section class="card" id="s-game"><h2 style="margin-top:0">🎮 เกมและเสียง</h2>
-      <div class="set-row"><div class="t"><b id="l-sound">เสียงประกอบ</b><span class="small muted">เสียงเมื่อตอบถูก ตอบผิด พลิกการ์ด และจบเกม</span></div>
-        <div class="row"><button type="button" class="btn btn-ghost btn-sm" id="testSound">🔊 ลองฟัง</button><label class="switch"><input type="checkbox" data-sw="sound" aria-labelledby="l-sound" ${P.sound ? raw("checked") : ""}><span></span></label></div></div>
-      <div class="set-row tick-row"><div class="t"><b id="l-tick">🎵 เสียงตอนตัวเลขบวกขึ้น</b><span class="small muted">ดังตอนจบเกม ทุกครั้งที่คะแนน XP เหรียญ และเหรียญรางวัลใหม่เด้งขึ้น — กดเพื่อเลือกและลองฟัง</span></div>
+    <section class="card st-panel" role="tabpanel" id="tp-sound" aria-labelledby="tb-sound" ${tab === "sound" ? "" : raw("hidden")}>
+      ${row("🔊", "เสียงประกอบ", html`เสียงตอนตอบถูก ตอบผิด และจบเกม <button type="button" class="linkish st-try" id="testSound">▶ ลองฟัง</button>`, html`<div class="row"><label class="switch"><input type="checkbox" data-sw="sound" aria-labelledby="l-sound" ${P.sound ? raw("checked") : ""}><span></span></label></div>`, "l-sound")}
+      ${sw("autoGo", "⏭️", "ไปข้อต่อไปเอง", "ตอบแล้วรอสักครู่ เกมจะไปข้อใหม่ให้เอง")}
+      ${sw("confetti", "🎉", "พลุฉลอง", "มีพลุกระดาษตอนได้คะแนนเต็ม")}
+      ${sw("haptics", "📳", "สั่นเมื่อตอบ", "มือถือจะสั่นเบา ๆ (บางรุ่นไม่รองรับ)")}
+      <details class="st-more"><summary>🎵 เลือกเสียงตอนนับคะแนน</summary>
+        <p class="small muted" id="l-tick">เสียงที่ดังตอนตัวเลขคะแนนวิ่งขึ้นในหน้าสรุปผล — กดเพื่อฟังและเลือก</p>
         <div class="tick-grid" role="radiogroup" aria-labelledby="l-tick" id="tickGrid"></div>
         <div class="row small" style="margin-top:8px"><label class="btn btn-ghost btn-sm" style="cursor:pointer">📁 ใช้ไฟล์เสียงของฉัน<input type="file" id="tickFile" accept="audio/*" hidden></label>
-          <span class="muted">ไฟล์ของคุณเก็บในเบราว์เซอร์นี้เท่านั้น ไม่ถูกอัปโหลดไปไหน</span></div></div>
-      ${sw("haptics", "สั่นเมื่อตอบ (มือถือ)", "สั่นเบา ๆ เมื่อตอบถูก/ผิด — ใช้ได้กับมือถือ Android ส่วนใหญ่ (iPhone ไม่รองรับ)")}
-      ${sw("confetti", "พลุฉลอง", "แสดงพลุกระดาษเมื่อได้คะแนนเต็มหรือติดอันดับ")}
-      ${sw("autoGo", "ไปข้อถัดไปอัตโนมัติ", "หลังตอบและสกิลเล่นจบ เกมจะไปข้อต่อไปเอง (ตอบถูก 2.2 วินาที ตอบผิด 3 วินาที ให้อ่านเฉลยได้ทัน) · กด ⏸ รอก่อน เพื่อหยุดได้")}</section>
+          <span class="muted">เก็บไว้ในเครื่องนี้เท่านั้น</span></div></details></section>
 
-    <section class="card" id="s-app" ${state.config.local ? raw("hidden") : ""}><h2 style="margin-top:0">📲 ติดตั้งเป็นแอปบนมือถือ</h2><div id="installBox"></div></section>
+    <section class="card st-panel" role="tabpanel" id="tp-look" aria-labelledby="tb-look" ${tab === "look" ? "" : raw("hidden")}>
+      ${row("🌗", "สว่าง หรือ มืด", "“อัตโนมัติ” = ตามมือถือ/คอมของเรา", seg("mode", [["light", "☀️ สว่าง"], ["dark", "🌙 มืด"], ["auto", "🔄 อัตโนมัติ"]]))}
+      ${row("🔠", "ขนาดตัวหนังสือ", "ตัวใหญ่ขึ้น อ่านง่ายขึ้น", seg("fontSize", [["sm", "เล็ก"], ["md", "ปกติ"], ["lg", "ใหญ่"], ["xl", "ใหญ่มาก"]]))}
+      ${row("🐢", "ลดการเคลื่อนไหว", "หยุดภาพเคลื่อนไหวและพลุ ถ้ารู้สึกตาลาย", html`<label class="switch"><input type="checkbox" data-motionsw aria-labelledby="l-motion" ${P.motion === "reduce" ? raw("checked") : ""}><span></span></label>`, "l-motion")}
+      <h3 class="st-h">🎨 สีของเกม</h3>
+      <div class="palettes" role="radiogroup" aria-label="สีของเกม">${PALETTES.map((x) => html`<button type="button" class="pal" role="radio" data-pal="${x.id}" ${locked(x) ? raw('data-locked="1"') : ""} aria-checked="${P.palette === x.id}" ${locked(x) ? raw(`aria-label="${x.name} (ล็อกอยู่ ปลดล็อกได้ที่ร้านค้า)"`) : ""}>
+        <div class="sw" style="background:linear-gradient(135deg, ${x.c[0]}, ${x.c[1]})${locked(x) ? ";filter:grayscale(.7);opacity:.6" : ""}">${locked(x) ? "🔒" : x.icon}</div><span class="ok">${P.palette === x.id ? "✓" : ""}</span><span class="nm">${x.name}</span></button>`)}</div>
+      <p class="small muted">🔒 = ปลดล็อกได้ที่ <a href="/shop">🛒 ร้านค้า</a></p>
+      <details class="st-more"><summary>🛠️ ตัวเลือกเพิ่มเติม</summary>
+        ${sw("contrast", "🔳", "สีเข้มชัด", "ตัวหนังสือและขอบเข้มขึ้น เห็นชัดตอนแดดจ้า")}
+        ${sw("dyslexic", "↔️", "ตัวหนังสือห่างขึ้น", "เว้นช่องระหว่างตัวอักษรให้อ่านง่าย")}
+        <h3 class="st-h">หน้าตาเว็บ</h3>
+        <p class="small muted" style="margin:0">แนะนำ “🧱 พิกเซลผจญภัย” — แบบอื่นจะไม่มีกรอบพิกเซลของเกม</p>
+        <div class="skins" role="radiogroup" aria-label="หน้าตาเว็บ">${SKINS.map((x) => html`<button type="button" class="skin" role="radio" data-skin-id="${x.id}" aria-checked="${P.skin === x.id}">
+          <div class="sk-mini sk-${x.id}" aria-hidden="true"><i class="t"></i><i class="c"></i><i class="b"></i></div>
+          <span class="nm"><span>${x.icon} ${x.name}</span><span class="ok" aria-hidden="true">${P.skin === x.id ? "✓" : ""}</span></span><span class="ds">${x.desc}</span></button>`)}</div>
+        <div id="s-app" ${state.config.local ? raw("hidden") : ""}><h3 class="st-h">📲 ติดตั้งเป็นแอป</h3><div id="installBox"></div></div>
+        <p class="row end"><button class="btn btn-ghost btn-sm" id="resetPrefs">↺ กลับเป็นแบบเริ่มต้น</button></p></details></section>
 
-    <p class="row end"><button class="btn btn-ghost btn-sm" id="resetPrefs">↺ คืนค่าการแสดงผลเริ่มต้น</button></p>
-
-    ${state.config.local ? html`<section class="card" id="s-account"><h2 style="margin-top:0">👤 ผู้เล่นและความคืบหน้า</h2>
+    <section class="st-panel" role="tabpanel" id="tp-me" aria-labelledby="tb-me" ${tab === "me" ? "" : raw("hidden")}>
+    ${state.config.local ? html`<section class="card" id="s-account"><h2 style="margin-top:0">👤 ผู้เล่น</h2>
       <div id="cloudBox"></div>
-      <form id="lf"><label for="ln">ชื่อที่แสดง</label><div class="row"><input id="ln" name="displayName" value="${me.displayName}" maxlength="40" style="flex:1" required><button class="btn">บันทึก</button></div></form>
-      <p class="small muted" ${me.cloud ? raw("hidden") : ""}>ความคืบหน้า (XP เหรียญ ของสะสม) เก็บไว้ในเบราว์เซอร์นี้ — ถ้าล้างข้อมูลเบราว์เซอร์หรือเปลี่ยนเครื่องจะหายไป ใช้ “สำรอง” เพื่อย้ายไปเครื่องอื่นได้</p>
-      <div class="row"><button class="btn btn-ghost btn-sm" id="exp">💾 สำรองความคืบหน้า</button><button class="btn btn-ghost btn-sm" id="imp">📥 กู้คืนจากข้อความสำรอง</button><button class="btn btn-danger btn-sm" id="wipe">🗑 เริ่มใหม่ทั้งหมด</button></div>
+      <form id="lf"><label for="ln">ชื่อในเกม</label><div class="row"><input id="ln" name="displayName" value="${me.displayName}" maxlength="40" style="flex:1" required><button class="btn">บันทึก</button></div></form>
+      <p class="small muted" ${me.cloud ? raw("hidden") : ""}>💡 ของในเกมเก็บไว้ในเครื่องนี้ ถ้าจะย้ายไปเล่นเครื่องอื่น กด “สำรอง” แล้วเก็บข้อความไว้</p>
+      <div class="row"><button class="btn btn-ghost btn-sm" id="exp">💾 สำรอง</button><button class="btn btn-ghost btn-sm" id="imp">📥 กู้คืน</button><button class="btn btn-danger btn-sm" id="wipe">🗑 เริ่มใหม่ทั้งหมด</button></div>
       <div id="ioBox"></div></section>` : me ? html`<h2 id="s-account" style="margin-top:28px">👤 บัญชี</h2><p class="muted" style="margin-top:-.4em">${me.email} · <a href="/privacy">นโยบายความเป็นส่วนตัว</a></p>
     <form class="card" id="pf"><h3>ข้อมูลส่วนตัว</h3><p class="small muted">ใช้ชื่อเล่นได้ ไม่จำเป็นต้องใช้ชื่อจริง ชื่อนี้ครูและเพื่อนในห้องจะเห็น</p>
       <label for="dn">ชื่อที่แสดง</label><input id="dn" name="displayName" value="${me.displayName}" maxlength="60" required>
@@ -221,13 +221,21 @@ export async function settings({ main, me }) {
       <label for="d1">รหัสผ่านของคุณ</label><input id="d1" name="password" type="password" required>
       <label for="d2">พิมพ์ DELETE เพื่อยืนยัน</label><input id="d2" name="confirm" required autocomplete="off">
       <div class="row" style="margin-top:12px"><button class="btn btn-danger" disabled>ลบบัญชีถาวร</button></div></form>`
-    : html`<div class="card center" id="s-account"><p>เข้าสู่ระบบเพื่อจัดการบัญชี และให้การตั้งค่าตามไปทุกเครื่อง</p><a class="btn" href="/login?next=/settings">เข้าสู่ระบบ</a> <a class="btn btn-ghost" href="/register">สมัครสมาชิก</a></div>`}</div>`.s;
+    : html`<div class="card center" id="s-account"><p>เข้าสู่ระบบเพื่อจัดการบัญชี และให้การตั้งค่าตามไปทุกเครื่อง</p><a class="btn" href="/login?next=/settings">เข้าสู่ระบบ</a> <a class="btn btn-ghost" href="/register">สมัครสมาชิก</a></div>`}</section>
+    ${me ? "" : html`<div class="card center"><p>เข้าสู่ระบบเพื่อให้การตั้งค่าตามไปทุกเครื่อง</p><a class="btn" href="/login?next=/settings">เข้าสู่ระบบ</a> <a class="btn btn-ghost" href="/register">สมัครสมาชิก</a></div>`}</div>`.s;
+  main.querySelectorAll("[data-tab]").forEach((b) => b.onclick = () => {
+    tab = b.dataset.tab; try { sessionStorage.setItem("qo:setTab", tab); } catch { /* ignore */ }
+    main.querySelectorAll("[data-tab]").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+    main.querySelectorAll(".st-panel").forEach((x) => { x.hidden = x.id !== "tp-" + tab; }); main.querySelector(".st-note").hidden = tab === "me";
+  });
+  main.querySelector("[data-motionsw]").onchange = (e) => { setPrefs({ motion: e.target.checked ? "reduce" : "auto" }); };
 
   const refresh = () => {
     const p = getPrefs();
     main.querySelectorAll("[data-seg]").forEach((g) => g.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(p[g.dataset.seg] === b.dataset.v))));
     main.querySelectorAll("[data-pal]").forEach((b) => { const on = p.palette === b.dataset.pal; b.setAttribute("aria-checked", String(on)); b.querySelector(".ok").textContent = on ? "✓" : ""; });
     main.querySelectorAll("[data-sw]").forEach((c) => { c.checked = !!p[c.dataset.sw]; });
+    main.querySelector("[data-motionsw]").checked = p.motion === "reduce";
   };
   main.querySelectorAll("[data-seg] button").forEach((b) => b.onclick = () => { setPrefs({ [b.closest("[data-seg]").dataset.seg]: b.dataset.v }); refresh(); });
   main.querySelectorAll("[data-skin-id]").forEach((b) => b.onclick = () => {

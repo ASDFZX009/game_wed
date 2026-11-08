@@ -6,9 +6,9 @@ export const DEFAULTS = { mode: "auto", palette: "violet", fontSize: "md", motio
 
 // สไตล์หน้าเว็บ (เปลี่ยนรูปทรง ฟอนต์ ขอบ เงา พื้นหลัง) ใช้คู่กับธีมสีได้ทุกธีม
 export const SKINS = [
-  { id: "classic", name: "มาตรฐาน", icon: "🚀", desc: "สะอาดตา อ่านง่าย" },
+  { id: "classic", name: "พิกเซลผจญภัย", icon: "🧱", desc: "แบบหลักของเกม (แนะนำ)" },
   { id: "comic", name: "คอมิกแอ็กชัน", icon: "💥", desc: "ขอบหนา เงาแข็ง ตัวอักษรเอียง" },
-  { id: "pixel", name: "เกมพิกเซล", icon: "👾", desc: "ขอบเหลี่ยมแบบเกม 8 บิต" },
+  { id: "pixel", name: "8 บิตย้อนยุค", icon: "👾", desc: "ขอบเหลี่ยมแบบเกมยุคเก่า" },
   { id: "neon", name: "นีออนไซเบอร์", icon: "🌃", desc: "พื้นมืด เส้นตาราง แสงเรือง" },
   { id: "sketch", name: "สมุดวาดเขียน", icon: "✏️", desc: "กระดาษมีเส้น ลายมือ ขอบวาดมือ" },
   { id: "glass", name: "กระจกใส", icon: "🫧", desc: "การ์ดโปร่งแสง พื้นหลังไล่สี" },

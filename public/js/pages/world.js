@@ -2,6 +2,7 @@
 // วาดด้วยโค้ดทั้งหมด (ไม่มีไฟล์ภาพ) · คีย์บอร์ด: ลูกศร/WASD เดิน, Shift วิ่ง, E/Enter เข้าบ้าน · เมาส์/นิ้ว: แตะที่บ้านหรือพื้นเพื่อเดินไป
 // ชั้นภาพ: พื้น + เงานิ่ง (วาดครั้งเดียว) → เงาตัวละคร → วัตถุเรียงตามความลึก → แสง/ประกาย → (CSS) ลำแสง หมอกอุ่น เบลอ tilt-shift → ป้ายตัวหนังสือคมชัด
 import { T, rng, hash, fbm, canvas, css } from "../world/art.js";
+import { attachJoystick } from "../ui/joystick.js";
 import { groundTypes, groundBaker } from "../world/ground.js";
 import { windmill, windmillSails, gazebo, greatTree, ruinArch, scarecrow, hayBale, stoneLantern } from "../world/landmarks.js";
 import { broadTree, pineTree, bush, flowerPatch, lavender, plateau, fence, PROP, HOUSE, house, dockSign, pillar, crystal } from "../world/sprites.js";
@@ -308,7 +309,7 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   host.appendChild(view);
   const ui = document.createElement("div"); ui.className = "world-ui"; host.appendChild(ui);
   ui.innerHTML = `<div class="w-fx w-tilt top"></div><div class="w-fx w-tilt bot"></div><canvas class="world-labels" aria-hidden="true"></canvas>`
-    + `<div class="world-hint"><span class="wh-long">⌨️ ลูกศร / WASD เดิน · Shift วิ่ง · E เข้าบ้าน · 👆 แตะที่บ้านเพื่อเดินไปเข้า</span><span class="wh-short">👆 แตะพื้นเพื่อเดิน · แตะบ้านเพื่อเข้า</span></div><button type="button" class="world-enter" hidden></button><div class="world-fade"></div>`;
+    + `<div class="world-hint"><span class="wh-long">⌨️ ลูกศร / WASD เดิน · Shift วิ่ง · E เข้าบ้าน · 👆 แตะที่บ้านเพื่อเดินไปเข้า</span><span class="wh-short">🕹️ แตะค้างแล้วลากเพื่อเดิน · แตะบ้านเพื่อเข้า</span></div><button type="button" class="world-enter" hidden></button><div class="world-fade"></div>`;
   const enterBtn = ui.querySelector(".world-enter"), fade = ui.querySelector(".world-fade"), labels = ui.querySelector(".world-labels");
   // แผงผู้เล่นออนไลน์ (มุมซ้ายล่าง): จำนวนคน · อีโมต · เปิด/ปิดการเจอผู้เล่น
   const mp = document.createElement("div"); mp.className = "w-online"; mp.hidden = !net; ui.appendChild(mp);
@@ -433,7 +434,8 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
     let mx = 0, my = 0;
     if (keys.has("ArrowLeft") || keys.has("a")) mx -= 1; if (keys.has("ArrowRight") || keys.has("d")) mx += 1;
     if (keys.has("ArrowUp") || keys.has("w")) my -= 1; if (keys.has("ArrowDown") || keys.has("s")) my += 1;
-    const speed = keys.has("Shift") ? 220 : 140;
+    let speed = keys.has("Shift") ? 220 : 140;
+    if (!mx && !my && joy.state.on) { mx = joy.state.x; my = joy.state.y; speed *= Math.min(1, 0.45 + Math.hypot(mx, my) * 0.75); }
     if (mx || my) hero.path = null, hero.target = null;
     else if (hero.path && hero.path.length) { const [tx, ty] = hero.path[0], gx2 = tx * T + 16, gy2 = ty * T + 20; const dx = gx2 - hero.x, dy = gy2 - hero.y, d = Math.hypot(dx, dy);
       if (d < 3) { hero.path.shift(); if (!hero.path.length) { hero.path = null; if (hero.target) { const t = hero.target; hero.target = null; hero.dir = 3; enter(t); } } } else { mx = dx / d; my = dy / d; } }
@@ -607,15 +609,17 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   };
   view.addEventListener("keydown", onKey); view.addEventListener("keyup", onKey);
   view.addEventListener("blur", () => keys.clear());
-  view.addEventListener("pointerdown", (e) => {
-    view.focus({ preventScroll: true });
+  const tapAt = (e) => {
     const r = view.getBoundingClientRect(), wx = (e.clientX - r.left) / S + cam.x, wy = (e.clientY - r.top) / S + cam.y;
     const house2 = PLACES.find((p) => p.dock ? wx >= p.x * T - 8 && wx < p.x * T + 80 && wy >= p.y * T - 70 && wy < (p.y + 6) * T : wx >= p.x * T && wx < (p.x + 5) * T && wy >= p.y * T - 50 && wy < (p.y + 4) * T);
     if (house2) { if (near === house2) enter(house2); else walkTo(house2.ex, house2.ey, house2); return; }
     const npc = npcs.find((n) => Math.abs(wx - n.fx) < 16 && wy > n.fy - 64 && wy < n.fy + 4);
     if (npc) { for (const [dx, dy] of [[0, 1], [-1, 0], [1, 0], [0, -1]]) { const tx = npc.x + dx, ty = npc.y + dy; if (M.inb(tx, ty) && !M.block[M.at(tx, ty)]) { walkTo(tx, ty); return; } } }
     walkTo(Math.floor(wx / T), Math.floor(wy / T));
-  });
+  };
+  // เมาส์คลิกเดิน · นิ้วใช้จอยลอย (แตะสั้น ๆ = แตะปกติ)
+  view.addEventListener("pointerdown", (e) => { if (paused) return; view.focus({ preventScroll: true }); if (e.pointerType === "mouse") tapAt(e); });
+  const joy = attachJoystick(view, { layer: ui, enabled: () => !paused, onTap: tapAt });
   enterBtn.addEventListener("click", () => near && enter(near));
 
   // ---------- ลูป ----------
@@ -630,11 +634,11 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
   mpStart();
   return {
     get online() { return online; },
-    pause(v) { paused = !!v; keys.clear(); if (!v) view.focus({ preventScroll: true }); },
+    pause(v) { paused = !!v; keys.clear(); joy.reset(); if (!v) view.focus({ preventScroll: true }); },
     places: PLACES,
     setNight(v) { nightGoal = v ? 1 : 0; host.classList.toggle("w-is-night", !!v); },
     get night() { return nightGoal === 1; },
-    destroy() { mpStop(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
+    destroy() { joy.destroy(); mpStop(); cancelAnimationFrame(raf); ro.disconnect(); window.removeEventListener("resize", onResize); io.disconnect(); view.remove(); ui.remove(); },
     reachable() { const [sx, sy] = tileAt(hero.x, hero.y - 1); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) || (sx === p.ex && sy === p.ey) })); },
     _hero: hero,
     _npcs: npcs,

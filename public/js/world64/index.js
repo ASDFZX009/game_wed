@@ -8,6 +8,7 @@ import * as A from "./art.js";
 import { makeTypeFn, bakeChunkGen, previewChunk } from "./ground.js";
 import { getPrefs } from "../prefs.js";
 import { loadSprites } from "../gacha-client.js";
+import { attachJoystick } from "../ui/joystick.js";
 
 export function mountWorld64(host, { onGfx = null, go, playerName = "นักผจญภัย", reduced: reducedOpt = false, night: night0 = false, onHouse = null, heroId = "wayu" } = {}) {
 const T = 64, SPR = () => globalThis.QO_SPR || {};
@@ -190,7 +191,7 @@ function magicFront(x, t, V) {
 host.classList.add("w64");
 const cv = document.createElement("canvas"); cv.className = "world-canvas"; cv.tabIndex = 0; cv.setAttribute("role", "application"); cv.setAttribute("aria-label", "หมู่บ้านแห่งการเรียนรู้ ใช้ปุ่มลูกศรเดิน กด E เพื่อเข้าบ้าน หรือแตะที่บ้านเพื่อเดินไป");
 const ui = document.createElement("div"); ui.className = "world-ui";
-ui.innerHTML = '<div class="w-fx w-haze"></div><div class="w-fx w-rays"></div><div class="w-fx w-tilt top"></div><div class="w-fx w-tilt bot"></div><canvas class="world-labels w64-lbl" aria-hidden="true"></canvas><div class="world-hint"><span class="wh-long">⌨️ ลูกศร / WASD เดิน · E เข้าบ้าน · 👆 แตะที่บ้านเพื่อเดินไปเข้า · ✨ ซุ้มประตูโบราณ = ประตูอัญเชิญ</span><span class="wh-short">👆 แตะพื้นเพื่อเดิน · แตะบ้านเพื่อเข้า</span></div>';
+ui.innerHTML = '<div class="w-fx w-haze"></div><div class="w-fx w-rays"></div><div class="w-fx w-tilt top"></div><div class="w-fx w-tilt bot"></div><canvas class="world-labels w64-lbl" aria-hidden="true"></canvas><div class="world-hint"><span class="wh-long">⌨️ ลูกศร / WASD เดิน · E เข้าบ้าน · 👆 แตะที่บ้านเพื่อเดินไปเข้า · ✨ ซุ้มประตูโบราณ = ประตูอัญเชิญ</span><span class="wh-short">🕹️ แตะค้างแล้วลากเพื่อเดิน · แตะบ้านเพื่อเข้า</span></div><button type="button" class="world-enter" hidden></button>';
 host.append(cv, ui);
 const lbl = ui.querySelector(".w64-lbl"), ctx = cv.getContext("2d"), lx = lbl.getContext("2d");
 let VW = 0, VH = 0, DPR = 1, zoom = 1, fitAll = false, cam = { x: hero.x, y: hero.y }, night = night0, paused = false, alive = true, raf = 0;
@@ -310,12 +311,19 @@ function hitAt(wx, wy) {
   return null;
 }
 const screenToWorld = (cx, cy) => { const V = view(), r = cv.getBoundingClientRect(); return [V.x + (cx - r.left) / zoom, V.y + (cy - r.top) / zoom]; };
-cv.addEventListener("pointerdown", (e) => {
-  if (talking || paused) return; cv.focus({ preventScroll: true }); const [wx, wy] = screenToWorld(e.clientX, e.clientY), h = hitAt(wx, wy);
+function tapAt(cx, cy) {
+  if (talking || paused) return; const [wx, wy] = screenToWorld(cx, cy), h = hitAt(wx, wy);
   if (h?.kind === "gate") walkTo(gateFront[0], gateFront[1], "gate");
   else if (h?.kind === "house") walkTo(h.p.ex, h.p.ey, h.p);
   else { const [tx, ty] = tileOf(wx, wy + 8); walkTo(tx, ty); }
-});
+}
+// เมาส์: คลิกเดินแบบเดิม · นิ้ว: จอยลอย (แตะสั้น ๆ = แตะปกติ)
+cv.addEventListener("pointerdown", (e) => { if (talking || paused) return; cv.focus({ preventScroll: true }); if (e.pointerType === "mouse") tapAt(e.clientX, e.clientY); });
+const joy = attachJoystick(cv, { layer: ui, enabled: () => !talking && !paused, onTap: (e) => tapAt(e.clientX, e.clientY) });
+// ปุ่ม "เข้าบ้าน" ตอนยืนหน้าประตู (สำหรับคนที่เดินด้วยจอย — ไม่ต้องแตะตัวบ้านให้ตรง)
+const enterBtn = ui.querySelector(".world-enter"); let nearDoor = null;
+enterBtn.addEventListener("click", () => { if (nearDoor && !talking && !paused) { hero.path = null; arrive(nearDoor); } });
+const doorNear = () => { if (Math.hypot(hero.x - gx, hero.y - gy - 40) < 140) return "gate"; return PLACES.find((q) => inReg(q.x, q.y) && Math.hypot(hero.x - (q.ex * T + 32), hero.y - (q.ey * T + 40)) < 80) || null; };
 cv.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const [wx, wy] = screenToWorld(e.clientX, e.clientY), h = hitAt(wx, wy); gateO.hover = h?.kind === "gate"; for (const o of objects) if (o.kind === "house") o.hover = h?.o === o; cv.style.cursor = h ? "pointer" : "default"; });
 const keys = new Set();
 // ใช้ตำแหน่งปุ่ม (e.code) ไม่ใช่ตัวอักษร → แป้นพิมพ์ภาษาไทยก็เดินด้วย WASD ได้ (ไม่ต้องสลับภาษา)
@@ -338,9 +346,11 @@ function step(now) {
   const dt = Math.min(0.05, (now - (last || now)) / 1000); last = now; const sp = 4.4 * T;
   let vx = 0, vy = 0;
   if (!talking && !paused) { if (keys.has("arrowleft") || keys.has("a")) vx--; if (keys.has("arrowright") || keys.has("d")) vx++; if (keys.has("arrowup") || keys.has("w")) vy--; if (keys.has("arrowdown") || keys.has("s")) vy++; }
+  // จอย: ลากไกล = เดินเร็ว (ลากนิดเดียวเดินช้า ๆ)
+  let pw = 1; if (!vx && !vy && joy.state.on && !talking && !paused) { vx = joy.state.x; vy = joy.state.y; pw = Math.min(1, 0.45 + Math.hypot(vx, vy) * 0.75); }
   hero.walk = 0;
-  if (vx || vy) { hero.path = null; const n = Math.hypot(vx, vy), nx = hero.x + (vx / n) * sp * dt, ny = hero.y + (vy / n) * sp * dt, ok = (x, y) => { const [a, b] = tileOf(x, y); return M.inb(a, b) && !M.block[M.at(a, b)] && inReg(a, b, 0); };
-    if (ok(nx, ny)) { hero.x = nx; hero.y = ny; } else if (ok(nx, hero.y)) hero.x = nx; else if (ok(hero.x, ny)) hero.y = ny; hero.walk = 1; if (vx) hero.dir = vx; }
+  if (vx || vy) { hero.path = null; const n = Math.hypot(vx, vy), nx = hero.x + (vx / n) * sp * pw * dt, ny = hero.y + (vy / n) * sp * pw * dt, ok = (x, y) => { const [a, b] = tileOf(x, y); return M.inb(a, b) && !M.block[M.at(a, b)] && inReg(a, b, 0); };
+    if (ok(nx, ny)) { hero.x = nx; hero.y = ny; } else if (ok(nx, hero.y)) hero.x = nx; else if (ok(hero.x, ny)) hero.y = ny; hero.walk = 1; if (Math.abs(vx) > 0.2) hero.dir = vx > 0 ? 1 : -1; }
   else if (hero.path?.length) { const [tx, ty] = hero.path[0], X = tx * T + 32, Y = ty * T + 40, dx = X - hero.x, dy = Y - hero.y, d = Math.hypot(dx, dy);
     if (d < sp * dt) { hero.x = X; hero.y = Y; hero.path.shift(); if (!hero.path.length && hero.goal) { const g0 = hero.goal; hero.goal = null; arrive(g0); } } else { hero.x += (dx / d) * sp * dt; hero.y += (dy / d) * sp * dt; if (Math.abs(dx) > 2) hero.dir = dx > 0 ? 1 : -1; }
     hero.walk = 1; }
@@ -348,6 +358,7 @@ function step(now) {
   if (!reduced) { fox.wait -= dt; if (fox.wait <= 0) { if (!fox.tx) { const a = Math.random() * 6.28, r = 1.2 + Math.random() * 1.5; fox.tx = (PLAZA.x + Math.cos(a) * r * 2.6) * T; fox.ty = (PLAZA.y + Math.sin(a) * r * 2.2) * T; }
     const dx = fox.tx - fox.x, dy = fox.ty - fox.y, d = Math.hypot(dx, dy); fox.walk = d > 4; if (d > 4) { fox.x += (dx / d) * 90 * dt; fox.y += (dy / d) * 90 * dt; fox.face = dx > 0 ? 1 : -1; } else { fox.tx = 0; fox.wait = 1.5 + Math.random() * 3; } } }
   npcs.forEach((c) => (c.dir = hero.x < c.x ? -1 : 1));
+  { const d = joy.state.touch && !talking && !paused && !hero.path?.length ? doorNear() : null; if (d !== nearDoor) { nearDoor = d; enterBtn.hidden = !d; if (d) enterBtn.textContent = d === "gate" ? "✨ เข้าประตูอัญเชิญ" : `${d.ic || "🚪"} เข้า${d.dock || d.shop ? "" : "บ้าน"}${d.name}`; } }
   const dG = Math.hypot(hero.x - gx, hero.y - gy - 30); near += ((dG < 260 ? 1 - dG / 260 : 0) - near) * Math.min(1, dt * 4); if (!talking && open > 0) open = Math.max(0, open - dt * 0.8);
   if (!fitAll) { cam.x += (hero.x - cam.x) * Math.min(1, dt * 5); cam.y += (hero.y - 60 - cam.y) * Math.min(1, dt * 5); } else { cam.x = (REG.x0 + REG.x1) / 2 * T; cam.y = (REG.y0 + REG.y1) / 2 * T; }
   if (VW > 1 && (!Q.fps || now - lastDraw >= 1000 / Q.fps - 2)) { lastDraw = now; draw(now); } if (alive) raf = requestAnimationFrame(step);
@@ -367,11 +378,11 @@ resize(); raf = requestAnimationFrame(step);
 return {
   get online() { return null; },
   // กลับมาเล่นต่อ (ปิดบ้าน/บทสนทนา): ดึงโฟกัสกลับมาที่หมู่บ้านทันที ไม่ต้องคลิกก่อนเดิน
-  pause(v) { paused = !!v; keys.clear(); if (!v) { const f = () => { if (paused || !alive) return; if (document.activeElement && document.activeElement !== cv && document.activeElement !== document.body && !document.activeElement.closest?.(".gh-top, .gh-dock, .w-hud")) document.activeElement.blur?.(); try { window.focus(); } catch { /* ignore */ } cv.focus({ preventScroll: true }); }; f(); requestAnimationFrame(f); setTimeout(f, 120); } },
+  pause(v) { paused = !!v; keys.clear(); joy.reset(); if (!v) { const f = () => { if (paused || !alive) return; if (document.activeElement && document.activeElement !== cv && document.activeElement !== document.body && !document.activeElement.closest?.(".gh-top, .gh-dock, .w-hud")) document.activeElement.blur?.(); try { window.focus(); } catch { /* ignore */ } cv.focus({ preventScroll: true }); }; f(); requestAnimationFrame(f); setTimeout(f, 120); } },
   places: PLACES,
   setNight(v) { night = !!v; host.classList.toggle("w-is-night", night); },
   get night() { return night; },
-  destroy() { alive = false; cancelAnimationFrame(raf); ro.disconnect(); removeEventListener("keydown", onKD); removeEventListener("keyup", onKU); removeEventListener("blur", onBlur); cv.remove(); ui.remove(); host.classList.remove("w64"); },
+  destroy() { alive = false; cancelAnimationFrame(raf); ro.disconnect(); removeEventListener("keydown", onKD); removeEventListener("keyup", onKU); removeEventListener("blur", onBlur); joy.destroy(); cv.remove(); ui.remove(); host.classList.remove("w64"); },
   reachable() { const [sx, sy] = tileOf(hero.x, hero.y); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) })); },
   _hero: hero, _npcs: npcs, netRefresh() {},
   setLook(_l, name) { if (name) playerName = name; },

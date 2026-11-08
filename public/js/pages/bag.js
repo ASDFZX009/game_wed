@@ -4,6 +4,8 @@ import { go, refreshMe } from "../app.js";
 import { setPrefs, getPrefs, playTick, PALETTES } from "../prefs.js";
 import { itemVisual } from "./shop.js";
 import { pxImg } from "../ui/pixui.js";
+import { loadSprites, frameUrl, myTeam, needsStarter, ROSTER } from "../gacha-client.js";
+import { PASSIVE } from "../../gacha/data.js";
 
 const CATS = [
   { id: "face", side: "L", th: "หน้าตา", en: "FACE", ic: "🎭", px: "face", types: ["pfp", "avatar"], desc: "รูปโปรไฟล์จากกล่องสุ่มโปรไฟล์ และอวาตาร์" },
@@ -22,6 +24,18 @@ export async function bag({ main }) {
     return;
   }
   let d = await api("/api/shop");
+  await Promise.race([loadSprites(), new Promise((r) => setTimeout(r, 2500))]); // ภาพตัวละคร (ไม่รอนานถ้าเน็ตช้า)
+  const sprite = (id) => frameUrl(id + "_n0") || frameUrl(id + "_0");
+  const stars = (r) => "★".repeat(r);
+  // 🧙 คู่หู: ตัวละครที่สุ่มได้ เลือกได้ในกระเป๋า (ตัวที่เลือกจะเดินในหมู่บ้านและออกไปสู้บอส)
+  const heroCard = () => {
+    if (needsStarter() || !state.me.gacha) return html`<a class="bh-hero empty" href="/gacha"><span class="bh-hero-ic" aria-hidden="true">✨</span><span class="bh-hero-t"><b>ยังไม่มีตัวละคร</b><small>ไปรับคู่หูคนแรกที่ประตูอัญเชิญ ▶</small></span></a>`;
+    const tm = myTeam(), c = ROSTER[tm.party];
+    return html`<button type="button" class="bh-hero" id="bhHero" aria-label="คู่หูของฉัน ${c.n} — กดเพื่อเปลี่ยนตัวละคร">
+      <span class="bh-hero-img">${sprite(tm.party) ? html`<img src="${sprite(tm.party)}" alt="" width="64" height="64">` : c.ic}</span>
+      <span class="bh-hero-t"><small>⚔️ คู่หูของฉัน</small><b>${c.n} <span class="st r${c.r}">${stars(c.r)}</span></b><small>${c.ic} ${c.el} · มี ${tm.ids.length} ตัว</small></span>
+      <span class="bh-hero-go">🔄 เปลี่ยน</span></button>`;
+  };
   const count = (c) => { const all = d.items.filter((x) => c.types.includes(x.type)); return [all.filter((x) => x.owned).length, all.length]; };
 
   const plate = (c, i) => {
@@ -44,10 +58,12 @@ export async function bag({ main }) {
       <div class="bh-center">
         <div class="bh-figure"><div class="bh-burst" aria-hidden="true"></div>${avatar(look, "jumbo")}</div>
         <div class="bh-name"><b>${me.displayName}</b>${titleTag(look)}</div>
+        ${heroCard()}
         <div class="bh-lv">ระดับ ${Math.floor((me.xp || 0) / 100) + 1} · ${(me.xp || 0).toLocaleString("th-TH")} XP · ของสะสม ${d.items.filter((x) => x.owned).length}/${d.items.length}</div>
       </div>
       <nav class="bh-col right" aria-label="เมนูอื่น">${CATS.filter((c) => c.side === "R").map(plate)}</nav>
     </section>`.s;
+    main.querySelector("#bhHero")?.addEventListener("click", openHeroes);
     main.querySelectorAll("[data-cat]").forEach((b) => b.onclick = () => {
       const c = CATS.find((x) => x.id === b.dataset.cat);
       if (c.href) return go(c.href);
@@ -96,6 +112,37 @@ export async function bag({ main }) {
         } catch (e) { toast(e.message, "bad"); }
       });
       dlg.querySelectorAll("[data-off]").forEach((b) => b.onclick = async () => { await api("/api/shop/equip", { body: { slot: b.dataset.off, itemId: null } }); toast("ถอดแล้ว"); await reload(); fill(); });
+    };
+    fill();
+    dlg.addEventListener("close", () => { dlg.remove(); draw(); });
+    dlg.addEventListener("click", (e) => { if (e.target === dlg) dlg.close(); });
+    dlg.showModal();
+    dlg.querySelector(".bd-btn, #bdX")?.focus();
+  }
+  function openHeroes() {
+    const dlg = document.createElement("dialog");
+    dlg.className = "bag-dlg hero-dlg";
+    document.body.appendChild(dlg);
+    const fill = () => {
+      const tm = myTeam(), total = Object.keys(ROSTER).length;
+      const card = (id) => { const c = ROSTER[id], on = id === tm.party, st = tm.stage[id] || 0;
+        return html`<div class="bd-item hc r-${c.r === 5 ? "epic" : c.r === 4 ? "legendary" : "common"} ${on ? "on" : ""}">
+          <span class="rar">${stars(c.r)}</span>
+          <div class="vis">${sprite(id) ? html`<img class="hc-img" src="${sprite(id)}" alt="" width="64" height="64">` : html`<span style="font-size:2.4rem">${c.ic}</span>`}</div>
+          <div class="nm">${c.n}</div><div class="hc-sub">${c.ic} ${c.el}${st ? ` · ร่าง ${st}` : ""}</div>
+          <div class="hc-pas">${c.pas.map((p) => PASSIVE[p]?.n).filter(Boolean).join(" · ")}</div>
+          ${on ? html`<span class="bd-on">✓ ใช้อยู่</span>` : html`<button class="bd-btn" data-hero="${id}">เลือก</button>`}</div>`; };
+      dlg.innerHTML = html`<div class="bd-head"><span class="ic" aria-hidden="true">${sprite(tm.party) ? html`<img src="${sprite(tm.party)}" alt="" width="48" height="48" style="image-rendering:pixelated">` : "🧙"}</span>
+        <div><h2>ตัวละครของฉัน</h2><p>กด “เลือก” ให้เป็นคู่หู (เดินในหมู่บ้านและไปสู้บอสด้วยกัน) · มี ${tm.ids.length}/${total} ตัว</p></div>
+        <button class="bd-x" aria-label="ปิด" id="bdX">✕</button></div>
+        <div class="bd-body"><div class="bd-grid">${tm.ids.map(card)}</div>
+          ${tm.ids.length < total ? html`<a class="bd-more" href="/gacha">✨ อยากได้ตัวละครเพิ่ม — ไปประตูอัญเชิญ ▶</a>` : html`<p class="bd-done">🏆 มีตัวละครครบทุกตัวแล้ว!</p>`}</div>`.s;
+      dlg.querySelector("#bdX").onclick = () => dlg.close();
+      dlg.querySelectorAll("a[href]").forEach((a) => a.addEventListener("click", () => dlg.close()));
+      dlg.querySelectorAll("[data-hero]").forEach((b) => b.onclick = async () => {
+        try { const g = await api("/api/gacha/party", { method: "POST", body: { id: b.dataset.hero } }); state.me.gacha = g; toast(`${ROSTER[b.dataset.hero].n} เป็นคู่หูแล้ว! ⚔️`); fill(); dlg.querySelector(".hc.on .bd-on")?.focus?.(); }
+        catch (e) { toast(e.message, "bad"); }
+      });
     };
     fill();
     dlg.addEventListener("close", () => { dlg.remove(); draw(); });
