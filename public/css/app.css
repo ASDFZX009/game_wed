@@ -1744,3 +1744,25 @@ body.has-hud .gc { height: calc(100dvh - var(--hud-top) - var(--dock-h)); }
 .qemo { font-size: 1.7em; vertical-align: -0.25em; line-height: 1; }
 .bc-ans.emo, .opt.emo { font-size: 2.2rem; line-height: 1.1; }
 @media (max-width: 560px) { .qpic { font-size: 2.1rem; gap: 4px 8px; } .bc-ans.emo, .opt.emo { font-size: 1.9rem; } }
+/* ⚔️ ระบบสกิลแบบใหม่: แถบสกิลเหนือการ์ด · การ์ดคำตอบแบบเรียบ (มีแต่คำตอบ) */
+.bt-skills { position: relative; z-index: 7; margin: 10px 8px 0; padding: 8px 10px; background: #2a1608; color: #ffe9a8; box-shadow: inset 0 0 0 2px #7a5a3a, 0 3px 0 rgba(0,0,0,.3); }
+.bt-skills[hidden] { display: none; }
+.bt-skills:not([hidden]) + .bt-hand { margin-top: 12px; }
+.sk-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-weight: 800; font-size: .9rem; margin-bottom: 6px; }
+.sk-head small { font-weight: 600; opacity: .8; font-size: .76rem; }
+.sk-head.pop { color: #7cff8a; animation: skpop .35s steps(3); }
+@keyframes skpop { from { transform: scale(.85); } to { transform: none; } }
+.sk-en { display: inline-flex; gap: 4px; } .sk-en i { width: 16px; height: 16px; background: #3a2412; box-shadow: inset 0 0 0 2px #7a5a3a; }
+.sk-en i.f { background: #ffd84a; box-shadow: inset 0 0 0 2px #c8961a, 0 0 8px rgba(255,216,74,.6); }
+.sk-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.sk-btn { --el: #888; display: grid; grid-template-columns: 52px 1fr; grid-template-rows: auto auto; align-items: center; column-gap: 8px; text-align: left; padding: 6px 8px; border: 0; cursor: pointer; font: inherit; color: #2a1608; background: #f4e4bc; box-shadow: inset 0 0 0 3px var(--el), 0 3px 0 #1a0e04; }
+.sk-btn img { grid-row: 1 / 3; width: 52px; height: 34px; object-fit: cover; image-rendering: pixelated; background: #1a2a3a; }
+.sk-btn b { font-size: .86rem; line-height: 1.2; } .sk-btn span { font-size: .72rem; font-weight: 700; color: #7a5a3a; }
+.sk-btn.on { background: #ffd84a; box-shadow: inset 0 0 0 3px #2a1608, 0 0 0 3px #ffd84a, 0 0 14px rgba(255,216,74,.7); transform: translateY(-3px); }
+.sk-btn.ult { background: #fff0c8; } .sk-btn.ult b { color: #8a2ae0; }
+.sk-btn.lock, .sk-btn[disabled] { filter: grayscale(.9) brightness(.75); cursor: not-allowed; }
+.sk-btn.step { cursor: default; } .sk-btn.step.done { filter: brightness(.85); } .sk-btn.step.on { transform: translateY(-3px); }
+.bc.plain { min-height: 150px; width: 170px; padding-top: 30px; }
+.bc.plain .bc-ans { font-size: 1.35rem; }
+.bc.plain .bc-key { top: 8px; left: 8px; right: auto; }
+@media (max-width: 560px) { .sk-row { grid-template-columns: 1fr; } .sk-btn { grid-template-columns: 44px 1fr; } .sk-btn img { width: 44px; height: 30px; } .bc.plain { width: calc(50% - 8px); min-height: 104px; padding-top: 26px; } .bc.plain .bc-ans { font-size: 1.1rem; } }

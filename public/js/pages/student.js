@@ -77,7 +77,7 @@ function journey(ctx, d, P, lv) {
         ${m.claimed ? html`<span class="st">รับแล้ว</span>` : m.reached ? html`<button class="btn btn-sm free" data-claim="${m.at}">รับรางวัล</button>` : html`<span class="st">อีก ${m.at - P.stars} ดาว</span>`}</div>`)}</div>
 
     <h2 class="px-tab">📖 สมุดล่าบอส</h2>
-    <p class="small jr-note">ตอบถูกครบทุกข้อในโหมดปรนัย/ถูกผิด/ท้าเวลาเพื่อปราบบอส ${P.eliteUnlocked ? "· 👑 ร่างจ้าวปลดล็อกแล้ว พบได้ที่ระดับยากขึ้นไป" : `· 👑 ร่างจ้าวปลดล็อกเมื่อสะสมครบ ${P.eliteAt} ดาว`}</p>
+    <p class="small jr-note">ลดเลือดบอสให้หมดในโหมดปรนัย/ถูกผิด/ท้าเวลาเพื่อปราบบอส (ตอบถูกครบทุกข้อชนะแน่นอน) ${P.eliteUnlocked ? "· 👑 ร่างจ้าวปลดล็อกแล้ว พบได้ที่ระดับยากขึ้นไป" : `· 👑 ร่างจ้าวปลดล็อกเมื่อสะสมครบ ${P.eliteAt} ดาว`}</p>
     <p class="small jr-note">บอสแต่ละตัวมีความหายากต่างกัน ยิ่งเล่นระดับยาก (และด่านบอสประจำบท) ยิ่งมีโอกาสเจอตัวหายาก · ทุกตัวมีโอกาส ${Math.round(SHINY.chance * 100)}% ปรากฏเป็น ✨${SHINY.name} · ปราบตัวหายากได้เหรียญโบนัส</p>
     <div class="jr-bosses">${P.bosses.map((b) => html`<article class="jr-boss ${b.seen ? "" : "unseen"} rar-${b.rarity}" style="--rc:${b.rar?.color || "#ccc"}">
       <span class="jr-rar">${b.rar?.icon} ${b.rar?.name}</span>${b.shiny ? html`<span class="jr-shiny" title="ปราบร่างทองคำแล้ว ${b.shiny} ครั้ง">✨×${b.shiny}</span>` : ""}

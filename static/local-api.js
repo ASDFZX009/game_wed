@@ -8,6 +8,7 @@ import * as J from "../public/js/journey.js";
 import { storyPlan, STORY } from "../public/js/story.js";
 const STORY_CATS = new Set(Object.keys(STORY));
 import * as GA from "../public/gacha/data.js";
+import { simPick } from "../public/js/skill-rules.js";
 
 const TZ = "Asia/Bangkok";
 const KEY = "eduplay-web:v1";
@@ -333,7 +334,9 @@ on("POST", "/api/games/:id/finish", ({ id }, b) => {
   const unlockedNow = set ? lockBefore.filter((L) => !lockedFor(g0.id).includes(L)) : [];
   // บอส: นับการเผชิญหน้า ชนะเมื่อตอบถูกครบ (หลอดเลือดบอส = จำนวนข้อ)
   let boss = null; const BM = b.boss && J.BOSS_LIST.find((x) => x.id === b.boss.id);
-  if (BM && ["mcq", "truefalse"].includes(g.template)) { const elite = !!b.boss.elite && eliteBefore, shiny = !!b.boss.shiny, rec = (S.bosses[BM.id] = S.bosses[BM.id] || { seen: 0, wins: 0, eliteWins: 0 }), win = correct === total && total > 0;
+  if (BM && ["mcq", "truefalse"].includes(g.template)) { const elite = !!b.boss.elite && eliteBefore, shiny = !!b.boss.shiny, rec = (S.bosses[BM.id] = S.bosses[BM.id] || { seen: 0, wins: 0, eliteWins: 0 }),
+      // ระบบเลือกสกิล: จำลองการต่อสู้ตามกติกาเดียวกับฉากต่อสู้ (สกิลที่พลังไม่พอถือเป็นสกิลธรรมดา) · แบบเดิม: ต้องตอบถูกทุกข้อ
+      win = b.skillMode === "pick" && Array.isArray(b.skills) ? simPick(review.map((x) => x.correct), b.skills, { fast: GA.hasPas(b.hero, "fast"), acid: GA.hasPas(b.hero, "acid"), soul: J.bossInfo(BM.id)?.trait?.id === "soul", dark: GA.hasPas(b.hero, "dark") }).win : correct === total && total > 0;
     rec.seen++; if (shiny) rec.shinySeen = (rec.shinySeen || 0) + 1; const first = win && !(elite ? rec.eliteWins : rec.wins); if (win) { if (elite) rec.eliteWins++; else rec.wins++; if (shiny) rec.shiny = (rec.shiny || 0) + 1; }
     // ปราบบอสหายาก/ร่างทองคำ → เหรียญโบนัส
     const bonus = win ? J.bossBonus(BM.rarity, shiny, elite) : 0; if (bonus) addCoins(bonus, "boss", `${shiny ? "✨ " : ""}${elite ? BM.elite : BM.name}`);

@@ -20,6 +20,7 @@ import { PB, PAL, hex, ramp, pick, blob, outline, canvas, hash, vnoise, mix, ton
 import { grassRGB } from "./world/ground.js";
 import { plateau, broadTree, bush } from "./world/sprites.js";
 import { BOSSES } from "./bosses.js";
+import { PICK, gainOf } from "./skill-rules.js";
 import { bossInfo, RARITY } from "./journey.js";
 
 const PXFX = globalThis.PXFX;
@@ -76,7 +77,7 @@ const BOSS_ATK = {
 const bossInfoOf = (id) => bossInfo(id);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml, autoNext = () => true, boss: bossInfo = null, playerLv = 1, onEliminate = null }) {
+export function createBattle(host, { total, lesson, category, heroLook, onAnswer, onNext, onHintClick, reduced = false, getTimerHtml, autoNext = () => true, boss: bossInfo = null, playerLv = 1, onEliminate = null, skillMode = "card" }) {
   let hs = 7; for (const ch of String(lesson || "x")) hs = (hs * 31 + ch.charCodeAt(0)) >>> 0;
   const B = BOSSES.find((b) => b.id === bossInfo?.id) || BOSSES[hs % BOSSES.length], elite = !!bossInfo?.elite;
   const shiny = !!bossInfo?.shiny, info = bossInfoOf(B.id), trait = info?.trait?.id || "", rar = RARITY[info?.rarity] || RARITY.common;
@@ -89,13 +90,17 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
   const inv = { ...(appState.me?.gacha?.inv || {}) };
   const state = { hp: total, combo: 0, right: 0, busy: false, q: null, idx: 0, hurt: 0, bossHurt: 0, cast: 0, dead: 0, charge: 0, windup: 0, lunge: 0, enraged: false, atkI: 0, debuff: null, souls: 0, shield: false, shieldUsed: false, blink: 0, bxOff: 0, awake: false, awakeAt: 0, guard: 0, acidUsed: false, hinted: false, blown: [] };
   const resetGuard = () => { state.guard = has("shield") ? 1 : 0; }; resetGuard();
+  // ระบบสกิล: card = สกิลติดการ์ดคำตอบ (เดิม) · pick = เลือกสกิลก่อนตอบ ใช้พลัง · combo = สกิลแรงขึ้นตามคอมโบ · after = ตอบถูกแล้วค่อยเลือกสกิล
+  // โหมดใหม่ใช้เลือดบอสเป็นแต้ม (ข้อละ 10) → ตอบถูกทุกข้อด้วยสกิลธรรมดาก็ชนะได้เสมอ สกิลแรงช่วยให้ชนะแม้พลาดบ้าง
+  const SM = ["pick", "combo", "after"].includes(skillMode) ? skillMode : "card", PTS = SM !== "card", U = PTS ? PICK.U : 1, HPMAX = total * U, EN_MAX = PICK.EN_MAX;
+  state.hp = HPMAX; state.en = 0; state.sel = 0; state.cd = 0; state.skLog = []; state.hp0Said = false;
   host.innerHTML = html`<div class="bt">
     <div class="bt-stage" id="btStage"><canvas class="bt-bg"></canvas><canvas class="bt-fx" aria-hidden="true"></canvas>
       <div class="bt-hud">
         <div class="bt-plate hero"><span class="lv">ข้อ <b id="btN">1/${total}</b> · ผู้เล่น Lv ${playerLv}</span><b class="nm" id="btHeroName"></b><span class="combo" id="btCombo"></span><span class="bt-guard" id="btGuard"></span>${raw(getTimerHtml ? getTimerHtml() : "")}</div>
         <div class="bt-plate boss ${elite ? "elite" : ""} ${shiny ? "shiny" : ""} rar-${info?.rarity || "common"}" style="--rc:${rar.color}"><span class="lv"><i class="bt-rar">${rar.icon} ${rar.name}</i>${elite ? "👑 ร่างจ้าว · " : ""}Lv ${bossLv}</span><b class="nm">${bossName}</b>
           ${info ? html`<span class="bt-trait" title="${info.trait.desc}">✦ ${info.trait.name}<em id="btSouls"></em></span>` : ""}
-          <div class="bt-hp" role="meter" aria-label="พลังชีวิตบอส" aria-valuemin="0" aria-valuemax="${total}" aria-valuenow="${total}"><i id="btHpBar"></i>${raw(Array.from({ length: total - 1 }, (_, i) => `<s style="left:${((i + 1) / total) * 100}%"></s>`).join(""))}<em id="btHpTxt">${total}/${total}</em></div></div>
+          <div class="bt-hp" role="meter" aria-label="พลังชีวิตบอส" aria-valuemin="0" aria-valuemax="${HPMAX}" aria-valuenow="${HPMAX}"><i id="btHpBar"></i>${raw(PTS ? "" : Array.from({ length: total - 1 }, (_, i) => `<s style="left:${((i + 1) / total) * 100}%"></s>`).join(""))}<em id="btHpTxt">${HPMAX}/${HPMAX}</em></div></div>
       </div>
       <span class="bt-items" id="btItems"><button type="button" class="bt-it" data-it="hint" title="${GITEMS.hint.d}" aria-label="ใช้การ์ดคำใบ้">💡<b>0</b></button><button type="button" class="bt-it" data-it="pot" title="${GITEMS.pot.d}" aria-label="ใช้ยาฟื้นพลัง">🧪<b>0</b></button></span>
       <div class="bt-q" id="btQ"></div>
@@ -103,6 +108,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       <div class="bt-atk" id="btAtk" aria-live="polite"></div>
       <div class="bt-heroes" role="group" aria-label="เลือกคู่หู">${team.ids.slice(0, 8).map((id) => { const c = ROSTER[id]; return html`<button type="button" class="bt-hero r${c.r}" data-h="${id}" style="--hc:${c.col}" title="${c.n} · ${c.t} (ธาตุ${c.el})" aria-label="เปลี่ยนคู่หูเป็น ${c.n} ${c.t}"><img src="${frameUrl(id + "_0")}" alt=""><i>${c.ic}</i></button>`; })}</div>
     </div>
+    <div class="bt-skills" id="btSkills" ${PTS ? "" : raw("hidden")} aria-live="polite"></div>
     <div class="bt-hand" id="btHand" role="group" aria-label="การ์ดคำตอบ"></div>
     <div class="bt-foot" id="btFoot"></div></div>`.s;
   const stage = host.querySelector("#btStage"), bg = host.querySelector(".bt-bg"), fxc = host.querySelector(".bt-fx"), hand = host.querySelector("#btHand"), foot = host.querySelector("#btFoot"), pop = host.querySelector("#btPop");
@@ -231,7 +237,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       b.disabled = !n || state.busy || (k === "hint" && (state.hinted || !state.q?.options || state.q.options.length - state.blown.length <= 2)); });
   }
   function popText(text, cls, at) { const s = document.createElement("span"); s.className = "bt-num " + (cls || ""); s.textContent = text; s.style.left = at[0] + "px"; s.style.top = at[1] + "px"; pop.appendChild(s); setTimeout(() => s.remove(), 1400); }
-  function setHp() { const bar = host.querySelector("#btHpBar"); bar.style.width = (state.hp / total) * 100 + "%"; host.querySelector("#btHpTxt").textContent = `${state.hp}/${total}`; host.querySelector(".bt-hp").setAttribute("aria-valuenow", state.hp); }
+  function setHp() { const bar = host.querySelector("#btHpBar"); bar.style.width = (state.hp / HPMAX) * 100 + "%"; host.querySelector("#btHpTxt").textContent = `${state.hp}/${HPMAX}`; host.querySelector(".bt-hp").setAttribute("aria-valuenow", state.hp); }
   // ตัดการ์ดคำตอบผิดทิ้ง 1 ใบ (การ์ดคำใบ้ หรือ ลมพัดตัวลวง)
   async function blowCard(why) {
     if (!onEliminate || !state.q?.options) return false;
@@ -241,6 +247,39 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     const r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect(); popText(why, "heal", [r.left - sr.left + r.width / 2, Math.max(20, r.top - sr.top - 10)]);
     return true;
   }
+  // ---------- สกิล (โหมดใหม่) ----------
+  const skBox = host.querySelector("#btSkills");
+  function SKS() { const c = HC(), p = POOL(heroId), p2 = p[1] || p[0];
+    if (SM === "pick") return [{ id: p[0], n: skillName(p[0]), cost: PICK.cost[0], d: PICK.dmg[0] }, { id: p2, n: skillName(p2), cost: PICK.cost[1], d: PICK.dmg[1] }, { id: c.ult, n: c.sk, cost: PICK.cost[2], d: PICK.dmg[2], ult: true }];
+    if (SM === "combo") return [{ id: p[0], n: skillName(p[0]), d: 10, at: 1 }, { id: p2, n: skillName(p2), d: 20, at: 2 }, { id: c.ult, n: c.sk, d: 40, at: 3, ult: true }];
+    return [{ id: p[0], n: skillName(p[0]), d: 10 }, { id: p2, n: skillName(p2), d: 25, cd: 2 }, { id: c.ult, n: c.sk, d: 50, combo: 3, ult: true }]; }
+  const comboTier = (n) => (n >= 3 ? 2 : n === 2 ? 1 : 0);
+  function renderSkills() {
+    if (!PTS) return; const L = SKS(), c = HC();
+    if (SM === "pick") {
+      if (state.en < L[state.sel].cost) state.sel = 0;
+      skBox.innerHTML = html`<div class="sk-head"><span>⚡ พลัง</span><span class="sk-en" aria-label="พลัง ${state.en} จาก ${EN_MAX}">${raw(Array.from({ length: EN_MAX }, (_, i) => `<i class="${i < state.en ? "f" : ""}"></i>`).join(""))}</span><small>เลือกสกิลก่อน แล้วตอบให้ถูกเพื่อปล่อยสกิล</small></div>
+        <div class="sk-row">${L.map((k, i) => html`<button type="button" class="sk-btn ${state.sel === i ? "on" : ""} ${state.en < k.cost ? "lock" : ""} ${k.ult ? "ult" : ""}" data-sk="${i}" style="--el:${c.col}" aria-pressed="${state.sel === i}">
+          <img src="${art(k.id, c.hue)}" alt=""><b>${k.n}</b><span>${k.cost ? `⚡${k.cost}` : "ฟรี"} · ${k.d} ดาเมจ</span></button>`)}</div>`.s;
+      skBox.querySelectorAll("[data-sk]").forEach((b) => (b.onclick = () => { const k = L[+b.dataset.sk]; if (state.busy) return;
+        if (state.en < k.cost) { const r = b.getBoundingClientRect(), sr = stage.getBoundingClientRect(); popText(`ต้องมีพลัง ${k.cost}`, "miss", [r.left - sr.left + r.width / 2, Math.max(20, r.top - sr.top - 6)]); return; }
+        state.sel = +b.dataset.sk; renderSkills(); }));
+    } else if (SM === "combo") {
+      const nx = comboTier(state.combo + 1);
+      skBox.innerHTML = html`<div class="sk-head"><span>🔥 คอมโบ ${state.combo}</span><small>ตอบถูกติดกัน สกิลจะแรงขึ้นเอง</small></div>
+        <div class="sk-row steps">${L.map((k, i) => html`<div class="sk-btn step ${i === nx ? "on" : ""} ${i < nx ? "done" : ""} ${k.ult ? "ult" : ""}" style="--el:${c.col}"><img src="${art(k.id, c.hue)}" alt=""><b>${k.n}</b><span>ถูก ${k.at}${k.at === 3 ? "+" : ""} ข้อติด · ${k.d}</span></div>`)}</div>`.s;
+    } else { skBox.innerHTML = html`<div class="sk-head"><span>✨ สกิล</span><small>ตอบถูกแล้วเลือกสกิลที่จะใช้${state.cd ? ` · ${L[1].n} พร้อมอีก ${state.cd} ข้อ` : ""}</small></div>`.s; }
+  }
+  // โหมด after: ตอบถูกแล้วเด้งปุ่มเลือกสกิล → รอผู้เล่นกด
+  function chooseSkill() {
+    const L = SKS(), c = HC();
+    return new Promise((ok) => {
+      skBox.innerHTML = html`<div class="sk-head pop"><span>✅ ถูก! เลือกสกิล</span></div><div class="sk-row">${L.map((k, i) => { const lock = (k.cd && state.cd > 0) || (k.combo && state.combo < k.combo);
+        return html`<button type="button" class="sk-btn ${k.ult ? "ult" : ""} ${lock ? "lock" : ""}" data-sk="${i}" style="--el:${c.col}" ${lock ? raw("disabled") : ""}><img src="${art(k.id, c.hue)}" alt=""><b>${k.n}</b><span>${k.d} ดาเมจ${k.cd ? (state.cd > 0 ? ` · รออีก ${state.cd} ข้อ` : " · พัก 2 ข้อ") : ""}${k.combo ? ` · คอมโบ ${k.combo}+` : ""}</span></button>`; })}</div>`.s;
+      const bs = skBox.querySelectorAll("[data-sk]:not([disabled])"); bs[bs.length - 1]?.focus({ preventScroll: true });
+      skBox.querySelectorAll("[data-sk]").forEach((b) => (b.onclick = () => { if (b.disabled) return; const k = L[+b.dataset.sk]; if (k.cd) state.cd = k.cd + 1; ok(k); }));
+    });
+  }
   function cards() {
     const q = state.q, c = HC(), awake = state.awake, pool = awake ? [c.ult] : POOL(heroId), sk = [...pool].sort(() => Math.random() - 0.5);
     let opts = (q.options ? q.options.map((o, i) => ({ text: o, a: i })) : [{ text: "✔ ถูก", a: true }, { text: "✖ ผิด", a: false }]).map((o, i) => ({ ...o, oi: i }));
@@ -249,6 +288,8 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     hand.classList.toggle("fogged", deb === "fog"); hand.classList.toggle("warping", deb === "shuffle"); hand.classList.toggle("vined", deb === "vines"); hand.classList.toggle("awake", awake);
     stage.classList.toggle("fog", deb === "fog");
     hand.innerHTML = opts.map((o, i) => { const id = sk[i % sk.length], nm = awake ? c.sk : skillName(id);
+      if (PTS) return html`<button type="button" class="bc plain el-${c.th || "x"}" data-i="${i}" data-oi="${o.oi}" style="--el:${c.col};--d:${(i - (opts.length - 1) / 2)}" aria-label="ตัวเลือก ${i + 1}: ${o.text}">
+        <span class="bc-key">${i + 1}</span><span class="bc-ans ${emojiOnly(o.text) ? "emo" : ""}">${o.text}</span><span class="bc-foot">${c.ic} ${c.n}</span></button>`.s;
       return html`<button type="button" class="bc el-${c.th || "x"} ${awake ? "ult" : ""}" data-i="${i}" data-oi="${o.oi}" data-skill="${id}" style="--el:${c.col};--d:${(i - (opts.length - 1) / 2)}" aria-label="ตัวเลือก ${i + 1}: ${o.text} (สกิล ${nm})">
         <span class="bc-art" style="background-image:url('${art(id, c.hue)}')"><span class="bc-ic">${c.ic}</span><span class="bc-key">${i + 1}</span></span>
         <span class="bc-type">${awake ? "✦ ท่าไม้ตาย" : "ธาตุ" + c.el}</span><span class="bc-name">${nm}</span>
@@ -258,7 +299,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     if (deb === "vines") { hand.querySelectorAll(".bc").forEach((b) => (b.disabled = true)); state.vineT = setTimeout(() => { hand.classList.remove("vined"); hand.querySelectorAll(".bc").forEach((b) => (b.disabled = state.blown.includes(+b.dataset.oi))); hand.querySelector(".bc:not([disabled])")?.focus({ preventScroll: true }); }, reduced ? 600 : 1300); }
     // 🍃 ลมพัดตัวลวง: ทุก 3 ข้อ (ข้อที่ 3, 6, 9…)
     if (has("wind") && q.options && q.options.length >= 3 && state.idx % 3 === 2) setTimeout(() => blowCard("ลมพัดตัวลวง! 🍃"), reduced ? 100 : 700);
-    setHeroUI();
+    renderSkills(); setHeroUI();
   }
   function heroSay(text, ok) {
     const c = HC();
@@ -271,17 +312,24 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     if (!r) { state.busy = false; hand.querySelectorAll(".bc").forEach((b) => (b.disabled = state.blown.includes(+b.dataset.oi))); btn.classList.remove("picked"); setHeroUI(); return; }
     const { hx, bx, fy } = pos(), from = [hx * S + 16 * S, (fy - 30) * S], to = [bx * S, (fy - boss.hit) * S, fy * S];
     const c = HC(), wasAwake = state.awake; let saidUlt = false;
+    let used = null, gain = 0;
     if (r.correct) {
       state.combo++; state.right++; btn.classList.add("right");
+      // เลือกสกิลที่จะยิงตามโหมด
+      if (SM === "pick") { if (state.en < SKS()[state.sel].cost) state.sel = 0; used = SKS()[state.sel]; state.skLog[state.idx] = state.sel; state.en -= used.cost; gain = gainOf(state.combo, has("fast")); state.en = Math.min(EN_MAX, state.en + gain); state.sel = 0; }
+      else if (SM === "combo") used = SKS()[comboTier(state.combo)];
+      else if (SM === "after") used = await chooseSkill();
+      if (used?.ult) shout(heroId, c.line, { host: document.body });
       if (!reduced) { state.charge = performance.now() + 480; await sleep(480); }
-      state.cast = performance.now() + 900; saidUlt = wasAwake;
-      await playFx(btn.dataset.skill, { from, to, hue: c.hue, onHit: () => { state.hp = Math.max(0, state.hp - 1); setHp(); state.bossHurt = performance.now() + 420; stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
-        popText(wasAwake ? `-1  ✦ ${c.sk}!` : state.combo >= 2 ? `-1  COMBO ×${state.combo}!` : "-1", wasAwake ? "dmg ult" : "dmg", [to[0], to[1] - 40]);
+      state.cast = performance.now() + 900; saidUlt = wasAwake || !!used?.ult;
+      const dmg = used ? used.d : 1;
+      await playFx(used ? used.id : btn.dataset.skill, { from, to, hue: c.hue, onHit: () => { state.hp = Math.max(0, state.hp - dmg); setHp(); state.bossHurt = performance.now() + 420; stage.classList.remove("shake"); void stage.offsetWidth; stage.classList.add("shake");
+        popText(saidUlt ? `-${dmg}  ✦ ${used ? used.n : c.sk}!` : state.combo >= 2 ? `-${dmg}  COMBO ×${state.combo}!` : `-${dmg}`, saidUlt ? "dmg ult" : "dmg", [to[0], to[1] - 40]);
         if (state.shield) { state.shield = false; host.querySelector(".bt-plate.boss").classList.remove("shielded"); setTimeout(() => popText("โล่แตก! 💥", "rage", [to[0], to[1] - 76]), 200); }
-        else if (trait === "shield" && !state.shieldUsed && state.hp > 1 && state.hp <= Math.ceil(total / 2)) { state.shieldUsed = true; state.shield = true; host.querySelector(".bt-plate.boss").classList.add("shielded"); setTimeout(() => popText("ตั้งโล่หนาม! 🛡️", "rage", [to[0], to[1] - 76]), 500); }
-        if (!state.enraged && state.hp > 0 && state.hp <= Math.ceil(total * rageAt)) { state.enraged = true; setTimeout(() => popText("โกรธจัด! 😡", "rage", [to[0], to[1] - 76]), 350); host.querySelector(".bt-plate.boss").classList.add("rage"); } } });
+        else if (trait === "shield" && !state.shieldUsed && state.hp > U && state.hp <= Math.ceil(HPMAX / 2)) { state.shieldUsed = true; state.shield = true; host.querySelector(".bt-plate.boss").classList.add("shielded"); setTimeout(() => popText("ตั้งโล่หนาม! 🛡️", "rage", [to[0], to[1] - 76]), 500); }
+        if (!state.enraged && state.hp > 0 && state.hp <= Math.ceil(HPMAX * rageAt)) { state.enraged = true; setTimeout(() => popText("โกรธจัด! 😡", "rage", [to[0], to[1] - 76]), 350); host.querySelector(".bt-plate.boss").classList.add("rage"); } } });
       // 🌟 ตื่นพลัง: คอมโบครบ → แปลงร่าง ข้อถัดไปใช้ท่าไม้ตาย
-      if (!state.awake && state.combo >= needCombo() && state.idx + 1 < total && state.hp > 0) {
+      if (!PTS && !state.awake && state.combo >= needCombo() && state.idx + 1 < total && state.hp > 0) {
         state.awake = true; state.awakeAt = performance.now(); shout(heroId, c.line, { host: document.body });
         popText(`✦ ตื่นพลัง: ${c.f}!`, "win", [from[0] + 30, from[1] - 70]); stage.classList.add("awake"); setHeroUI();
       }
@@ -296,22 +344,24 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
       if (trait === "souls") { state.souls++; if (state.souls >= 3) { useUlt = true; state.souls = 0; setTimeout(() => popText("พิพากษา! 💀💀💀", "rage", [to[0], to[1] - 76]), 100); } host.querySelector("#btSouls").textContent = state.souls ? " " + "💀".repeat(state.souls) : ""; }
       const hits = state.enraged && !has("dark") ? 2 : 1;
       for (let h = 0; h < hits; h++) await bossAttack(from, to, h > 0, useUlt && h === 0);
-      if (trait === "soul" && state.hp < total && !state.dead) { if (has("dark")) popText("ม่านรัตติกาลกันดูดวิญญาณ! 🌑", "heal", [to[0], to[1] - 60]); else { state.hp++; setHp(); popText("+1 ดูดวิญญาณ", "heal", [to[0], to[1] - 60]); } }
+      if (trait === "soul" && state.hp < HPMAX && !state.dead) { if (has("dark")) popText("ม่านรัตติกาลกันดูดวิญญาณ! 🌑", "heal", [to[0], to[1] - 60]); else { state.hp = Math.min(HPMAX, state.hp + U); setHp(); popText(`+${U} ดูดวิญญาณ`, "heal", [to[0], to[1] - 60]); } }
       if (["vines", "fog", "shuffle"].includes(trait) && state.idx + 1 < total) {
         if (has("purify")) popText("แสงชำระ! ไม่โดนคำสาป ✨", "heal", [from[0] + 40, from[1] - 60]);
         else { state.debuff = trait; popText(trait === "vines" ? "เถาวัลย์พันการ์ด! 🌿" : trait === "fog" ? "หมอกวิญญาณบังการ์ด! 🌫️" : "มิติบิดเบี้ยว! 🌀", "rage", [from[0] + 40, from[1] - 60]); } }
     }
     host.querySelector("#btCombo").textContent = state.combo >= 2 ? `🔥 คอมโบ ${state.combo}` : "";
+    if (SM === "after" && state.cd > 0) state.cd--;
     const last = state.idx + 1 >= total;
     if (last && state.hp === 0) { state.dead = performance.now(); popText("ชนะ! 🏆", "win", [to[0], to[1] - 70]); }
-    const say = r.correct ? `✅ ถูกต้อง! ${saidUlt ? `ท่าไม้ตาย “<b>${esc(c.sk)}</b>”!` : `รับไป “<b>${esc(skillName(btn.dataset.skill))}</b>”!`}${state.awakeAt > performance.now() - 3000 && state.awake && !wasAwake ? ` <em>ตื่นพลังแล้ว! ข้อหน้าใช้ท่าไม้ตาย</em>` : ""}`
-      : `❌ ยังไม่ถูกนะ — เฉลย: <b>${esc(r.answer)}</b>`;
+    else if (PTS && state.hp === 0 && !state.hp0Said) { state.hp0Said = true; setTimeout(() => popText("บอสหมดแรง! ตอบให้ครบเพื่อเก็บดาว ⭐", "win", [to[0], to[1] - 70]), 300); }
+    const say = r.correct ? `✅ ถูกต้อง! ${saidUlt ? `ท่าไม้ตาย “<b>${esc(used ? used.n : c.sk)}</b>”!` : `รับไป “<b>${esc(used ? used.n : skillName(btn.dataset.skill))}</b>”!`}${SM === "pick" ? ` <em>พลัง +${gain}</em>` : ""}${state.awakeAt > performance.now() - 3000 && state.awake && !wasAwake ? ` <em>ตื่นพลังแล้ว! ข้อหน้าใช้ท่าไม้ตาย</em>` : ""}`
+      : `❌ ยังไม่ถูกนะ — เฉลย: <b>${esc(r.answer)}</b>${SM === "pick" ? ` <em>สกิลไม่ออก แต่พลังยังอยู่ ${state.en} แต้ม</em>` : SM === "combo" ? " <em>คอมโบเริ่มนับใหม่</em>" : ""}`;
     foot.innerHTML = html`${heroSay(say, r.correct)}${r.explain ? html`<div class="bt-explain small">💡 ${r.explain}</div>` : ""}
       <button class="btn bt-next" id="g-next">${last ? (state.hp === 0 ? "ปราบบอสสำเร็จ! ดูผลลัพธ์ 🏆" : "ดูผลลัพธ์ 🏁") : "ข้อต่อไป ▶"}</button>`.s;
     const nb = foot.querySelector("#g-next"); nb.focus({ preventScroll: true });
     const go = () => { clearTimeout(state.autoT); state.autoT = null; if (!nb.isConnected) return; foot.innerHTML = ""; onNext(); };
     nb.onclick = go;
-    state.after?.(r); state.busy = false; setHeroUI();
+    renderSkills(); state.after?.(r); state.busy = false; setHeroUI();
     if (autoNext()) autoGo(nb, go, r.correct ? 2200 : 3000);
   }
   // ไปข้อถัดไปเอง: รอสกิลเล่นจบ แล้วนับถอยหลัง 2–3 วินาที (แถบบนปุ่ม) · กด ⏸ เพื่ออ่านเฉลยนานขึ้นได้
@@ -380,7 +430,7 @@ export function createBattle(host, { total, lesson, category, heroLook, onAnswer
     if (warm.length) idle(warmStep);
   }
   warmArts();
-  return { ask, destroy() { alive = false; document.body.classList.remove("in-battle", "fx-lite"); clearTimeout(state.vineT); clearTimeout(state.autoT); cancelAnimationFrame(raf); cancelAnimationFrame(fxBusy); ro.disconnect(); document.removeEventListener("keydown", onKey); }, get bossHp() { return state.hp; }, get heroId() { return team.lent ? null : heroId; }, state };
+  return { ask, skills: () => Array.from({ length: total }, (_, i) => state.skLog[i] ?? 0), skillMode: SM, destroy() { alive = false; document.body.classList.remove("in-battle", "fx-lite"); clearTimeout(state.vineT); clearTimeout(state.autoT); cancelAnimationFrame(raf); cancelAnimationFrame(fxBusy); ro.disconnect(); document.removeEventListener("keydown", onKey); }, get bossHp() { return state.hp; }, get heroId() { return team.lent ? null : heroId; }, state };
 }
 // ประเภทเอฟเฟกต์ (ยิงจากตัวละครไปหาบอส หรือเกิดที่ตัวบอส)
 const SKILL_CAT = {
