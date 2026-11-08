@@ -3,16 +3,17 @@ import { api, html, raw, state, toast, avatar, titleTag } from "../core.js";
 import { go, refreshMe } from "../app.js";
 import { setPrefs, getPrefs, playTick, PALETTES } from "../prefs.js";
 import { itemVisual } from "./shop.js";
+import { pxImg } from "../ui/pixui.js";
 
 const CATS = [
-  { id: "face", side: "L", th: "หน้าตา", en: "FACE", ic: "🎭", types: ["pfp", "avatar"], desc: "รูปโปรไฟล์จากกล่องสุ่มโปรไฟล์ และอวาตาร์" },
-  { id: "frame", side: "L", th: "กรอบรูป", en: "FRAME", ic: "🖼️", types: ["frame"], desc: "กรอบรอบรูปโปรไฟล์" },
-  { id: "title", side: "L", th: "ฉายา", en: "TITLE", ic: "🏷️", types: ["title"], desc: "ป้ายฉายาข้างชื่อ" },
-  { id: "effect", side: "L", th: "เอฟเฟกต์", en: "EFFECT", ic: "🎉", types: ["effect"], desc: "พลุตอนทำคะแนนได้ดี" },
-  { id: "shop", side: "R", th: "ร้านค้า", en: "SHOP", ic: "🛒", href: "/shop", hot: true },
-  { id: "theme", side: "R", th: "ธีม & พื้นหลัง", en: "THEME", ic: "🎨", types: ["theme", "background"], desc: "ธีมสีพิเศษและลายพื้นหลังเว็บ" },
-  { id: "sound", side: "R", th: "เสียง", en: "SOUND", ic: "🎵", types: ["sound"], desc: "เสียงตอนตัวเลขบวกขึ้นในหน้าสรุปผล" },
-  { id: "stats", side: "R", th: "ความคืบหน้า", en: "STATUS", ic: "📊", href: "/dashboard" },
+  { id: "face", side: "L", th: "หน้าตา", en: "FACE", ic: "🎭", px: "face", types: ["pfp", "avatar"], desc: "รูปโปรไฟล์จากกล่องสุ่มโปรไฟล์ และอวาตาร์" },
+  { id: "frame", side: "L", th: "กรอบรูป", en: "FRAME", ic: "🖼️", px: "frame", types: ["frame"], desc: "กรอบรอบรูปโปรไฟล์" },
+  { id: "title", side: "L", th: "ฉายา", en: "TITLE", ic: "🏷️", px: "tag", types: ["title"], desc: "ป้ายฉายาข้างชื่อ" },
+  { id: "effect", side: "L", th: "เอฟเฟกต์", en: "EFFECT", ic: "🎉", px: "party", types: ["effect"], desc: "พลุตอนทำคะแนนได้ดี" },
+  { id: "shop", side: "R", th: "ร้านค้า", en: "SHOP", ic: "🛒", px: "shop", href: "/shop", hot: true },
+  { id: "theme", side: "R", th: "ธีม & พื้นหลัง", en: "THEME", ic: "🎨", px: "palette", types: ["theme", "background"], desc: "ธีมสีพิเศษและลายพื้นหลังเว็บ" },
+  { id: "sound", side: "R", th: "เสียง", en: "SOUND", ic: "🎵", px: "note", types: ["sound"], desc: "เสียงตอนตัวเลขบวกขึ้นในหน้าสรุปผล" },
+  { id: "stats", side: "R", th: "ความคืบหน้า", en: "STATUS", ic: "📊", px: "chart", href: "/dashboard" },
 ];
 
 export async function bag({ main }) {
@@ -26,7 +27,7 @@ export async function bag({ main }) {
   const plate = (c, i) => {
     const [have, total] = c.types ? count(c) : [0, 0];
     return html`<button type="button" class="bh-plate ${c.hot ? "hot" : ""}" data-cat="${c.id}" style="--i:${i}">
-      <span class="ic" aria-hidden="true">${c.ic}</span><span class="th">${c.th}</span><span class="en" aria-hidden="true">${c.en}</span>
+      <span class="ic" aria-hidden="true">${raw(pxImg(c.px, 48))}</span><span class="th">${c.th}</span><span class="en" aria-hidden="true">${c.en}</span>
       ${c.types ? html`<span class="cnt">${have}/${total}</span>` : ""}</button>`;
   };
   const words = Array.from({ length: 28 }, (_, i) => `<span style="--x:${(i * 37) % 100}%;--y:${(i * 61) % 100}%;--s:${2.4 + (i % 5) * 1.1}rem">${["กระเป๋า", "BAG", "ของสะสม", "ITEM", "QUIZ ODYSSEY"][i % 5]}</span>`).join("");
@@ -37,7 +38,7 @@ export async function bag({ main }) {
       <div class="bh-words" aria-hidden="true">${raw(words)}</div>
       <div class="bh-wedge" aria-hidden="true"></div>
       <a class="bh-back" href="/dashboard"><span aria-hidden="true">↩</span> กลับ</a>
-      <a class="bh-coins" href="/shop" title="เหรียญของฉัน">🪙 <b>${d.coins.toLocaleString("th-TH")}</b></a>
+      <a class="bh-coins" href="/shop" title="เหรียญของฉัน">${raw(pxImg("coin", 28))} <b>${d.coins.toLocaleString("th-TH")}</b></a>
       <h1 class="sr-only" id="bh-title">กระเป๋าเก็บของ</h1>
       <nav class="bh-col left" aria-label="หมวดของสะสม">${CATS.filter((c) => c.side === "L").map(plate)}</nav>
       <div class="bh-center">
@@ -71,7 +72,7 @@ export async function bag({ main }) {
       const extra = c.id === "sound" ? html`<div class="bd-item ${p.tickSound === "synth" || !p.tickSound ? "on" : ""}"><span class="rar">ฟรี</span><div class="vis"><button type="button" class="snd-prev" data-play="synth"><span>✨</span><b>▶</b></button></div><div class="nm">เลเวลอัป</div>
           ${p.tickSound === "synth" || !p.tickSound ? html`<span class="bd-on">✓ ใช้อยู่</span>` : html`<button class="bd-btn" data-synth="1">ใช้</button>`}</div>`
         : c.id === "theme" ? html`<div class="bd-item ${!PALETTES.find((x) => x.id === p.palette)?.premium ? "on" : ""}"><span class="rar">ฟรี</span><div class="vis"><span class="swatch" style="display:inline-block;background:linear-gradient(135deg,#5b3df5,#ff6fae)"></span></div><div class="nm">ธีมพื้นฐาน 6 สี</div><a class="bd-btn" href="/settings">เลือกในตั้งค่า</a></div>` : "";
-      dlg.innerHTML = html`<div class="bd-head"><span class="ic" aria-hidden="true">${c.ic}</span><div><h2>${c.th}</h2><p>${c.desc} · มี ${mine.length}/${list.length} ชิ้น</p></div>
+      dlg.innerHTML = html`<div class="bd-head"><span class="ic" aria-hidden="true">${raw(pxImg(c.px, 48))}</span><div><h2>${c.th}</h2><p>${c.desc} · มี ${mine.length}/${list.length} ชิ้น</p></div>
         <button class="bd-x" aria-label="ปิด" id="bdX">✕</button></div>
         <div class="bd-body">${mine.length || extra ? html`<div class="bd-grid">${extra}${mine.map(card)}</div>` : ""}
           ${!mine.length ? html`<div class="bd-empty"><p>ยังไม่มีของในหมวดนี้</p></div>` : ""}

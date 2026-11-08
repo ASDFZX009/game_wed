@@ -254,6 +254,25 @@ body.embed header{padding:10px 14px}
 .hist{font-size:13.5px;color:var(--mut);margin-top:16px;max-height:220px;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 12px}
 .hist div{padding:3px 0;border-bottom:1px solid #221c40}
 @media (max-width:640px){.banner{grid-template-columns:1fr}.banner .cast img{width:96px;height:96px}.banner .cast img.big{width:140px;height:140px}#grid{gap:6px}.btn{min-width:0;flex:1}}
+
+/* ===== ธีมพิกเซล 48px (กรอบจาก ../js/ui/pixui.js) ===== */
+html.px48 *{border-radius:0!important}
+html.px48 body{background:#0c0a18;background-image:linear-gradient(90deg,rgba(90,52,176,.12) 2px,transparent 2px),linear-gradient(rgba(90,52,176,.12) 2px,transparent 2px);background-size:48px 48px}
+html.px48 header{border-bottom:4px solid #3a1f6e}
+html.px48 :is(.tab,.gem){background:none;border:9px solid transparent;border-image:var(--px-dark) 10 fill / 9px;padding:0 6px;color:#fff3d6}
+html.px48 .tab.on,html.px48 .tab:hover{border-image-source:var(--px-gold);color:#2a1608;font-weight:700}
+html.px48 .banner{border:24px solid transparent;border-image:var(--px-violet) 12 fill / 24px;background-clip:padding-box}
+html.px48 .banner .tag{box-shadow:0 0 0 2px #2a1608}
+html.px48 .btn{background:none!important;border:12px solid transparent;border-image:var(--px-blue) 10 fill / 12px;box-shadow:none;padding:2px 12px;text-shadow:2px 2px 0 rgba(0,0,0,.45);transition:transform .08s steps(2)}
+html.px48 .btn.b10{border-image-source:var(--px-gold);color:#2a1608;text-shadow:1px 1px 0 #fff1a0}
+html.px48 .btn:hover{transform:translateY(-3px)}html.px48 .btn:active{transform:translateY(2px)}
+html.px48 .earn{background:none;border:10px solid transparent;border-image:var(--px-green) 10 fill / 10px;color:#0d2a10;font-weight:700;padding:0 8px}
+html.px48 .pity{height:12px;box-shadow:0 0 0 2px #2a1608;background:#2a2250}html.px48 .pity i{background:repeating-linear-gradient(90deg,#ffd84a 0 6px,#f0b830 6px 8px)}
+html.px48 :is(.rates,#det .box){background:none;border:24px solid transparent;border-image:var(--px-violet) 12 fill / 24px;padding:4px 6px}
+html.px48 #det .pas{background:#0c0a18;border:2px solid #5a34b0}
+html.px48 #det .acts button{border:10px solid transparent;border-image:var(--px-paper) 10 fill / 10px;background:none!important;padding:0 8px;color:#2a1608}
+html.px48 #det .go{border-image-source:var(--px-green)!important;color:#0d2a10!important}
+html.px48 .toast{background:none;border:10px solid transparent;border-image:var(--px-violet) 12 fill / 10px}
 </style>
 </head>
 <body>
@@ -305,6 +324,8 @@ body.embed header{padding:10px 14px}
 <div id="det" role="dialog" aria-modal="true" aria-labelledby="detN"><div class="box"><div class="pv" id="detPv"><img class="px" id="detImg" alt=""><button id="detForm">ดูร่างตื่นพลัง</button></div><div><div id="detS" style="color:#ffc93c"></div><h3 id="detN"></h3><div class="meta" id="detM"></div><div id="detBody"></div><div class="acts"><button class="go" id="detParty">⚔️ ตั้งเป็นคู่หู</button><button class="x" id="detX">ปิด</button></div></div></div></div>
 <script src="sprites.js"></script>
 <script type="module">
+import { installPixelUI } from "../js/ui/pixui.js";
+installPixelUI();
 import { ROSTER, RN as RN0, ITEMS as IT, COST, PITY, POOL as POOL0, PASSIVE, RATES, FEATURED, SHARDS_PER_PULL, MAX_STAGE } from "./data.js";
 const SPR=globalThis.QO_SPR||{};
 const CH=ROSTER;

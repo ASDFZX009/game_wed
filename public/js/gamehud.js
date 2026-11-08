@@ -3,10 +3,13 @@ import { html, raw } from "./core.js";
 import { charFrame } from "./world/chars.js";
 import { myLook } from "./look.js";
 import { rankOf } from "./journey.js";
+import { installPixelUI, pxImg } from "./ui/pixui.js";
+installPixelUI();
 
+// [ลิงก์, อีโมจิ (สำรอง), ชื่อ, ไอคอนพิกเซล 48px]
 export const DOCK = [
-  ["/", "🏡", "หมู่บ้าน"], ["/games", "🗺️", "บ้านวิชา"], ["/quizzes", "📝", "แบบทดสอบ"], ["/gacha", "✨", "อัญเชิญ"], ["/quiz-game", "🎣", "ตกปลา"],
-  ["/dashboard", "📖", "สมุด"], ["/shop", "🛒", "ร้านค้า"], ["/bag", "🎒", "กระเป๋า"],
+  ["/", "🏡", "หมู่บ้าน", "home"], ["/games", "🗺️", "บ้านวิชา", "map"], ["/quizzes", "📝", "แบบทดสอบ", "quiz"], ["/gacha", "✨", "อัญเชิญ", "gacha"], ["/quiz-game", "🎣", "ตกปลา", "fish"],
+  ["/dashboard", "📖", "สมุด", "book"], ["/shop", "🛒", "ร้านค้า", "shop"], ["/bag", "🎒", "กระเป๋า", "bag"],
 ];
 // หน้าย่อยที่อยู่ใต้ช่องลัดเดียวกัน (เช่น ผลแบบทดสอบ → แบบทดสอบ · ตั้งค่า/โปรไฟล์ → สมุด)
 const ALIAS = { "/attempts": "/quizzes", "/profile": "/dashboard" };
@@ -35,16 +38,16 @@ export function hudHtml({ me = {}, cur = "/", cloud = false, admin = false }) {
         <span class="gh-info"><b class="gh-name">${me.displayName || "นักผจญภัย"}${me.cloud ? html` <span title="บันทึกในบัญชีออนไลน์" aria-label="บันทึกในบัญชีออนไลน์">☁️</span>` : ""}</b>
           ${rk ? html`<span class="gh-rank">${rk.icon} ${rk.name}</span><span class="gh-xp" role="progressbar" aria-label="XP สู่เลเวลถัดไป" aria-valuemin="0" aria-valuemax="${per}" aria-valuenow="${into}"><i style="width:${(into / per) * 100}%"></i></span>` : ""}</span>
       </a>
-      <a href="/shop" class="gh-coins" title="เหรียญของฉัน · ไปร้านค้า">🪙 <b id="ghCoins">${(me.coins || 0).toLocaleString("th-TH")}</b></a>
-      ${me.gacha ? html`<a href="/gacha" class="gh-coins gh-gems" data-tour="gacha" title="เพชรสำหรับอัญเชิญ · ได้จากการตอบคำถามถูก">💎 <b id="ghGems">${(me.gacha.gems || 0).toLocaleString("th-TH")}</b></a>` : ""}
-      ${me.stars != null ? html`<a href="/dashboard?j=1" class="gh-coins gh-stars" title="ดาวสะสม · เปิดสมุดผจญภัย">★ <b>${me.stars}</b>${me.rewardsReady ? html`<em>🎁${me.rewardsReady}</em>` : ""}</a>` : ""}
+      <a href="/shop" class="gh-coins" title="เหรียญของฉัน · ไปร้านค้า">${raw(pxImg("coin", 26))} <b id="ghCoins">${(me.coins || 0).toLocaleString("th-TH")}</b></a>
+      ${me.gacha ? html`<a href="/gacha" class="gh-coins gh-gems" data-tour="gacha" title="เพชรสำหรับอัญเชิญ · ได้จากการตอบคำถามถูก">${raw(pxImg("gem", 26))} <b id="ghGems">${(me.gacha.gems || 0).toLocaleString("th-TH")}</b></a>` : ""}
+      ${me.stars != null ? html`<a href="/dashboard?j=1" class="gh-coins gh-stars" title="ดาวสะสม · เปิดสมุดผจญภัย">${raw(pxImg("star", 26))} <b>${me.stars}</b>${me.rewardsReady ? html`<em>🎁${me.rewardsReady}</em>` : ""}</a>` : ""}
       <div class="gh-sys">
-        ${cloud && !me.cloud ? html`<a href="/login" class="gh-btn gh-login" title="เข้าสู่ระบบ">🔐<span>เข้าสู่ระบบ</span></a>` : ""}
-        ${admin ? html`<a href="/admin" class="gh-btn ${cur === "/admin" ? "on" : ""}" title="ผู้ดูแลระบบ" aria-label="ผู้ดูแลระบบ">🛡️</a>` : ""}
-        <a href="/settings" class="gh-btn ${cur === "/settings" ? "on" : ""}" title="ตั้งค่า" aria-label="ตั้งค่า">⚙️</a>
+        ${cloud && !me.cloud ? html`<a href="/login" class="gh-btn gh-login" title="เข้าสู่ระบบ">${raw(pxImg("lock", 30))}<span>เข้าสู่ระบบ</span></a>` : ""}
+        ${admin ? html`<a href="/admin" class="gh-btn ${cur === "/admin" ? "on" : ""}" title="ผู้ดูแลระบบ" aria-label="ผู้ดูแลระบบ">${raw(pxImg("shield", 30))}</a>` : ""}
+        <a href="/settings" class="gh-btn ${cur === "/settings" ? "on" : ""}" title="ตั้งค่า" aria-label="ตั้งค่า">${raw(pxImg("gear", 30))}</a>
       </div>
     </div>
-    <nav class="gh-dock" aria-label="เมนูหลัก">${DOCK.map(([href, ic, t]) => html`<a href="${href}" class="gh-slot ${isOn(href, cur) ? "on" : ""}" ${isOn(href, cur) ? raw('aria-current="page"') : ""}><span class="i" aria-hidden="true">${ic}</span><span class="t">${t}</span></a>`)}</nav>`;
+    <nav class="gh-dock" aria-label="เมนูหลัก">${DOCK.map(([href, ic, t, px]) => html`<a href="${href}" class="gh-slot ${isOn(href, cur) ? "on" : ""}" ${isOn(href, cur) ? raw('aria-current="page"') : ""}><span class="i" aria-hidden="true">${raw(pxImg(px, 48))}</span><span class="t">${t}</span></a>`)}</nav>`;
 }
 
 // ผูกพฤติกรรม: บนหน้าหมู่บ้าน ปุ่ม "บ้านวิชา" เปิดตัวเลือกบ้านทันที · แถบบนมีพื้นหลังเมื่อเลื่อนหน้า

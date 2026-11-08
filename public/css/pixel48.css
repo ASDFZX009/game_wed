@@ -1,0 +1,252 @@
+/* 🎨 ธีม UI พิกเซล 48px — กรอบ 9 ช่องวาดด้วยโค้ด (public/js/ui/pixui.js) ใส่มาเป็นตัวแปร --px-* */
+/* ใช้กับหน้าตาแบบมาตรฐาน (classic) · หน้าตาอื่นในตั้งค่ายังเลือกได้ตามเดิม */
+html.px48[data-skin="classic"] {
+  --px-ink: #2a1608; --px-ink2: #6e4422; --px-cream: #fff3d6; --px-gold: #ffd84a;
+  --px-font: "Noto Sans Thai", system-ui, sans-serif;
+}
+html.px48 .pxi { image-rendering: pixelated; image-rendering: crisp-edges; display: inline-block; vertical-align: middle; flex: none; }
+
+/* ---------- แถบบน ---------- */
+html.px48[data-skin="classic"] :is(.gh-me, .gh-coins, .gh-btn) {
+  background: none !important; border-radius: 0; box-shadow: none !important;
+  border: 10px solid transparent; border-image: var(--px-dark) 10 fill / 10px; image-rendering: pixelated;
+}
+html.px48[data-skin="classic"] .gh-me { padding: 0 6px 0 0; }
+html.px48[data-skin="classic"] .gh-face { width: 40px; height: 40px; background: none; box-shadow: none; border: 8px solid transparent; border-image: var(--px-gold) 10 fill / 8px; margin: -6px 0 -6px -6px; box-sizing: content-box; }
+html.px48[data-skin="classic"] .gh-lv { border-radius: 0; background: #e0573f; box-shadow: 0 0 0 2px #2a1608; right: -12px; bottom: -12px; }
+html.px48[data-skin="classic"] .gh-xp { height: 8px; background: #2a1608; box-shadow: 0 0 0 2px #2a1608; }
+html.px48[data-skin="classic"] .gh-xp i { background: repeating-linear-gradient(90deg, #8ee070 0 6px, #4cb84a 6px 8px); }
+html.px48[data-skin="classic"] .gh-coins { padding: 0 6px; gap: 4px; min-height: 30px; }
+html.px48[data-skin="classic"] .gh-coins b { font-family: var(--px-font); font-weight: 700; letter-spacing: .5px; text-shadow: 2px 2px 0 #2a1608; }
+html.px48[data-skin="classic"] .gh-btn { min-width: 34px; height: 34px; padding: 0 4px; }
+html.px48[data-skin="classic"] .gh-btn:hover, html.px48[data-skin="classic"] .gh-btn.on { border-image-source: var(--px-gold); }
+html.px48[data-skin="classic"] .gh-btn.gh-login span { color: #fff3d6; }
+html.px48[data-skin="classic"] .gh-btn.gh-login:hover span { color: #2a1608; }
+
+/* ---------- แถบเมนูล่าง ---------- */
+html.px48[data-skin="classic"] .gh-dock {
+  background: none !important; box-shadow: none !important; border-radius: 0; padding: 0 2px; gap: 4px;
+  border: 12px solid transparent; border-image: var(--px-panel) 12 fill / 12px; border-image-source: var(--px-dark); border-image-slice: 10 fill; border-image-width: 12px;
+}
+html.px48[data-skin="classic"] .gh-slot { width: 74px; height: 74px; gap: 0; background: none !important; box-shadow: none !important; border-radius: 0; color: #fff3d6 !important; border: 8px solid transparent; border-image: none; }
+html.px48[data-skin="classic"] .gh-slot .i { font-size: 0; line-height: 0; filter: none; }
+html.px48[data-skin="classic"] .gh-slot .i .pxi { width: 48px; height: 48px; margin-top: -10px; filter: drop-shadow(0 0 0 transparent); transition: transform .12s steps(2); }
+html.px48[data-skin="classic"] .gh-slot .t { font-size: .7rem; text-shadow: 2px 2px 0 #2a1608, -1px -1px 0 #2a1608, 1px -1px 0 #2a1608, -1px 1px 0 #2a1608; margin-top: -2px; }
+html.px48[data-skin="classic"] .gh-slot:hover { transform: none; border-image: var(--px-paper) 10 fill / 8px; color: #2a1608 !important; }
+html.px48[data-skin="classic"] .gh-slot:hover .t { text-shadow: none; }
+html.px48[data-skin="classic"] .gh-slot:hover .pxi { transform: translateY(-4px); }
+html.px48[data-skin="classic"] .gh-slot.on { border-image: var(--px-gold) 10 fill / 8px; color: #2a1608 !important; }
+html.px48[data-skin="classic"] .gh-slot.on .t { text-shadow: 1px 1px 0 #fff1a0; }
+html.px48[data-skin="classic"] .gh-slot.on .pxi { transform: translateY(-6px) scale(1.06); }
+html.px48[data-skin="classic"] .gh-slot.on::after { top: -22px; border-top-color: #ffd84a; filter: drop-shadow(0 2px 0 #2a1608); }
+@media (max-width: 720px) {
+  html.px48[data-skin="classic"] .gh-dock { gap: 0; border-width: 8px; border-image-width: 8px; padding: 0; max-width: calc(100vw - 8px); }
+  html.px48[data-skin="classic"] .gh-slot { width: calc((100vw - 32px) / 8); max-width: 60px; height: 58px; border-width: 5px; }
+  html.px48[data-skin="classic"] .gh-slot .i .pxi { width: 34px; height: 34px; margin-top: -6px; }
+  html.px48[data-skin="classic"] .gh-slot .t { font-size: .58rem; }
+  html.px48[data-skin="classic"] :is(.gh-slot:hover, .gh-slot.on) { border-image-width: 5px; }
+}
+
+/* ---------- กล่อง/การ์ด/ปุ่ม/ช่องกรอก ทั่วทั้งเกม ---------- */
+html.px48[data-skin="classic"] body.has-hud :is(.card, .stat) {
+  background: none; border-radius: 0; box-shadow: none; color: var(--px-ink);
+  border: 24px solid transparent; border-image: var(--px-panel) 12 fill / 24px; image-rendering: pixelated;
+}
+html.px48[data-skin="classic"] body.has-hud .card { padding: 4px 6px; }
+html.px48[data-skin="classic"] body.has-hud :is(.card, .stat) :is(.muted, .small) { color: #6e4422; }
+html.px48[data-skin="classic"] body.has-hud :is(.card .card, .card .stat) { border-width: 12px; border-image: var(--px-inset) 6 fill / 12px; }
+html.px48[data-skin="classic"] body.has-hud :is(h1, h2, h3) { font-family: var(--px-font); letter-spacing: .3px; }
+html.px48[data-skin="classic"] body.has-hud .page-head :is(h1, h2), html.px48[data-skin="classic"] body.has-hud > main > h1 { color: #ffd84a; text-shadow: 3px 3px 0 #2a1608, -2px -2px 0 #2a1608, 2px -2px 0 #2a1608, -2px 2px 0 #2a1608; }
+
+html.px48[data-skin="classic"] .btn {
+  background: none !important; border-radius: 0; box-shadow: none; color: #2a1608 !important; font-weight: 800; text-shadow: 1px 1px 0 rgba(255,255,255,.45);
+  border: 10px solid transparent; border-image: var(--px-gold) 10 fill / 10px; padding: 2px 8px; min-height: 0; image-rendering: pixelated;
+  transition: transform .08s steps(2);
+}
+html.px48[data-skin="classic"] .btn:hover { filter: brightness(1.08); transform: translateY(-2px); }
+html.px48[data-skin="classic"] .btn:active { transform: translateY(2px); filter: brightness(.95); }
+html.px48[data-skin="classic"] .btn-ghost { border-image-source: var(--px-paper); }
+html.px48[data-skin="classic"] .btn-danger { border-image-source: var(--px-red); color: #fff !important; text-shadow: 2px 2px 0 #7a1e1e; }
+html.px48[data-skin="classic"] .btn-sm { border-width: 8px; border-image-width: 8px; padding: 0 6px; font-size: .88rem; }
+html.px48[data-skin="classic"] .btn:disabled { filter: grayscale(.8) brightness(.9); transform: none; }
+
+html.px48[data-skin="classic"] body.has-hud :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) {
+  border-radius: 0; box-shadow: none; background: none; color: #2a1608;
+  border: 8px solid transparent; border-image: var(--px-inset) 6 fill / 8px; padding: 4px 6px;
+}
+html.px48[data-skin="classic"] body.has-hud :is(.chip, .badge, .pill) { border-radius: 0; box-shadow: 0 0 0 2px #2a1608, inset 0 -2px 0 rgba(0,0,0,.18); }
+html.px48[data-skin="classic"] body.has-hud :is(.tabs, .seg) button { border-radius: 0; }
+
+/* ---------- ตัวเลือกบ้านวิชา / แผนที่ด่าน / แผ่นรายละเอียดด่าน ---------- */
+html.px48[data-skin="classic"] :is(.hz-pick, .hz-sheet .hz-card, .hz-panel) { border-radius: 0; }
+html.px48[data-skin="classic"] .hz-house {
+  background: none !important; border-radius: 0 !important; box-shadow: none !important;
+  border: 18px solid transparent !important; border-image: var(--px-panel) 12 fill / 18px !important; color: #2a1608; transition: transform .1s steps(2);
+}
+html.px48[data-skin="classic"] .hz-house:hover { transform: translateY(-4px); filter: brightness(1.05); }
+html.px48[data-skin="classic"] .hz-grades button { border-radius: 0; border: 8px solid transparent; border-image: var(--px-paper) 10 fill / 8px; background: none; box-shadow: none; padding: 0 6px; color: #2a1608; }
+html.px48[data-skin="classic"] .hz-grades button.on { border-image-source: var(--px-gold); }
+html.px48[data-skin="classic"] .hz-track { border-radius: 0; }
+html.px48[data-skin="classic"] .hz-track .hz-chg { border-radius: 0; border: 8px solid transparent; border-image: var(--px-blue) 10 fill / 8px; background: none; box-shadow: none; color: #fff; padding: 0 6px; }
+html.px48[data-skin="classic"] :is(.hz-bar, .gc-bar) { border-radius: 0; box-shadow: 0 0 0 2px #2a1608; }
+
+/* ---------- ปุ่มลอยในหมู่บ้าน / ป้ายคำแนะนำ ---------- */
+html.px48[data-skin="classic"] .w-title-btn { background: none !important; border-radius: 0; box-shadow: none !important; color: #2a1608 !important; font-weight: 800;
+  border: 9px solid transparent; border-image: var(--px-paper) 10 fill / 9px; padding: 0 6px; }
+html.px48[data-skin="classic"] .w-title-btn:hover { border-image-source: var(--px-gold); transform: translateY(-2px); }
+html.px48[data-skin="classic"] .world-hint { border-radius: 0; background: none; border: 9px solid transparent; border-image: var(--px-dark) 10 fill / 9px; padding: 0 4px; }
+@media (max-width: 560px) {
+  html.px48[data-skin="classic"] :is(.gh-me, .gh-coins, .gh-btn) { border-width: 7px; border-image-width: 7px; }
+  html.px48[data-skin="classic"] .gh-top { gap: 4px; }
+  html.px48[data-skin="classic"] .gh-face { width: 32px; height: 32px; border-width: 6px; border-image-width: 6px; margin: -4px 0 -4px -4px; } html.px48[data-skin="classic"] .gh-face img { width: 30px; height: 30px; }
+  html.px48[data-skin="classic"] .gh-name { max-width: 64px; } html.px48[data-skin="classic"] .gh-rank, html.px48[data-skin="classic"] .gh-xp { display: none; }
+  html.px48[data-skin="classic"] .gh-coins { padding: 0 2px; min-height: 24px; font-size: .8rem; } html.px48[data-skin="classic"] .gh-coins .pxi { width: 18px; height: 18px; }
+  html.px48[data-skin="classic"] .gh-coins b { font-size: .82rem; }
+  html.px48[data-skin="classic"] .gh-btn { min-width: 28px; height: 28px; } html.px48[data-skin="classic"] .gh-btn .pxi { width: 24px; height: 24px; }
+}
+
+/* ---------- กระเป๋า: แผ่นป้ายพิกเซล 2 ฝั่ง + ตัวละครบนแท่นตรงกลาง ---------- */
+html.px48[data-skin="classic"] .bag-hub { background: #23140a; background-image: linear-gradient(90deg, rgba(0,0,0,.18) 2px, transparent 2px), linear-gradient(rgba(0,0,0,.12) 2px, transparent 2px); background-size: 48px 48px, 48px 48px; color: #fff3d6; }
+html.px48[data-skin="classic"] .bag-hub :is(.bh-words, .bh-wedge) { display: none; }
+html.px48[data-skin="classic"] :is(.bh-back, .bh-coins) { background: none !important; box-shadow: none !important; transform: none !important; font-style: normal; color: #2a1608 !important; font-weight: 800; font-size: 1rem;
+  border: 9px solid transparent; border-image: var(--px-paper) 10 fill / 9px; padding: 0 6px; clip-path: none; }
+html.px48[data-skin="classic"] .bh-coins { border-image-source: var(--px-dark); color: #fff3d6 !important; } html.px48[data-skin="classic"] .bh-coins b { font-family: var(--px-font); text-shadow: 2px 2px 0 #2a1608; }
+html.px48[data-skin="classic"] .bh-plate { transform: none !important; clip-path: none !important; animation: none; background: none !important; box-shadow: none !important; color: #2a1608;
+  border: 14px solid transparent; border-image: var(--px-panel) 12 fill / 14px; min-width: 250px; padding: 0 6px 0 0; gap: 0 10px; transition: transform .1s steps(2); }
+html.px48[data-skin="classic"] .bh-plate:hover { transform: translateY(-4px) !important; border-image-source: var(--px-gold); }
+html.px48[data-skin="classic"] .bh-plate.hot { border-image-source: var(--px-gold); }
+html.px48[data-skin="classic"] .bh-plate .ic { width: 56px; height: 56px; background: none; box-shadow: none; border-radius: 0; border: 4px solid transparent; border-image: var(--px-inset) 6 fill / 4px; box-sizing: border-box; }
+html.px48[data-skin="classic"] .bh-plate .ic .pxi { width: 48px; height: 48px; }
+html.px48[data-skin="classic"] .bh-plate .th { font-size: 1.2rem; color: #2a1608; font-style: normal; }
+html.px48[data-skin="classic"] .bh-plate .en { position: static; grid-column: 3; grid-row: 1 / 3; align-self: center; font-family: var(--px-font); font-style: normal; font-size: .75rem; opacity: 1; color: #8f5d30; letter-spacing: 1px; }
+html.px48[data-skin="classic"] .bh-plate .cnt { background: #2a1608; color: #ffd84a; border-radius: 0; font-family: var(--px-font); transform: none; }
+html.px48[data-skin="classic"] .bh-figure { width: 240px; height: 240px; border: 24px solid transparent; border-image: var(--px-panel) 12 fill / 24px; box-sizing: border-box; }
+html.px48[data-skin="classic"] .bh-burst { display: none; }
+html.px48[data-skin="classic"] .bh-figure .ava { border-radius: 0; box-shadow: none; }
+html.px48[data-skin="classic"] .bh-name { background: none; transform: none; border: 10px solid transparent; border-image: var(--px-dark) 10 fill / 10px; padding: 0 8px; }
+html.px48[data-skin="classic"] .bh-name b { font-style: normal; transform: none; }
+html.px48[data-skin="classic"] .bh-lv { transform: none; background: none; color: #ffd84a; font-weight: 700; text-shadow: 2px 2px 0 #2a1608; }
+/* หน้าต่างหมวดในกระเป๋า */
+html.px48[data-skin="classic"] .bd-dlg, html.px48[data-skin="classic"] dialog.bd { border-radius: 0; background: none; box-shadow: none; border: 24px solid transparent; border-image: var(--px-panel) 12 fill / 24px; color: #2a1608; padding: 0; }
+html.px48[data-skin="classic"] .bd-head { background: none; color: #2a1608; border-bottom: 4px solid #c9a86c; position: static; padding: 4px 4px 10px; }
+html.px48[data-skin="classic"] .bd-head .ic { background: none; border-radius: 0; box-shadow: none; transform: none; } html.px48[data-skin="classic"] .bd-head .ic .pxi { width: 48px; height: 48px; }
+html.px48[data-skin="classic"] .bd-head h2 { transform: none; font-style: normal; }
+html.px48[data-skin="classic"] .bd-x { border-radius: 0; background: none; box-shadow: none; border: 8px solid transparent; border-image: var(--px-red) 10 fill / 8px; color: #fff; width: auto; height: auto; padding: 0 6px; }
+html.px48[data-skin="classic"] .bd-body { padding: 10px 4px 4px; }
+html.px48[data-skin="classic"] .bd-item { border-radius: 0; background: none; box-shadow: none; border: 12px solid transparent; border-image: var(--px-inset) 6 fill / 12px; padding: 18px 4px 4px; transform: none; }
+html.px48[data-skin="classic"] .bd-item.on { border-image-source: var(--px-gold); }
+html.px48[data-skin="classic"] .bd-item .rar { border-radius: 0; top: -8px; left: -8px; box-shadow: 0 0 0 2px #2a1608; }
+html.px48[data-skin="classic"] :is(.bd-btn, .bd-more) { border-radius: 0; background: none !important; box-shadow: none; transform: none; color: #2a1608 !important; font-weight: 800; border: 8px solid transparent; border-image: var(--px-gold) 10 fill / 8px; padding: 0 6px; font-style: normal; }
+html.px48[data-skin="classic"] .bd-btn.ghost { border-image-source: var(--px-paper); }
+html.px48[data-skin="classic"] .bh-name { box-shadow: none !important; }
+html.px48[data-skin="classic"] .bh-plate { filter: none; }
+html.px48[data-skin="classic"] body.has-hud:has(.bag-hub) { background: #23140a; }
+@media (max-width: 860px) {
+  html.px48[data-skin="classic"] .bh-plate { min-width: 0; border-width: 10px; border-image-width: 10px; gap: 0 6px; }
+  html.px48[data-skin="classic"] .bh-plate .en { display: none; }
+  html.px48[data-skin="classic"] .bh-plate .ic { width: 44px; height: 44px; } html.px48[data-skin="classic"] .bh-plate .ic .pxi { width: 36px; height: 36px; }
+  html.px48[data-skin="classic"] .bh-plate .th { font-size: .95rem; }
+  html.px48[data-skin="classic"] .bh-figure { width: 190px; height: 190px; border-width: 16px; border-image-width: 16px; }
+}
+
+/* ---------- กล่องบทสนทนา (talk.js) ---------- */
+html.px48[data-skin="classic"] .tk-slash { display: none; }
+html.px48[data-skin="classic"] .tk-panel::before { transform: none; border-radius: 0; box-shadow: none; background: none; border: 24px solid transparent; border-image: var(--px-dark) 10 fill / 24px; }
+html.px48[data-skin="classic"] .tk-panel::after { transform: none; left: 26px; right: 26px; bottom: 16px; height: 4px; background: repeating-linear-gradient(90deg, var(--tc) 0 8px, transparent 8px 12px); }
+html.px48[data-skin="classic"] .tk-panel { margin-left: -24px; }
+html.px48[data-skin="classic"] .tk-name { transform: none; background: none; box-shadow: none; border: 9px solid transparent; border-image: var(--px-gold) 10 fill / 9px; padding: 0 8px; left: 28px; top: -24px; }
+html.px48[data-skin="classic"] .tk-name span { transform: none; color: #2a1608; }
+html.px48[data-skin="classic"] .tk-body { padding: 30px 44px 30px 46px; color: #fff3d6; }
+html.px48[data-skin="classic"] .tk-more { color: #ffd84a; }
+html.px48[data-skin="classic"] .tk-b { border-radius: 0; background: none; border: 8px solid transparent; border-image: var(--px-dark) 10 fill / 8px; padding: 0 6px; color: #fff3d6; min-height: 0; }
+html.px48[data-skin="classic"] :is(.tk-b:hover, .tk-b.on) { border-image-source: var(--px-gold); color: #2a1608; }
+html.px48[data-skin="classic"] .tk-ch { border-radius: 0; background: none; border: 12px solid transparent; border-image: var(--px-paper) 10 fill / 12px; color: #2a1608; padding: 0 6px 0 0; }
+html.px48[data-skin="classic"] .tk-ch:hover { background: none; border-image-source: var(--px-gold); transform: translateY(-3px); }
+html.px48[data-skin="classic"] .tk-ch img { border-radius: 0; background: #2a1608; }
+html.px48[data-skin="classic"] .tk-ch-t small { color: #6e4422; }
+html.px48[data-skin="classic"] .tk-spot { border-radius: 0; border: 4px dashed #ffd84a; }
+@media (max-width: 640px) { html.px48[data-skin="classic"] .tk-panel::before { border-width: 14px; border-image-width: 14px; } html.px48[data-skin="classic"] .tk-body { padding: 22px 22px 22px 24px; } }
+
+/* ---------- แจ้งเตือน / ตั้งค่า ---------- */
+html.px48[data-skin="classic"] .toast { border-radius: 0; box-shadow: none; background: none; border: 10px solid transparent; border-image: var(--px-dark) 10 fill / 10px; padding: 0 8px; color: #fff3d6; }
+html.px48[data-skin="classic"] .toast-bad { border-image-source: var(--px-red); color: #fff; }
+html.px48[data-skin="classic"] :is(.pal, .skin) { border-radius: 0; background: none; box-shadow: none; border: 12px solid transparent; border-image: var(--px-inset) 6 fill / 12px; padding: 0; transition: transform .1s steps(2); }
+html.px48[data-skin="classic"] :is(.pal, .skin):hover { transform: translateY(-3px); }
+html.px48[data-skin="classic"] :is(.pal, .skin)[aria-pressed="true"], html.px48[data-skin="classic"] :is(.pal, .skin).on { border-image-source: var(--px-gold); }
+html.px48[data-skin="classic"] .pal .sw { border-radius: 0; box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); }
+html.px48[data-skin="classic"] .seg { border-radius: 0; background: none; padding: 0; border: 8px solid transparent; border-image: var(--px-dark) 10 fill / 8px; }
+html.px48[data-skin="classic"] .seg button { border-radius: 0; color: #fff3d6; min-height: 32px; padding: 0 10px; }
+html.px48[data-skin="classic"] .seg button[aria-pressed="true"] { background: #ffd84a; color: #2a1608; box-shadow: inset 0 -3px 0 #c8961a; }
+html.px48[data-skin="classic"] .px-tab { border-radius: 0; }
+
+/* ---------- หน้าสรุปผลหลังเล่น (ป้ายพิกเซล ไม่เอียง) ---------- */
+@keyframes pxPop { from { transform: translateY(14px); opacity: 0; } to { transform: none; opacity: 1; } }
+html.px48[data-skin="classic"] .vs-bg { background: #160d06; background-image: linear-gradient(90deg, rgba(255,216,74,.06) 2px, transparent 2px), linear-gradient(rgba(255,216,74,.06) 2px, transparent 2px); background-size: 48px 48px; }
+html.px48[data-skin="classic"] .vs-bg::after { opacity: .5; background-image: radial-gradient(#ffd84a 1.5px, transparent 2px); background-size: 96px 96px; }
+html.px48[data-skin="classic"] .vs-shard { display: none; }
+html.px48[data-skin="classic"] .vs-game { transform: none; color: #ffd84a; text-shadow: 2px 2px 0 #2a1608; }
+html.px48[data-skin="classic"] .vs-title { gap: 10px; }
+html.px48[data-skin="classic"] .vs-title span { transform: none !important; box-shadow: none !important; background: none !important; color: #2a1608 !important; animation: pxPop .3s steps(4) both;
+  border: 20px solid transparent !important; border-image: var(--px-gold) 10 fill / 20px !important; padding: 0 10px; font-style: normal; }
+html.px48[data-skin="classic"] .vs-title .w2 { border-image-source: var(--px-paper) !important; animation-delay: .12s; }
+html.px48[data-skin="classic"] .vs-try .vs-title .w1 { border-image-source: var(--px-paper) !important; }
+html.px48[data-skin="classic"] .vs-sub { transform: none; background: none; border: 10px solid transparent; border-image: var(--px-dark) 10 fill / 10px; padding: 0 8px; font-style: normal; }
+html.px48[data-skin="classic"] .vs-burst { filter: none; }
+html.px48[data-skin="classic"] .vs-burst::before { clip-path: none; background: none; border: 24px solid transparent; border-image: var(--px-panel) 12 fill / 24px; }
+html.px48[data-skin="classic"] .vs-burst .in { clip-path: none; inset: 24px; background: none; color: #2a1608; transform: none; }
+html.px48[data-skin="classic"] .vs-burst b { font-family: var(--px-font); }
+html.px48[data-skin="classic"] .vs-rank { border-radius: 0; border: 20px solid transparent; border-image: var(--px-dark) 10 fill / 20px; transform: none; box-shadow: none; background: none; }
+html.px48[data-skin="classic"] .vs-rank b { font-style: normal; font-family: var(--px-font); }
+html.px48[data-skin="classic"] .vs-stat { transform: none !important; clip-path: none; box-shadow: none !important; background: none !important; color: #2a1608; animation-name: pxPop;
+  border: 18px solid transparent; border-image: var(--px-panel) 12 fill / 18px; padding: 0 6px; }
+html.px48[data-skin="classic"] .vs-stat:nth-child(even) { border-image-source: var(--px-dark); color: #fff3d6; }
+html.px48[data-skin="classic"] .vs-stat .k { transform: none; }
+html.px48[data-skin="classic"] .vs-stat b { font-style: normal; font-family: var(--px-font); }
+html.px48[data-skin="classic"] .vs-stat .vs-bar { transform: none; height: 10px; background: #2a1608; box-shadow: 0 0 0 2px #2a1608; }
+html.px48[data-skin="classic"] .vs-stat .vs-bar i { background: repeating-linear-gradient(90deg, #8ee070 0 6px, #4cb84a 6px 8px); }
+html.px48[data-skin="classic"] .vs-badge { transform: none !important; clip-path: none; box-shadow: none; background: none !important; color: #2a1608;
+  border: 14px solid transparent; border-image: var(--px-gold) 10 fill / 14px; padding: 0 6px; animation-name: pxPop; }
+html.px48[data-skin="classic"] .vs-badge.lv { border-image-source: var(--px-blue); color: #fff; } html.px48[data-skin="classic"] .vs-badge.boss { border-image-source: var(--px-red); color: #fff; }
+html.px48[data-skin="classic"] .vs-btn { transform: none; clip-path: none !important; box-shadow: none; background: none !important; color: #2a1608 !important; font-style: normal;
+  border: 12px solid transparent; border-image: var(--px-gold) 10 fill / 12px; padding: 2px 10px; }
+html.px48[data-skin="classic"] .vs-btn.alt { border-image-source: var(--px-paper); }
+html.px48[data-skin="classic"] .vs-btn:hover { transform: translateY(-3px); }
+html.px48[data-skin="classic"] .vs-note { background: none; border: 10px solid transparent; border-image: var(--px-dark) 10 fill / 10px; padding: 0 8px; }
+html.px48[data-skin="classic"] .vs-hint { transform: none; font-style: normal; }
+html.px48[data-skin="classic"] .vs-stars i { -webkit-text-stroke: 0; color: transparent; width: 40px; height: 40px; display: inline-block; background: var(--pxi-star) center / contain no-repeat; image-rendering: pixelated; filter: grayscale(1) brightness(.45); }
+html.px48[data-skin="classic"] .vs-stars i.on { filter: none; }
+/* หน้าดูเฉลยและสรุปผล */
+html.px48[data-skin="classic"] :is(.rs-title span) { transform: none !important; box-shadow: none !important; background: none !important; color: #2a1608 !important; border: 16px solid transparent !important; border-image: var(--px-gold) 10 fill / 16px !important; padding: 0 8px; font-style: normal; }
+html.px48[data-skin="classic"] .rs-title .w2 { border-image-source: var(--px-paper) !important; }
+html.px48[data-skin="classic"] .rs::before, html.px48[data-skin="classic"] .rs::after { display: none; }
+html.px48[data-skin="classic"] :is(.rs-chip, .rs-pop, .rs-sub, .rs-note) { transform: none !important; clip-path: none; box-shadow: none !important; border-radius: 0; font-style: normal; }
+html.px48[data-skin="classic"] .rs-chip { background: none !important; color: #2a1608 !important; border: 10px solid transparent; border-image: var(--px-paper) 10 fill / 10px; padding: 0 8px; }
+html.px48[data-skin="classic"] .rs-chip b { font-style: normal; font-family: var(--px-font); }
+html.px48[data-skin="classic"] .rs-review { border-radius: 0; background: none; border: 18px solid transparent; border-image: var(--px-panel) 12 fill / 18px; color: #2a1608; }
+html.px48[data-skin="classic"] .rs-list li { border-radius: 0; }
+html.px48[data-skin="classic"] .rs-stars i { color: transparent; width: 34px; height: 34px; display: inline-block; background: var(--pxi-star) center / contain no-repeat; image-rendering: pixelated; filter: grayscale(1) brightness(.45); text-shadow: none; }
+html.px48[data-skin="classic"] .rs-stars i.on { filter: none; }
+
+/* ---------- ฉากต่อสู้: ป้ายคำถาม การ์ดคำตอบ แถบสกิล กล่องพูด ---------- */
+html.px48[data-skin="classic"] .bt-qtag { transform: none; box-shadow: none; background: none; border: 8px solid transparent; border-image: var(--px-blue) 10 fill / 8px; padding: 0 6px; top: -18px; }
+html.px48[data-skin="classic"] .bt-q { border-radius: 0; box-shadow: none; background: none; border: 16px solid transparent; border-image: var(--px-panel) 12 fill / 16px; padding: 8px 6px 4px; }
+html.px48[data-skin="classic"] .bt-plate { border-radius: 0; background: none; border: 10px solid transparent; border-image: var(--px-dark) 10 fill / 10px; padding: 0 4px; }
+html.px48[data-skin="classic"] .bt-plate.hero { border-left-width: 10px; }
+html.px48[data-skin="classic"] .bt-hero { border-radius: 0; }
+html.px48[data-skin="classic"] .bc.plain { border-radius: 0; background: none !important; box-shadow: none !important; transform: none;
+  border: 16px solid transparent; border-image: var(--px-paper) 10 fill / 16px; padding: 18px 0 0; min-height: 132px; transition: transform .1s steps(2); }
+html.px48[data-skin="classic"] .bc.plain::before { content: ""; position: absolute; left: -4px; right: -4px; top: -4px; height: 8px; background: var(--el); box-shadow: 0 2px 0 rgba(0,0,0,.25); }
+html.px48[data-skin="classic"] .bc.plain:hover:not([disabled]), html.px48[data-skin="classic"] .bc.plain:focus-visible { transform: translateY(-10px); border-image-source: var(--px-gold); box-shadow: none !important; }
+html.px48[data-skin="classic"] .bc.plain.right { border-image-source: var(--px-green); box-shadow: none !important; }
+html.px48[data-skin="classic"] .bc.plain.wrong { border-image-source: var(--px-red); filter: grayscale(.4) brightness(.85); }
+html.px48[data-skin="classic"] .bc.plain .bc-key { border-radius: 0; top: -2px; left: -2px; }
+html.px48[data-skin="classic"] .bc.plain .bc-foot { border-top: 2px dashed rgba(90,60,30,.35); }
+html.px48[data-skin="classic"] .bt-skills { background: none; box-shadow: none; border: 12px solid transparent; border-image: var(--px-dark) 10 fill / 12px; padding: 0 2px; }
+html.px48[data-skin="classic"] .sk-btn { background: none; box-shadow: none; border: 10px solid transparent; border-image: var(--px-paper) 10 fill / 10px; padding: 0 4px 0 0; }
+html.px48[data-skin="classic"] .sk-btn.on { background: none; border-image-source: var(--px-gold); box-shadow: none; }
+html.px48[data-skin="classic"] .sk-btn img { box-shadow: 0 0 0 2px #2a1608; }
+html.px48[data-skin="classic"] .sk-en i { width: 18px; height: 18px; background: #3a2412; box-shadow: inset 0 0 0 2px #6e4422; }
+html.px48[data-skin="classic"] .sk-en i.f { background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 9 9' shape-rendering='crispEdges'%3E%3Cpath fill='%232a1608' d='M0 0h9v9H0z'/%3E%3Cpath fill='%23ffd84a' d='M1 1h7v7H1z'/%3E%3Cpath fill='%23fff1a0' d='M1 1h7v1H1zM1 2h1v3H1z'/%3E%3Cpath fill='%23c8961a' d='M1 7h7v1H1z'/%3E%3Cpath fill='%232a1608' d='M5 2H4L3 5h2L4 7h1l2-3H5z'/%3E%3C/svg%3E") center / 100% no-repeat; box-shadow: 0 0 8px rgba(255,216,74,.6); }
+html.px48[data-skin="classic"] .bt-say-box { box-shadow: none; background: none; border: 16px solid transparent; border-image: var(--px-dark) 10 fill / 16px; padding: 4px 6px 0; color: #fff3d6; }
+html.px48[data-skin="classic"] .bt-say-name { transform: none; box-shadow: none; background: none; border: 8px solid transparent; border-image: var(--px-gold) 10 fill / 8px; padding: 0 6px; top: -24px; color: #2a1608; }
+html.px48[data-skin="classic"] .bt-say.ok .bt-say-box { border-image-source: var(--px-dark); } 

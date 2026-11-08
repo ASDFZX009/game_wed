@@ -36,7 +36,7 @@ const redirectApp = {
   const pdir = path.join(root, "public/pfp");
   const pfps = JSON.stringify(Object.fromEntries(fs.readdirSync(pdir).filter((f) => f.endsWith(".jpg"))
     .map((f) => [f.replace(/\.jpg$/, ""), "data:image/jpeg;base64," + fs.readFileSync(path.join(pdir, f)).toString("base64")])));
-  const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8") + fs.readFileSync(path.join(root, "public/css/skins.css"), "utf8");
+  const css = fs.readFileSync(path.join(root, "public/css/app.css"), "utf8") + fs.readFileSync(path.join(root, "public/css/skins.css"), "utf8") + fs.readFileSync(path.join(root, "public/css/pixel48.css"), "utf8");
 
   // 3) ประกอบเป็น HTML ไฟล์เดียว
   const html = `<!DOCTYPE html>
@@ -79,6 +79,8 @@ try { var p = JSON.parse(localStorage.getItem("eduplay:prefs") || "{}"), r = doc
   // ✨ ประตูอัญเชิญ + ภาพตัวละคร 64px เป็นไฟล์แยก (หน้าอัญเชิญเปิดในกรอบ · ฉากต่อสู้โหลด sprites.js ไฟล์เดียวกัน)
   fs.rmSync(path.join(dir, "gacha"), { recursive: true, force: true });
   fs.cpSync(path.join(root, "public/gacha"), path.join(dir, "gacha"), { recursive: true });
+  // ชุด UI พิกเซล: หน้าอัญเชิญ (iframe) โหลดไฟล์นี้เองที่ ../js/ui/pixui.js
+  fs.mkdirSync(path.join(dir, "js/ui"), { recursive: true }); fs.copyFileSync(path.join(root, "public/js/ui/pixui.js"), path.join(dir, "js/ui/pixui.js"));
   try { fs.unlinkSync(process.env.DB_FILE); } catch { /* ignore */ }
   console.log(`สร้างแล้ว: docs/play/index.html (${(html.length / 1024).toFixed(0)} KB)`);
 })();
