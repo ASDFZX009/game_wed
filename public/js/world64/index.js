@@ -318,11 +318,15 @@ cv.addEventListener("pointerdown", (e) => {
 });
 cv.addEventListener("pointermove", (e) => { if (e.pointerType !== "mouse") return; const [wx, wy] = screenToWorld(e.clientX, e.clientY), h = hitAt(wx, wy); gateO.hover = h?.kind === "gate"; for (const o of objects) if (o.kind === "house") o.hover = h?.o === o; cv.style.cursor = h ? "pointer" : "default"; });
 const keys = new Set();
-const onKD = (e) => { if (talking || paused || document.querySelector(".tk") || e.target.matches?.("input, textarea, select")) return; const k = e.key.toLowerCase();
+// ใช้ตำแหน่งปุ่ม (e.code) ไม่ใช่ตัวอักษร → แป้นพิมพ์ภาษาไทยก็เดินด้วย WASD ได้ (ไม่ต้องสลับภาษา)
+const CODE = { KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", KeyE: "e", ArrowLeft: "arrowleft", ArrowRight: "arrowright", ArrowUp: "arrowup", ArrowDown: "arrowdown", Enter: "enter", NumpadEnter: "enter" };
+const keyOf = (e) => CODE[e.code] || (e.key || "").toLowerCase();
+const onKD = (e) => { if (talking || paused || document.querySelector(".tk") || e.target.matches?.("input, textarea, select, [contenteditable]")) return; const k = keyOf(e);
   if (["arrowleft", "arrowright", "arrowup", "arrowdown", "a", "d", "w", "s"].includes(k)) { keys.add(k); if (e.target === cv) e.preventDefault(); }
   if (k === "e" || k === "enter") { if (Math.hypot(hero.x - gx, hero.y - gy - 40) < 140) arrive("gate"); else { const p = PLACES.find((q) => inReg(q.x, q.y) && Math.hypot(hero.x - (q.ex * T + 32), hero.y - (q.ey * T + 40)) < 80); if (p) arrive(p); } } };
-const onKU = (e) => keys.delete(e.key.toLowerCase());
-addEventListener("keydown", onKD); addEventListener("keyup", onKU);
+const onKU = (e) => { keys.delete(keyOf(e)); keys.delete((e.key || "").toLowerCase()); };
+const onBlur = () => keys.clear();
+addEventListener("keydown", onKD); addEventListener("keyup", onKU); addEventListener("blur", onBlur);
 let last = 0, lastDraw = 0, firstFrame = true, ema = 16.7, frames = 0, slowFor = 0;
 function setGfx(level, why) { if (!GFX[level] || level === gfx) return; gfx = level; Q = GFX[gfx]; host.dataset.gfx = gfx; resize(); onGfx?.(gfx, why); }
 host.dataset.gfx = gfx;
@@ -362,11 +366,12 @@ let talking = false;
 resize(); raf = requestAnimationFrame(step);
 return {
   get online() { return null; },
-  pause(v) { paused = !!v; keys.clear(); if (!v) cv.focus({ preventScroll: true }); },
+  // กลับมาเล่นต่อ (ปิดบ้าน/บทสนทนา): ดึงโฟกัสกลับมาที่หมู่บ้านทันที ไม่ต้องคลิกก่อนเดิน
+  pause(v) { paused = !!v; keys.clear(); if (!v) { const f = () => { if (paused || !alive) return; if (document.activeElement && document.activeElement !== cv && document.activeElement !== document.body && !document.activeElement.closest?.(".gh-top, .gh-dock, .w-hud")) document.activeElement.blur?.(); try { window.focus(); } catch { /* ignore */ } cv.focus({ preventScroll: true }); }; f(); requestAnimationFrame(f); setTimeout(f, 120); } },
   places: PLACES,
   setNight(v) { night = !!v; host.classList.toggle("w-is-night", night); },
   get night() { return night; },
-  destroy() { alive = false; cancelAnimationFrame(raf); ro.disconnect(); removeEventListener("keydown", onKD); removeEventListener("keyup", onKU); cv.remove(); ui.remove(); host.classList.remove("w64"); },
+  destroy() { alive = false; cancelAnimationFrame(raf); ro.disconnect(); removeEventListener("keydown", onKD); removeEventListener("keyup", onKU); removeEventListener("blur", onBlur); cv.remove(); ui.remove(); host.classList.remove("w64"); },
   reachable() { const [sx, sy] = tileOf(hero.x, hero.y); return PLACES.map((p) => ({ id: p.id, ok: !!findPath(M, sx, sy, p.ex, p.ey) })); },
   _hero: hero, _npcs: npcs, netRefresh() {},
   setLook(_l, name) { if (name) playerName = name; },

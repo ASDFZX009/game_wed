@@ -74,7 +74,7 @@ export async function home({ main }) {
   timeBtn.addEventListener("click", () => { night = !night; try { localStorage.setItem("qo:night", night ? "1" : "0"); } catch { /* ignore */ } w.setNight(night); showTime(); });
   showTime(); onLeave(() => document.body.classList.remove("w-night"));
   // ช่องลัดในแถบล่าง: "บ้านวิชา" เปิดตัวเลือกบ้าน · "หมู่บ้าน" ปิดหน้าต่างที่ซ้อนอยู่
-  window.__qoHome = { picker, closeAll: () => { overlay?.close(); overlay = null; w.pause(false); } };
+  window.__qoHome = { picker, closeAll: () => { overlay?.close(); overlay = null; w.pause(false); }, _w: w };
   onLeave(() => { delete window.__qoHome; });
   onLeave(() => overlay?.close());
   { let op = null; try { op = sessionStorage.getItem("qo:openHouse"); sessionStorage.removeItem("qo:openHouse"); } catch { /* ignore */ } if (op) setTimeout(() => (op === "*" ? picker() : house(op)), 50); }

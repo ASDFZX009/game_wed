@@ -80,7 +80,7 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
     <div class="ti-logo"><div class="ti-title" role="heading" aria-level="1" aria-label="QUIZ ODYSSEY"><canvas class="ti-compass" aria-hidden="true"></canvas><span class="w" aria-hidden="true">${raw(letters("QUIZ", 0))}</span><span class="w" aria-hidden="true">${raw(letters("ODYSSEY", 4))}</span></div>
       <div class="ti-ribbon"><span>✦ ผจญภัยแห่งความรู้ ✦</span></div></div>
     <nav class="ti-menu" aria-label="เมนูหลัก">
-      <button type="button" data-a="play">▶ เริ่มผจญภัย</button><button type="button" data-a="goal">📜 เป้าหมายของเกม</button><button type="button" data-a="settings">⚙️ ตั้งค่า</button></nav>
+      <button type="button" data-a="play">▶ เริ่มผจญภัย</button><button type="button" data-a="goal">📜 เป้าหมายของเกม</button></nav>
     <p class="ti-press" aria-hidden="true">แตะหน้าจอหรือกดปุ่มใดก็ได้</p>
     <button type="button" class="ti-skip">ข้าม ⏭</button>
     <section class="ti-cc ti-goal" aria-labelledby="goalT" hidden>
@@ -144,7 +144,7 @@ export function openTitle({ go, onEnter, reduced = false, me = null, startAt = "
   function toMenu() { timers.forEach(clearTimeout); timers = []; qT0 = qT0 || performance.now() - 5000; root.classList.add("s-logo", "s-ribbon"); setStage("menu"); root.querySelectorAll(".ti-cc").forEach((x) => (x.hidden = true)); menu.hidden = false; later(reduced ? 0 : 450, () => focusMenu(0)); }
   function skip() { if (stage === "intro" || stage === "logo") toMenu(); }
   menu.addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; const a = b.dataset.a;
-    if (a === "play") play(); else if (a === "goal") openGoal(); else if (a === "settings") { close(); go("/settings"); } });
+    if (a === "play") play(); else if (a === "goal") openGoal(); });
   menu.addEventListener("focusin", (e) => { const i = mBtns.indexOf(e.target.closest("button")); if (i >= 0) mBtns.forEach((b, j) => b.classList.toggle("on", j === i)); });
   menu.addEventListener("mouseover", (e) => { const i = mBtns.indexOf(e.target.closest("button")); if (i >= 0) mBtns.forEach((b, j) => b.classList.toggle("on", j === i)); });
 

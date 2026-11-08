@@ -598,7 +598,8 @@ export function mountWorld(host, { go, playerName = "นักผจญภัย
 
   // ---------- อินพุต ----------
   const onKey = (e) => {
-    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    // ตำแหน่งปุ่ม (e.code): แป้นพิมพ์ภาษาไทยก็ใช้ WASD/E ได้
+    const k = ({ KeyW: "w", KeyA: "a", KeyS: "s", KeyD: "d", KeyE: "e" })[e.code] || (e.key.length === 1 ? e.key.toLowerCase() : e.key);
     if (e.type === "keydown") {
       if ((k === "e" || k === "Enter" || k === " ") && near) { e.preventDefault(); enter(near); return; }
       if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "w", "a", "s", "d", "Shift"].includes(k)) { e.preventDefault(); keys.add(k); }
